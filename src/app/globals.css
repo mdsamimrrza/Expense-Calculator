@@ -4,85 +4,85 @@
 
 @layer base {
   :root {
-    /* ---- Light Mode: Ink Wash ---- */
-    --background: 60 100% 94.5%;        /* #FFFFE3 (Cream) */
-    --foreground: 0 0% 29%;             /* #4A4A4A (Dark Grey) */
+    /* ---- Light Mode: Royal Cream & Navy ---- */
+    --background: 43 46.7% 94.1%;       /* #F7F3E9 (Cream) */
+    --foreground: 211 52.7% 10.8%;      /* #0D1B2A (Very dark navy) */
 
-    --card: 0 0% 100%;                  /* Pure white for contrast */
-    --card-foreground: 0 0% 29%;
+    --card: 0 0% 100%;                  /* White cards */
+    --card-foreground: 211 52.7% 10.8%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 29%;
+    --popover-foreground: 211 52.7% 10.8%;
 
-    --primary: 210.6 15.9% 50.8%;       /* #6D8196 (Slate Blue) */
-    --primary-foreground: 0 0% 100%;
+    --primary: 211 52.7% 10.8%;         /* #0D1B2A (Navy buttons) */
+    --primary-foreground: 46 65.1% 52.4%; /* #D4AF37 (Gold text on navy) */
 
-    --secondary: 0 0% 79.6%;            /* #CBCBCB (Light Grey) */
-    --secondary-foreground: 0 0% 29%;
+    --secondary: 46 65.1% 52.4%;        /* #D4AF37 (Gold) */
+    --secondary-foreground: 211 52.7% 10.8%;
 
-    --muted: 0 0% 79.6%;
-    --muted-foreground: 0 0% 50%;
+    --muted: 43 20% 85%;
+    --muted-foreground: 212 29.3% 36.1%; /* #415A77 (Lighter navy) */
 
-    --accent: 0 0% 79.6%;
-    --accent-foreground: 0 0% 29%;
+    --accent: 46 65.1% 52.4%;           /* Gold */
+    --accent-foreground: 211 52.7% 10.8%;
 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 79.6%;
-    --input: 0 0% 79.6%;
-    --ring: 210.6 15.9% 50.8%;
+    --border: 43 20% 85%;
+    --input: 0 0% 100%;
+    --ring: 211 52.7% 10.8%;
 
     --radius: 0.75rem;
 
     /* ---- Chart Colors (Light) ---- */
-    --chart-primary: 210.6 15.9% 50.8%; /* #6D8196 */
+    --chart-primary: 211 52.7% 10.8%;   /* Navy */
     --chart-positive: 160 84% 39%;
     --chart-negative: 347 77% 50%;
-    --chart-invested: 0 0% 50%;         /* Mid Grey */
-    --chart-fee-drag: 25 95% 53%;
-    --chart-grid: 0 0% 79.6%;
-    --chart-text: 0 0% 50%;
+    --chart-invested: 46 65.1% 52.4%;   /* Gold */
+    --chart-fee-drag: 347 77% 50%;
+    --chart-grid: 43 20% 85%;
+    --chart-text: 212 29.3% 36.1%;
   }
 
   .dark {
-    /* ---- Dark Mode: Ink Wash (Night) ---- */
-    --background: 0 0% 15%;             /* Deep Grey for contrast */
-    --foreground: 60 100% 94.5%;        /* #FFFFE3 (Cream) */
+    /* ---- Dark Mode: Royal Navy & Gold ---- */
+    --background: 211 52.7% 10.8%;      /* #0D1B2A (Very dark navy) */
+    --foreground: 43 46.7% 94.1%;       /* #F7F3E9 (Cream) */
 
-    --card: 0 0% 20%;                   /* Slightly lighter grey */
-    --card-foreground: 60 100% 94.5%;
+    --card: 219 37.2% 16.9%;            /* #1B263B (Dark navy cards) */
+    --card-foreground: 43 46.7% 94.1%;
 
-    --popover: 0 0% 20%;
-    --popover-foreground: 60 100% 94.5%;
+    --popover: 219 37.2% 16.9%;
+    --popover-foreground: 43 46.7% 94.1%;
 
-    --primary: 210.6 15.9% 50.8%;       /* #6D8196 (Slate Blue) */
-    --primary-foreground: 60 100% 94.5%;
+    --primary: 46 80% 60%;              /* Bright Gold for buttons so they pop! */
+    --primary-foreground: 211 52.7% 10.8%; /* Navy text */
 
-    --secondary: 0 0% 29%;              /* #4A4A4A (Dark Grey) */
-    --secondary-foreground: 60 100% 94.5%;
+    --secondary: 212 29.3% 36.1%;       /* Slate navy for secondary elements */
+    --secondary-foreground: 43 46.7% 94.1%;
 
-    --muted: 0 0% 29%;
-    --muted-foreground: 0 0% 79.6%;     /* #CBCBCB (Light Grey) */
+    --muted: 219 37.2% 16.9%;
+    --muted-foreground: 212 20% 75%;    /* Much lighter for dark mode readability */
 
-    --accent: 0 0% 29%;
-    --accent-foreground: 60 100% 94.5%;
+    --accent: 212 29.3% 36.1%;          /* Slate navy */
+    --accent-foreground: 46 65.1% 52.4%; /* Gold text on hover */
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 60 100% 94.5%;
+    --destructive: 0 62.8% 50.6%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 29%;
-    --input: 0 0% 29%;
-    --ring: 210.6 15.9% 50.8%;
+    --border: 219 37.2% 25%;
+    --input: 219 37.2% 16.9%;
+    --ring: 46 65.1% 52.4%;             /* Gold ring */
 
     /* ---- Chart Colors (Dark) ---- */
-    --chart-primary: 210.6 15.9% 50.8%; /* #6D8196 */
+    --chart-primary: 46 65.1% 52.4%;    /* Gold */
     --chart-positive: 160 84% 39%;
     --chart-negative: 0 84% 60%;
-    --chart-invested: 0 0% 50%;         /* Mid Grey */
-    --chart-fee-drag: 35 92% 50%;
-    --chart-grid: 0 0% 29%;
-    --chart-text: 0 0% 79.6%;
+    --chart-invested: 212 29.3% 36.1%;  /* Slate navy */
+    --chart-fee-drag: 0 84% 60%;
+    --chart-grid: 219 37.2% 25%;
+    --chart-text: 43 46.7% 94.1%;       /* Cream */
   }
 }
 
@@ -90,6 +90,7 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rnum";
@@ -102,6 +103,7 @@
 }
 
 @layer utilities {
+
   /* Smooth page transitions */
   .page-transition {
     @apply transition-all duration-200 ease-in-out;
@@ -116,6 +118,7 @@
   .text-positive {
     color: hsl(var(--chart-positive));
   }
+
   .text-negative {
     color: hsl(var(--chart-negative));
   }
@@ -124,14 +127,17 @@
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
   }
+
   .custom-scrollbar::-webkit-scrollbar-track {
     background: hsl(var(--muted));
     border-radius: 3px;
   }
+
   .custom-scrollbar::-webkit-scrollbar-thumb {
     background: hsl(var(--muted-foreground) / 0.3);
     border-radius: 3px;
   }
+
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--muted-foreground) / 0.5);
   }

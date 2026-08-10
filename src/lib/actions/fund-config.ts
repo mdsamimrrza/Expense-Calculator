@@ -22,7 +22,7 @@ export async function createFundConfig(
     return { success: false, error: parsed.error.errors[0].message };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -66,7 +66,7 @@ export async function updateFundConfig(
     return { success: false, error: parsed.error.errors[0].message };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("fund_config")
@@ -88,7 +88,7 @@ export async function updateFundConfig(
 }
 
 export async function deleteFundConfig(id: string): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // Check if entries exist — block deletion if they do
   const { count, error: countError } = await supabase
@@ -130,7 +130,7 @@ export async function updateLatestNav(
     return { success: false, error: parsed.error.errors[0].message };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { error } = await supabase
     .from("fund_config")
@@ -148,7 +148,7 @@ export async function updateLatestNav(
 }
 
 export async function getFundConfigs(): Promise<ActionResult<FundConfig[]>> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("fund_config")

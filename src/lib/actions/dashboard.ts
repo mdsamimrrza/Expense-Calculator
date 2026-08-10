@@ -17,7 +17,7 @@ import {
   prepareFeeDragEntries,
   calculateFeeDrag,
 } from "@/lib/calculations/fee-drag";
-import { XIRR_MIN_ENTRIES } from "@/lib/constants";
+import { XIRR_MIN_ENTRIES, DP_CHARGE } from "@/lib/constants";
 import { format } from "date-fns";
 
 interface DashboardData {
@@ -33,7 +33,7 @@ interface DashboardData {
 export async function getDashboardData(
   fundId?: string
 ): Promise<ActionResult<DashboardData>> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // Fetch fund configs
   const { data: fundsRaw, error: fundsError } = await supabase

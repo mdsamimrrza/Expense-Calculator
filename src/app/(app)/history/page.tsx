@@ -13,13 +13,14 @@ export const metadata: Metadata = {
 };
 
 interface HistoryPageProps {
-  searchParams: {
+  searchParams: Promise<{
     fund?: string;
-  };
+  }>;
 }
 
 export default async function HistoryPage({ searchParams }: HistoryPageProps) {
-  const selectedFundId = searchParams.fund || "all";
+  const params = await searchParams;
+  const selectedFundId = params.fund || "all";
 
   const [fundsRes, entriesRes] = await Promise.all([
     getFundConfigs(),

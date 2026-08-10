@@ -14,6 +14,7 @@ import { APP_NAME } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "./theme-toggle";
+import { Logo } from "@/components/ui/logo";
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -34,12 +35,7 @@ export function Sidebar({ onSignOut }: SidebarProps) {
       {/* Logo / App name */}
       <div className="flex items-center h-16 px-6">
         <Link href="/dashboard" className="flex items-center gap-2 group">
-          <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-primary text-primary-foreground text-sm font-bold transition-transform group-hover:scale-105">
-            S
-          </div>
-          <span className="text-lg font-semibold tracking-tight">
-            {APP_NAME}
-          </span>
+          <Logo />
         </Link>
       </div>
 

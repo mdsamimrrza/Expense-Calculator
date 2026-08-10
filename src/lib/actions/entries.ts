@@ -22,7 +22,7 @@ export async function createEntry(
     return { success: false, error: parsed.error.errors[0].message };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -91,7 +91,7 @@ export async function updateEntry(
     return { success: false, error: parsed.error.errors[0].message };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("entries")
@@ -118,7 +118,7 @@ export async function updateEntry(
 }
 
 export async function deleteEntry(id: string): Promise<ActionResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { error } = await supabase.from("entries").delete().eq("id", id);
 
@@ -144,7 +144,7 @@ export async function getEntries(
 ): Promise<ActionResult<{ entries: Entry[]; total: number }>> {
   const { fundId, page = 1, pageSize = 20, sortOrder = "desc" } = params;
 
-  const supabase = createClient();
+  const supabase = await createClient();
 
   let query = supabase.from("entries").select("*", { count: "exact" });
 
@@ -181,7 +181,7 @@ export async function importEntriesFromCsv(
     notes?: string;
   }>
 ): Promise<ActionResult<CsvImportResult>> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -54,6 +54,7 @@ export function EntryForm({
   const [units, setUnits] = useState(entry?.units?.toString() ?? "");
   const [notes, setNotes] = useState(entry?.notes ?? "");
   const [overrideUnits, setOverrideUnits] = useState(false);
+  const [deductDpCharge, setDeductDpCharge] = useState(true);
 
   const router = useRouter();
   const { toast } = useToast();
@@ -66,10 +67,11 @@ export function EntryForm({
       const a = parseFloat(amount);
       const n = parseFloat(nav);
       if (a > 0 && n > 0) {
-        setUnits((a / n).toFixed(4));
+        const effectiveAmount = deductDpCharge ? Math.max(0, a - 5) : a;
+        setUnits((effectiveAmount / n).toFixed(4));
       }
     }
-  }, [amount, nav, overrideUnits]);
+  }, [amount, nav, overrideUnits, deductDpCharge]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -227,9 +229,23 @@ export function EntryForm({
                 required
               />
               {!overrideUnits && amount && nav && (
-                <p className="text-xs text-muted-foreground">
-                  = {amount} ÷ {nav}
-                </p>
+                <div className="flex flex-col gap-2 mt-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="deduct-dp"
+                      checked={deductDpCharge}
+                      onChange={(e) => setDeductDpCharge(e.target.checked)}
+                      className="rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <Label htmlFor="deduct-dp" className="font-normal text-xs text-muted-foreground cursor-pointer">
+                      Deduct Rs 5 DP Charge
+                    </Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    = {deductDpCharge ? `(${amount} - 5)` : amount} ÷ {nav}
+                  </p>
+                </div>
               )}
             </div>
 

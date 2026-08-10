@@ -37,7 +37,8 @@ export function formatCurrencyWhole(value: number, showSign = false): string {
  * Format a percentage value.
  * e.g. 12.345 → "+12.35%" or "-3.20%"
  */
-export function formatPercentage(value: number, showSign = true): string {
+export function formatPercentage(value: number | null | undefined, showSign = true): string {
+  if (value === null || value === undefined || isNaN(value)) return "—";
   const sign = showSign && value > 0 ? "+" : "";
   return `${sign}${value.toFixed(2)}%`;
 }

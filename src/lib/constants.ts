@@ -28,6 +28,8 @@ export const FUND_PRESETS: FundPreset[] = [
 
 // ---------- App metadata ----------
 
+export const DP_CHARGE = 5; // Flat Depository Participant fee per transaction
+
 export const APP_NAME = "SahakariSIP";
 export const APP_DESCRIPTION =
   "Track your Nepali mutual fund SIP investments — see your real returns, understand fee drag, and project your growth.";

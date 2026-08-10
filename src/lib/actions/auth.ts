@@ -22,7 +22,7 @@ export async function signUp(formData: FormData): Promise<ActionResult> {
     return { success: false, error: parsed.error.errors[0].message };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
@@ -49,7 +49,7 @@ export async function signIn(formData: FormData): Promise<ActionResult> {
     return { success: false, error: parsed.error.errors[0].message };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({
     email: parsed.data.email,
     password: parsed.data.password,
@@ -73,7 +73,7 @@ export async function signIn(formData: FormData): Promise<ActionResult> {
 }
 
 export async function signOut(): Promise<void> {
-  const supabase = createClient();
+  const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/login");
 }
@@ -90,7 +90,7 @@ export async function forgotPassword(
     return { success: false, error: parsed.error.errors[0].message };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(
     parsed.data.email,
     {
@@ -118,7 +118,7 @@ export async function resetPassword(
     return { success: false, error: parsed.error.errors[0].message };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.auth.updateUser({
     password: parsed.data.password,
   });

@@ -12,7 +12,7 @@ import type {
   ProjectionRow,
   ProjectionChartPoint,
 } from "../types";
-import { PROJECTION_YEARS } from "../constants";
+import { PROJECTION_YEARS, DP_CHARGE } from "../constants";
 
 /**
  * Calculate future value projections for a SIP portfolio.

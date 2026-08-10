@@ -20,7 +20,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar onSignOut={handleSignOut} />
 
       {/* Mobile header */}
-      <Header />
+      <Header onSignOut={handleSignOut} />
 
       {/* Main content area */}
       <main className="lg:pl-64 pb-20 lg:pb-0">

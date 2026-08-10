@@ -17,13 +17,14 @@ export const metadata: Metadata = {
 };
 
 interface DashboardPageProps {
-  searchParams: {
+  searchParams: Promise<{
     fund?: string;
-  };
+  }>;
 }
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
-  const selectedFundId = searchParams.fund || "all";
+  const params = await searchParams;
+  const selectedFundId = params.fund || "all";
   const result = await getDashboardData(selectedFundId);
 
   if (!result.success || !result.data) {
@@ -53,47 +54,54 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header section */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">SIP Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            Track your mutual fund performance, returns, and fee impact.
-          </p>
+      {/* Desktop Header & Fund Selector (Hidden on Mobile) */}
+      <div className="hidden lg:flex flex-col space-y-6">
+        <div className="flex sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">SIP Dashboard</h1>
+            <p className="text-sm text-muted-foreground">
+              Track your mutual fund performance, returns, and fee impact.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <EntryForm funds={funds} defaultFundId={activeFund?.id} />
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <EntryForm funds={funds} defaultFundId={activeFund?.id} />
+
+        <div className="flex sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-border/50 bg-card/50">
+          <Tabs defaultValue={selectedFundId} className="w-full sm:w-auto">
+            <TabsList className="w-full sm:w-auto flex">
+              {funds.length > 1 && (
+                <TabsTrigger value="all" asChild>
+                  <Link href="/dashboard?fund=all">All Funds</Link>
+                </TabsTrigger>
+              )}
+              {funds.map((fund) => (
+                <TabsTrigger key={fund.id} value={fund.id}>
+                  <Link href={`/dashboard?fund=${fund.id}`}>{fund.fund_name}</Link>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+
+          {selectedFundId !== "all" && activeFund && (
+            <LatestNavInput
+              fundId={activeFund.id}
+              currentNav={activeFund.latest_nav ? Number(activeFund.latest_nav) : null}
+              currentNavDate={activeFund.latest_nav_date}
+            />
+          )}
         </div>
       </div>
 
-      {/* Fund Selector & Latest NAV inline row */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-border/50 bg-card/50">
-        <Tabs defaultValue={selectedFundId} className="w-full sm:w-auto">
-          <TabsList className="w-full sm:w-auto grid grid-cols-2 sm:flex">
-            {funds.length > 1 && (
-              <TabsTrigger value="all" asChild>
-                <Link href="/dashboard?fund=all">All Funds</Link>
-              </TabsTrigger>
-            )}
-            {funds.map((fund) => (
-              <TabsTrigger key={fund.id} value={fund.id} asChild>
-                <Link href={`/dashboard?fund=${fund.id}`}>{fund.fund_name}</Link>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-
-        {selectedFundId !== "all" && activeFund && (
-          <LatestNavInput
-            fundId={activeFund.id}
-            currentNav={activeFund.latest_nav ? Number(activeFund.latest_nav) : null}
-            currentNavDate={activeFund.latest_nav_date}
-          />
-        )}
-      </div>
-
-      {/* Summary Cards Grid */}
-      <SummaryCards summary={summary} />
+      {/* Summary Cards Component (Contains Mobile Unified Hero & Desktop 6-Grid) */}
+      <SummaryCards
+        summary={summary}
+        portfolioChart={portfolioChart}
+        funds={funds}
+        selectedFundId={selectedFundId}
+        activeFund={activeFund}
+      />
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

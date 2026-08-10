@@ -3,6 +3,7 @@ import { ArrowRight, TrendingUp, ShieldCheck, PieChart, Calculator, CheckCircle2
 import { Button } from "@/components/ui/button";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { Logo } from "@/components/ui/logo";
 
 export default function LandingPage() {
   return (
@@ -10,12 +11,7 @@ export default function LandingPage() {
       {/* Top Navbar */}
       <header className="border-b border-border/50 sticky top-0 z-50 bg-background/80 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center font-bold text-lg shadow-md">
-              S
-            </div>
-            <span className="font-bold text-xl tracking-tight">{APP_NAME}</span>
-          </div>
+          <Logo />
 
           <div className="flex items-center gap-3">
             <ThemeToggle />
