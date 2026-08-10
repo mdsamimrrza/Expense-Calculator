@@ -1,100 +1,137 @@
-import Image from "next/image";
+import Link from "next/link";
+import { ArrowRight, TrendingUp, ShieldCheck, PieChart, Calculator, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 
-export default function Home() {
+export default function LandingPage() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="min-h-screen bg-background flex flex-col selection:bg-primary/20">
+      {/* Top Navbar */}
+      <header className="border-b border-border/50 sticky top-0 z-50 bg-background/80 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="h-9 w-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center font-bold text-lg shadow-md">
+              S
+            </div>
+            <span className="font-bold text-xl tracking-tight">{APP_NAME}</span>
+          </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <Button variant="ghost" asChild>
+              <Link href="/login">Sign in</Link>
+            </Button>
+            <Button asChild id="landing-hero-signup">
+              <Link href="/signup">Get Started</Link>
+            </Button>
+          </div>
         </div>
+      </header>
+
+      {/* Main Hero Section */}
+      <main className="flex-1">
+        <section className="py-20 lg:py-28 px-4 text-center max-w-5xl mx-auto space-y-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wider">
+            <span>Built for Nepali Mutual Fund SIP Investors</span>
+          </div>
+
+          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-foreground leading-[1.15]">
+            Track Your Nepali Mutual Fund SIPs with <span className="text-primary">Precision & Clarity</span>
+          </h1>
+
+          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto font-normal">
+            &ldquo;{APP_TAGLINE}&rdquo; Real XIRR returns, portfolio growth projections, and true fee drag insights in one clean dashboard.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+            <Button size="lg" className="w-full sm:w-auto h-12 px-8 text-base shadow-lg shadow-primary/20" asChild>
+              <Link href="/signup">
+                Start Tracking Free
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Link>
+            </Button>
+            <Button size="lg" variant="outline" className="w-full sm:w-auto h-12 px-8 text-base" asChild>
+              <Link href="/login">Explore Dashboard</Link>
+            </Button>
+          </div>
+
+          {/* Quick trust badges */}
+          <div className="pt-8 flex flex-wrap items-center justify-center gap-6 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+              Support for NMB, NIBL, SSIS & more
+            </span>
+            <span className="flex items-center gap-1.5">
+              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+              Exact Newton-Raphson XIRR
+            </span>
+            <span className="flex items-center gap-1.5">
+              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+              Row-Level Security (RLS) Isolation
+            </span>
+          </div>
+        </section>
+
+        {/* Feature Grid */}
+        <section className="py-16 bg-muted/30 border-y border-border/40 px-4">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center space-y-2 mb-12">
+              <h2 className="text-2xl sm:text-3xl font-bold">Everything you need to master your SIP portfolio</h2>
+              <p className="text-sm text-muted-foreground">Replace messy Excel sheets with a dedicated personal mutual fund dashboard.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="p-6 rounded-2xl border border-border/50 bg-card space-y-3 shadow-sm">
+                <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                  <TrendingUp className="h-5 w-5" />
+                </div>
+                <h3 className="font-semibold text-lg">Actual XIRR Returns</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Calculates true annualized internal rate of return using exact cash flow dates instead of simple averages.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-2xl border border-border/50 bg-card space-y-3 shadow-sm">
+                <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                  <PieChart className="h-5 w-5" />
+                </div>
+                <h3 className="font-semibold text-lg">Fee Drag Visibility</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  See the cumulative cost of annual management, depository, and supervision fees over your investment horizon.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-2xl border border-border/50 bg-card space-y-3 shadow-sm">
+                <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                  <Calculator className="h-5 w-5" />
+                </div>
+                <h3 className="font-semibold text-lg">Step-Up Projections</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Simulate portfolio growth at 5, 10, 15, and 20 years seeded directly with your current corpus value.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-2xl border border-border/50 bg-card space-y-3 shadow-sm">
+                <div className="h-10 w-10 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <h3 className="font-semibold text-lg">Private & Isolated</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Your data is protected by Supabase Row Level Security. Only you can view or modify your portfolio entries.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
+
+      {/* Footer */}
+      <footer className="border-t border-border/40 py-8 px-4 text-center text-xs text-muted-foreground">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p>© {new Date().getFullYear()} SahakariSIP. Personal Mutual Fund Tracker.</p>
+          <p>Designed for Nepali open-ended mutual fund investors.</p>
+        </div>
       </footer>
     </div>
   );
