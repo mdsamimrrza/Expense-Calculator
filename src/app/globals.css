@@ -4,85 +4,85 @@
 
 @layer base {
   :root {
-    /* ---- Base (Light Mode) ---- */
-    --background: 210 40% 98%;          /* slate-50 */
-    --foreground: 222.2 84% 4.9%;       /* slate-950 */
+    /* ---- Light Mode: Ink Wash ---- */
+    --background: 60 100% 94.5%;        /* #FFFFE3 (Cream) */
+    --foreground: 0 0% 29%;             /* #4A4A4A (Dark Grey) */
 
-    --card: 0 0% 100%;                  /* white */
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;                  /* Pure white for contrast */
+    --card-foreground: 0 0% 29%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 0 0% 29%;
 
-    --primary: 174 62% 29%;             /* teal-600 → #0D9488 */
+    --primary: 210.6 15.9% 50.8%;       /* #6D8196 (Slate Blue) */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;         /* slate-100 */
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 0 0% 79.6%;            /* #CBCBCB (Light Grey) */
+    --secondary-foreground: 0 0% 29%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 0 0% 79.6%;
+    --muted-foreground: 0 0% 50%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 0 0% 79.6%;
+    --accent-foreground: 0 0% 29%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;        /* slate-200 */
-    --input: 214.3 31.8% 91.4%;
-    --ring: 174 62% 29%;                /* teal-600 */
+    --border: 0 0% 79.6%;
+    --input: 0 0% 79.6%;
+    --ring: 210.6 15.9% 50.8%;
 
     --radius: 0.75rem;
 
     /* ---- Chart Colors (Light) ---- */
-    --chart-primary: 174 62% 29%;       /* teal-600 */
-    --chart-positive: 160 84% 39%;      /* emerald-600 */
-    --chart-negative: 347 77% 50%;      /* rose-600 */
-    --chart-invested: 215 16% 47%;      /* slate-500 */
-    --chart-fee-drag: 25 95% 53%;       /* amber-500 */
-    --chart-grid: 214.3 31.8% 91.4%;    /* slate-200 */
-    --chart-text: 215.4 16.3% 46.9%;    /* slate-500 */
+    --chart-primary: 210.6 15.9% 50.8%; /* #6D8196 */
+    --chart-positive: 160 84% 39%;
+    --chart-negative: 347 77% 50%;
+    --chart-invested: 0 0% 50%;         /* Mid Grey */
+    --chart-fee-drag: 25 95% 53%;
+    --chart-grid: 0 0% 79.6%;
+    --chart-text: 0 0% 50%;
   }
 
   .dark {
-    /* ---- Dark Mode ---- */
-    --background: 222.2 84% 4.9%;       /* slate-950 */
-    --foreground: 210 40% 98%;          /* slate-50 */
+    /* ---- Dark Mode: Ink Wash (Night) ---- */
+    --background: 0 0% 15%;             /* Deep Grey for contrast */
+    --foreground: 60 100% 94.5%;        /* #FFFFE3 (Cream) */
 
-    --card: 222.2 47.4% 11.2%;          /* slate-900 */
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 20%;                   /* Slightly lighter grey */
+    --card-foreground: 60 100% 94.5%;
 
-    --popover: 222.2 47.4% 11.2%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 20%;
+    --popover-foreground: 60 100% 94.5%;
 
-    --primary: 172 66% 50%;             /* teal-400 → #2DD4BF */
-    --primary-foreground: 222.2 84% 4.9%;
+    --primary: 210.6 15.9% 50.8%;       /* #6D8196 (Slate Blue) */
+    --primary-foreground: 60 100% 94.5%;
 
-    --secondary: 217.2 32.6% 17.5%;     /* slate-800 */
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 0 0% 29%;              /* #4A4A4A (Dark Grey) */
+    --secondary-foreground: 60 100% 94.5%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 0 0% 29%;
+    --muted-foreground: 0 0% 79.6%;     /* #CBCBCB (Light Grey) */
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 0 0% 29%;
+    --accent-foreground: 60 100% 94.5%;
 
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 60 100% 94.5%;
 
-    --border: 217.2 32.6% 17.5%;        /* slate-800 */
-    --input: 217.2 32.6% 17.5%;
-    --ring: 172 66% 50%;                /* teal-400 */
+    --border: 0 0% 29%;
+    --input: 0 0% 29%;
+    --ring: 210.6 15.9% 50.8%;
 
     /* ---- Chart Colors (Dark) ---- */
-    --chart-primary: 172 66% 50%;       /* teal-400 */
-    --chart-positive: 160 84% 39%;      /* emerald-400 approx */
-    --chart-negative: 350 89% 60%;      /* rose-400 */
-    --chart-invested: 215 20% 65%;      /* slate-400 */
-    --chart-fee-drag: 38 92% 50%;       /* amber-400 */
-    --chart-grid: 217.2 32.6% 17.5%;    /* slate-800 */
-    --chart-text: 215 20.2% 65.1%;      /* slate-400 */
+    --chart-primary: 210.6 15.9% 50.8%; /* #6D8196 */
+    --chart-positive: 160 84% 39%;
+    --chart-negative: 0 84% 60%;
+    --chart-invested: 0 0% 50%;         /* Mid Grey */
+    --chart-fee-drag: 35 92% 50%;
+    --chart-grid: 0 0% 29%;
+    --chart-text: 0 0% 79.6%;
   }
 }
 
