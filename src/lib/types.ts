@@ -1,0 +1,155 @@
+// ============================================================
+// SahakariSIP — Type Definitions
+// ============================================================
+
+// ---------- Database row types ----------
+
+export interface FundConfig {
+  id: string;
+  user_id: string;
+  fund_name: string;
+  fee_rate_pct: number;
+  start_date: string; // ISO date string
+  monthly_sip: number;
+  latest_nav: number | null;
+  latest_nav_date: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Entry {
+  id: string;
+  user_id: string;
+  fund_id: string;
+  purchase_date: string; // ISO date string
+  amount: number;
+  nav: number;
+  units: number;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ---------- Computed / dashboard types ----------
+
+export interface DashboardSummary {
+  totalInvested: number;
+  totalUnits: number;
+  currentValue: number | null; // null if latest_nav not set
+  gainLoss: number | null;
+  gainLossPct: number | null;
+  xirr: number | null; // null if < 3 entries or solver fails
+  sipStreak: number;
+  latestNav: number | null;
+  latestNavDate: string | null;
+}
+
+export interface ChartDataPoint {
+  date: string;
+  value: number;
+  label?: string;
+}
+
+export interface PortfolioChartPoint {
+  date: string;
+  portfolioValue: number;
+  totalInvested: number;
+}
+
+export interface MonthlyContribution {
+  month: string; // "YYYY-MM"
+  amount: number;
+}
+
+export interface FeeDragPoint {
+  date: string;
+  cumulativeDrag: number;
+  monthlyDrag: number;
+}
+
+export interface ProjectionRow {
+  year: number;
+  monthlySip: number;
+  corpusValue: number;
+  totalInvested: number;
+  totalGain: number;
+}
+
+export interface ProjectionChartPoint {
+  date: string;
+  value: number;
+  type: "actual" | "projected";
+}
+
+// ---------- Form types ----------
+
+export interface EntryFormData {
+  fund_id: string;
+  purchase_date: Date;
+  amount: number;
+  nav: number;
+  units: number;
+  notes?: string;
+}
+
+export interface FundConfigFormData {
+  fund_name: string;
+  fee_rate_pct: number;
+  start_date: Date;
+  monthly_sip: number;
+}
+
+export interface CsvRow {
+  date: string;
+  amount: number;
+  nav: number;
+  units?: number;
+  notes?: string;
+}
+
+export interface CsvImportResult {
+  imported: number;
+  skipped: number;
+  errors: Array<{ row: number; message: string }>;
+}
+
+// ---------- Projection parameters ----------
+
+export type ReturnScenario = 8 | 10 | 12;
+export type StepUpRate = 0 | 5 | 10 | 15;
+
+export interface ProjectionParams {
+  currentCorpus: number;
+  monthlySip: number;
+  annualReturnPct: ReturnScenario;
+  stepUpPct: StepUpRate;
+  yearsToProject: number;
+}
+
+// ---------- XIRR types ----------
+
+export interface CashFlow {
+  amount: number; // negative = investment, positive = redemption
+  date: Date;
+}
+
+// ---------- Server action response ----------
+
+export interface ActionResult<T = void> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+// ---------- Fund preset type ----------
+
+export interface FundPreset {
+  name: string;
+  feeRate: number;
+  feeBreakdown?: {
+    management: number;
+    depository: number;
+    supervision: number;
+  };
+}
