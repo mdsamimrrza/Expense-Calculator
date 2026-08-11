@@ -25,6 +25,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { createEntry, updateEntry } from "@/lib/actions/entries";
 import type { Entry, FundConfig } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface EntryFormProps {
   funds: FundConfig[];
@@ -61,14 +62,17 @@ export function EntryForm({
 
   const isEdit = !!entry;
 
-  // Auto-calculate units
+  const [useWholeUnits, setUseWholeUnits] = useState(true);
+
+  // Auto-calculate whole units (integer only)
   useEffect(() => {
     if (!overrideUnits && amount && nav) {
       const a = parseFloat(amount);
       const n = parseFloat(nav);
       if (a > 0 && n > 0) {
         const effectiveAmount = deductDpCharge ? Math.max(0, a - 5) : a;
-        setUnits((effectiveAmount / n).toFixed(4));
+        const wholeUnits = Math.floor(effectiveAmount / n);
+        setUnits(wholeUnits.toString());
       }
     }
   }, [amount, nav, overrideUnits, deductDpCharge]);
@@ -129,12 +133,12 @@ export function EntryForm({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>
+      <DialogContent className="max-w-sm w-[92vw] rounded-[2rem] p-5 shadow-xl border-border/60">
+        <DialogHeader className="text-left">
+          <DialogTitle className="text-base font-extrabold tracking-tight">
             {isEdit ? "Edit SIP Entry" : "Add SIP Entry"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs">
             {isEdit
               ? "Update the details of this entry."
               : "Record this month's SIP purchase."}
@@ -162,21 +166,22 @@ export function EntryForm({
             )}
 
             {/* Date */}
-            <div className="space-y-2">
-              <Label htmlFor="entry-date">Purchase Date</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="entry-date" className="text-xs font-semibold">Purchase Date</Label>
               <Input
                 id="entry-date"
                 type="date"
                 value={purchaseDate}
                 onChange={(e) => setPurchaseDate(e.target.value)}
                 max={new Date().toISOString().split("T")[0]}
+                className="h-9 rounded-xl text-xs"
                 required
               />
             </div>
 
             {/* Amount */}
-            <div className="space-y-2">
-              <Label htmlFor="entry-amount">Amount (NPR)</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="entry-amount" className="text-xs font-semibold">Amount (NPR)</Label>
               <Input
                 id="entry-amount"
                 type="number"
@@ -185,13 +190,14 @@ export function EntryForm({
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="e.g. 5000"
+                className="h-9 rounded-xl text-xs"
                 required
               />
             </div>
 
             {/* NAV */}
-            <div className="space-y-2">
-              <Label htmlFor="entry-nav">NAV at Purchase</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="entry-nav" className="text-xs font-semibold">NAV at Purchase</Label>
               <Input
                 id="entry-nav"
                 type="number"
@@ -200,17 +206,18 @@ export function EntryForm({
                 value={nav}
                 onChange={(e) => setNav(e.target.value)}
                 placeholder="e.g. 13.25"
+                className="h-9 rounded-xl text-xs"
                 required
               />
             </div>
 
             {/* Units */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label htmlFor="entry-units">Units Received</Label>
+                <Label htmlFor="entry-units" className="text-xs font-semibold">Units Received</Label>
                 <button
                   type="button"
-                  className="text-xs text-primary hover:underline"
+                  className="text-xs text-primary font-medium hover:underline"
                   onClick={() => setOverrideUnits(!overrideUnits)}
                 >
                   {overrideUnits ? "Auto-calculate" : "Override manually"}
@@ -225,26 +232,61 @@ export function EntryForm({
                 onChange={(e) => setUnits(e.target.value)}
                 placeholder="Auto-calculated"
                 readOnly={!overrideUnits}
-                className={!overrideUnits ? "bg-muted" : ""}
+                className={cn("h-9 rounded-xl text-xs font-bold", !overrideUnits ? "bg-muted/60" : "")}
                 required
               />
               {!overrideUnits && amount && nav && (
-                <div className="flex flex-col gap-2 mt-2">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="deduct-dp"
-                      checked={deductDpCharge}
-                      onChange={(e) => setDeductDpCharge(e.target.checked)}
-                      className="rounded border-gray-300 text-primary focus:ring-primary"
-                    />
-                    <Label htmlFor="deduct-dp" className="font-normal text-xs text-muted-foreground cursor-pointer">
-                      Deduct Rs 5 DP Charge
-                    </Label>
+                <div className="flex flex-col gap-2.5 mt-2 bg-secondary/30 p-3 rounded-xl border border-border/50 text-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="deduct-dp"
+                        checked={deductDpCharge}
+                        onChange={(e) => setDeductDpCharge(e.target.checked)}
+                        className="rounded border-gray-300 text-primary focus:ring-primary"
+                      />
+                      <Label htmlFor="deduct-dp" className="font-normal text-xs text-foreground cursor-pointer">
+                        Deduct Rs 5 DP Charge
+                      </Label>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="whole-units"
+                        checked={useWholeUnits}
+                        onChange={(e) => setUseWholeUnits(e.target.checked)}
+                        className="rounded border-gray-300 text-primary focus:ring-primary"
+                      />
+                      <Label htmlFor="whole-units" className="font-normal text-xs text-foreground cursor-pointer">
+                        Whole Units (Nepal SIP)
+                      </Label>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    = {deductDpCharge ? `(${amount} - 5)` : amount} ÷ {nav}
-                  </p>
+
+                  {/* Calculation Breakdown Preview */}
+                  {parseFloat(amount) > 0 && parseFloat(nav) > 0 && (
+                    <div className="grid grid-cols-2 gap-1.5 pt-2 border-t border-border/40 text-[11px]">
+                      <div>
+                        <span className="text-muted-foreground block">Unit Cost:</span>
+                        <strong className="text-foreground">
+                          NPR {((parseFloat(units) || 0) * parseFloat(nav)).toFixed(2)}
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block">Rollover Cash:</span>
+                        <strong className="text-emerald-500 font-extrabold">
+                          NPR {Math.max(
+                            0,
+                            (parseFloat(amount) || 0) -
+                              (deductDpCharge ? 5 : 0) -
+                              (parseFloat(units) || 0) * parseFloat(nav)
+                          ).toFixed(2)}
+                        </strong>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -262,8 +304,8 @@ export function EntryForm({
             </div>
           </div>
 
-          <DialogFooter>
-            <Button type="submit" disabled={isLoading} id="entry-submit">
+          <DialogFooter className="mt-2">
+            <Button type="submit" disabled={isLoading} id="entry-submit" className="w-full h-9 rounded-xl font-bold text-xs">
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isEdit ? "Update Entry" : "Add Entry"}
             </Button>

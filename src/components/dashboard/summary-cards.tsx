@@ -32,12 +32,22 @@ import {
   DialogClose,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import type { DashboardSummary, PortfolioChartPoint, FundConfig } from "@/lib/types";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import type { DashboardSummary, PortfolioChartPoint, ChartDataPoint, FundConfig } from "@/lib/types";
 import {
   formatCurrencyWhole,
   formatPercentage,
   formatUnits,
   formatStreak,
+  formatDateShort,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { EntryForm } from "@/components/entries/entry-form";
@@ -46,6 +56,7 @@ import { LatestNavInput } from "@/components/dashboard/latest-nav-input";
 interface SummaryCardsProps {
   summary: DashboardSummary;
   portfolioChart?: PortfolioChartPoint[];
+  navHistory?: ChartDataPoint[];
   funds?: FundConfig[];
   selectedFundId?: string;
   activeFund?: FundConfig;
@@ -258,6 +269,7 @@ function HeroRealGraph({
 export function SummaryCards({
   summary,
   portfolioChart,
+  navHistory = [],
   funds = [],
   selectedFundId = "all",
   activeFund,
@@ -382,12 +394,28 @@ export function SummaryCards({
       color: "text-amber-500 dark:text-amber-400",
       bgColor: "bg-amber-500/10 dark:bg-amber-500/20",
     },
+    {
+      label: "SIP Streak",
+      value: formatStreak(summary.sipStreak),
+      subtitle: "Consecutive monthly investments",
+      icon: Flame,
+      color: summary.sipStreak >= 3 ? "text-orange-500" : "text-muted-foreground",
+      bgColor: summary.sipStreak >= 3 ? "bg-orange-500/10" : "bg-muted",
+    },
+    {
+      label: "Average Unit Cost",
+      value: summary.totalUnits > 0 ? `NPR ${(summary.totalInvested / summary.totalUnits).toFixed(2)}` : "—",
+      subtitle: "Weighted average purchase price",
+      icon: BarChart3,
+      color: "text-blue-500",
+      bgColor: "bg-blue-500/10",
+    },
   ];
 
   return (
     <>
       {/* MOBILE REDESIGNED VIEW MATCHING REFERENCE IMAGE 100% */}
-      <div className="flex lg:hidden flex-col gap-3.5 -mx-4 sm:-mx-6 -mt-8 px-4 pt-1">
+      <div className="flex lg:hidden flex-col gap-3 -mx-4 sm:-mx-6 -mt-9 px-4 pt-0">
         
         {/* Top Balance & Graph Card (Exact design from screenshot) */}
         <div className="bg-card rounded-[2rem] p-5 border border-border/60 shadow-sm flex flex-col gap-4">
@@ -400,10 +428,10 @@ export function SummaryCards({
               </div>
               <div>
                 <span className="text-xs font-medium text-muted-foreground block leading-none mb-1">
-                  Total Balance
+                  Available Balance
                 </span>
                 <h2 className="text-2xl font-extrabold text-foreground tracking-tight">
-                  {currentValueDisplay}
+                  {formatCurrencyWhole(summary.unallottedCash)}
                 </h2>
               </div>
             </div>
@@ -527,9 +555,8 @@ export function SummaryCards({
                 </h3>
               </div>
 
-              <div className="h-8 px-3 rounded-full bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all flex items-center gap-1.5 text-xs font-bold shrink-0">
-                <span>View Summary</span>
-                <ArrowUpRight className="h-3.5 w-3.5" />
+              <div className="h-9 w-9 rounded-full bg-secondary/80 border border-border/50 text-foreground group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary transition-all flex items-center justify-center shrink-0 shadow-sm">
+                <ArrowUpRight className="h-4 w-4" />
               </div>
             </div>
           </DialogTrigger>
@@ -592,9 +619,9 @@ export function SummaryCards({
                 </div>
 
                 <div className="bg-secondary/40 rounded-xl p-2.5 flex flex-col gap-0.5 border border-border/40">
-                  <span className="text-[10px] text-muted-foreground font-semibold">Return (XIRR)</span>
-                  <span className={cn("text-sm font-extrabold", summary.xirr !== null ? "text-purple-500" : "text-muted-foreground")}>
-                    {summary.xirr !== null ? formatPercentage(summary.xirr * 100) : "N/A"}
+                  <span className="text-[10px] text-muted-foreground font-semibold">Rollover Cash</span>
+                  <span className="text-sm font-extrabold text-emerald-500">
+                    {formatCurrencyWhole(summary.unallottedCash)}
                   </span>
                 </div>
               </div>
@@ -665,8 +692,8 @@ export function SummaryCards({
           </div>
         )}
 
-        {/* Remaining Stats List */}
-        <div className="flex flex-col gap-3 mb-6">
+        {/* Remaining Stats List (Positioned Above NAV History Card) */}
+        <div className="flex flex-col gap-3">
           <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-1">
             STATISTICS
           </h3>
@@ -691,6 +718,39 @@ export function SummaryCards({
             );
           })}
         </div>
+
+        {/* NAV History & Price Monitor Card */}
+        {navHistory && navHistory.length > 0 && (
+          <div className="bg-card rounded-[2rem] p-4 border border-border/60 shadow-sm flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-extrabold text-foreground text-sm flex items-center gap-1.5">
+                  <TrendingUp className="h-4 w-4 text-blue-500" />
+                  NAV Monitor & History
+                </h4>
+                <span className="text-[11px] text-muted-foreground">Track historical fund NAV fluctuations</span>
+              </div>
+              <span className="text-xs font-extrabold text-blue-500 bg-blue-500/10 px-2.5 py-1 rounded-full">
+                {activeFund?.latest_nav ? `NPR ${Number(activeFund.latest_nav).toFixed(2)}` : "10.08"}
+              </span>
+            </div>
+
+            <div className="h-40 w-full pt-1">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                <LineChart data={navHistory} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={formatDateShort} axisLine={false} />
+                  <YAxis domain={["dataMin - 0.2", "dataMax + 0.2"]} tick={{ fontSize: 10 }} axisLine={false} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "var(--card)", borderRadius: "12px", border: "1px solid var(--border)", fontSize: "11px" }}
+                    formatter={(val: any) => [`NPR ${Number(val).toFixed(2)}`, "NAV"]}
+                  />
+                  <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3, fill: "#3b82f6" }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* DESKTOP VIEW (Original 6-Card Grid) */}

@@ -37,6 +37,7 @@ export interface DashboardSummary {
   totalInvested: number;
   totalUnits: number;
   currentValue: number | null; // null if latest_nav not set
+  unallottedCash: number; // Leftover cash from whole unit allotments + DP fee
   gainLoss: number | null;
   gainLossPct: number | null;
   estimatedCgtLongTerm: number | null; // 7.5% tax for > 1 year

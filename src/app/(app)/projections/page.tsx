@@ -47,7 +47,11 @@ export default function ProjectionsPage() {
         setFunds(res.data.funds);
 
         const summary = res.data.summary;
-        setCurrentCorpus(summary.currentValue || summary.totalInvested || 0);
+        const unitsVal =
+          summary.totalUnits > 0 && summary.latestNav
+            ? summary.totalUnits * summary.latestNav
+            : summary.totalInvested || 0;
+        setCurrentCorpus(unitsVal);
 
         // Find active monthly SIP amount from fund config
         if (selectedFundId !== "all") {

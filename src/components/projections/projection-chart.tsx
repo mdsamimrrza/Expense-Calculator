@@ -61,7 +61,7 @@ export function ProjectionChart({ data }: ProjectionChartProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={350}>
+        <ResponsiveContainer width="100%" height={350} minWidth={0}>
           <LineChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
             <CartesianGrid
               strokeDasharray="3 3"

@@ -132,17 +132,42 @@ export async function updateLatestNav(
 
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  const navDate = parsed.data.latest_nav_date.toISOString().split("T")[0];
+
+  // Update the fund_config with latest NAV
   const { error } = await supabase
     .from("fund_config")
     .update({
       latest_nav: parsed.data.latest_nav,
-      latest_nav_date: parsed.data.latest_nav_date.toISOString().split("T")[0],
+      latest_nav_date: navDate,
     })
     .eq("id", parsed.data.fund_id);
 
   if (error) {
     return { success: false, error: error.message };
   }
+
+  // Log to nav_history table for historical NAV tracking
+  // Upsert by (fund_id, nav_date) so updating same-day NAV overwrites
+  await supabase
+    .from("nav_history")
+    .upsert(
+      {
+        fund_id: parsed.data.fund_id,
+        user_id: user.id,
+        nav_date: navDate,
+        nav_value: parsed.data.latest_nav,
+      },
+      { onConflict: "fund_id,nav_date" }
+    );
 
   return { success: true };
 }

@@ -14,7 +14,7 @@ interface HeaderProps {
 
 export function Header({ title, onSignOut }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between h-16 px-4 sm:px-6 border-b border-border bg-card/95 backdrop-blur-sm lg:hidden">
+    <header className="sticky top-0 z-40 flex items-center justify-between h-14 px-4 sm:px-6 border-b border-border/60 bg-card/95 backdrop-blur-sm lg:hidden">
       {title ? (
         <span className="text-base font-semibold">{title}</span>
       ) : (

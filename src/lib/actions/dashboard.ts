@@ -101,7 +101,20 @@ export async function getDashboardData(
     }
   }
 
-  const currentValue = latestNav !== null ? totalUnits * latestNav : null;
+  // Calculate unallotted leftover cash across all entries (Rollover Wallet Balance)
+  const unallottedCash = entries.reduce((sum, e) => {
+    const amt = Number(e.amount);
+    const u = Number(e.units);
+    const n = Number(e.nav);
+    const dpFee = amt >= 5 ? 5 : 0;
+    const unitCost = u * n;
+    const leftover = Math.max(0, amt - (unitCost + dpFee));
+    return sum + leftover;
+  }, 0);
+
+  // Option B: Total Combined Portfolio Balance (Units Value + Rollover Cash)
+  const unitsValue = latestNav !== null ? totalUnits * latestNav : null;
+  const currentValue = unitsValue !== null ? unitsValue + unallottedCash : null;
   const gainLoss = currentValue !== null ? currentValue - totalInvested : null;
   const gainLossPct =
     gainLoss !== null && totalInvested > 0
@@ -129,6 +142,7 @@ export async function getDashboardData(
     totalInvested,
     totalUnits,
     currentValue,
+    unallottedCash,
     gainLoss,
     gainLossPct,
     estimatedCgtLongTerm,
@@ -157,18 +171,40 @@ export async function getDashboardData(
   // Monthly contributions
   const monthlyMap = new Map<string, number>();
   for (const entry of entries) {
-    const monthKey = format(new Date(entry.purchase_date), "yyyy-MM");
-    monthlyMap.set(monthKey, (monthlyMap.get(monthKey) ?? 0) + Number(entry.amount));
+    const monthKey = entry.purchase_date ? entry.purchase_date.substring(0, 7) : "";
+    if (monthKey) {
+      monthlyMap.set(monthKey, (monthlyMap.get(monthKey) ?? 0) + Number(entry.amount));
+    }
   }
   const monthlyContributions: MonthlyContribution[] = Array.from(
     monthlyMap.entries()
   ).map(([month, amount]) => ({ month, amount }));
 
-  // NAV history
-  const navHistory: ChartDataPoint[] = entries.map((entry) => ({
-    date: entry.purchase_date,
-    value: Number(entry.nav),
-  }));
+  // NAV history — fetch from dedicated nav_history table
+  let navHistory: ChartDataPoint[] = [];
+
+  if (fundId && fundId !== "all") {
+    const { data: navHistoryRows } = await supabase
+      .from("nav_history")
+      .select("nav_date, nav_value")
+      .eq("fund_id", fundId)
+      .order("nav_date", { ascending: true });
+
+    if (navHistoryRows && navHistoryRows.length > 0) {
+      navHistory = navHistoryRows.map((row) => ({
+        date: row.nav_date,
+        value: Number(row.nav_value),
+      }));
+    }
+  }
+
+  // Fallback: if no nav_history rows yet, derive from entry purchase NAVs
+  if (navHistory.length === 0) {
+    navHistory = entries.map((entry) => ({
+      date: entry.purchase_date,
+      value: Number(entry.nav),
+    }));
+  }
 
   // Fee drag
   const feeRatePct =

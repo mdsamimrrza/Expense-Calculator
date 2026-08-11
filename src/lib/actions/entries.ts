@@ -57,7 +57,7 @@ export async function createEntry(
       purchase_date: parsed.data.purchase_date.toISOString().split("T")[0],
       amount: parsed.data.amount,
       nav: parsed.data.nav,
-      units: parsed.data.units,
+      units: Math.floor(parsed.data.units), // Guaranteed integer
       notes: parsed.data.notes || null,
     })
     .select()
@@ -100,7 +100,7 @@ export async function updateEntry(
       purchase_date: parsed.data.purchase_date.toISOString().split("T")[0],
       amount: parsed.data.amount,
       nav: parsed.data.nav,
-      units: parsed.data.units,
+      units: Math.floor(parsed.data.units), // Guaranteed integer
       notes: parsed.data.notes || null,
     })
     .eq("id", id)
@@ -214,7 +214,8 @@ export async function importEntriesFromCsv(
       continue;
     }
 
-    const units = parsed.data.units ?? parsed.data.amount / parsed.data.nav;
+    const effectiveCash = Math.max(0, parsed.data.amount - 5);
+    const units = parsed.data.units ?? Math.floor(effectiveCash / parsed.data.nav);
 
     validRows.push({
       user_id: user.id,
@@ -222,7 +223,7 @@ export async function importEntriesFromCsv(
       purchase_date: new Date(parsed.data.date).toISOString().split("T")[0],
       amount: parsed.data.amount,
       nav: parsed.data.nav,
-      units: Math.round(units * 10000) / 10000, // 4 decimal places
+      units: Math.floor(units), // Always integer whole units
       notes: parsed.data.notes || null,
     });
   }

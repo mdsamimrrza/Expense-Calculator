@@ -49,7 +49,7 @@ export function formatPercentage(value: number | null | undefined, showSign = tr
  */
 export function formatUnits(value: number): string {
   return new Intl.NumberFormat(CURRENCY_LOCALE, {
-    minimumFractionDigits: 4,
+    minimumFractionDigits: 0,
     maximumFractionDigits: 4,
   }).format(value);
 }

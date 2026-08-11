@@ -98,6 +98,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <SummaryCards
         summary={summary}
         portfolioChart={portfolioChart}
+        navHistory={navHistory}
         funds={funds}
         selectedFundId={selectedFundId}
         activeFund={activeFund}
@@ -120,7 +121,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         <div>
           <MonthlyContributionsBar data={monthlyContributions} />
         </div>
-        <div>
+        <div className="hidden lg:block">
           <NavHistoryChart data={navHistory} />
         </div>
         <div>
