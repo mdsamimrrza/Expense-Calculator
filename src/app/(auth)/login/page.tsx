@@ -102,13 +102,16 @@ export default function LoginPage() {
         <CardFooter className="flex flex-col gap-4">
           <Button
             type="submit"
-            className="w-full"
+            className="w-full font-bold"
             disabled={isLoading}
             id="login-submit"
           >
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Sign in
           </Button>
+
+
+
           <p className="text-sm text-muted-foreground text-center">
             Don&apos;t have an account?{" "}
             <Link

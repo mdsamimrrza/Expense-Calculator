@@ -11,6 +11,7 @@ import { EntryForm } from "@/components/entries/entry-form";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -64,6 +65,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <div className="hidden lg:block border border-border/50 rounded-full p-0.5">
+              <ThemeToggle />
+            </div>
             <EntryForm funds={funds} defaultFundId={activeFund?.id} />
           </div>
         </div>
@@ -94,37 +98,34 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </div>
       </div>
 
-      {/* Summary Cards Component (Contains Mobile Unified Hero & Desktop 6-Grid) */}
-      <SummaryCards
-        summary={summary}
-        portfolioChart={portfolioChart}
-        navHistory={navHistory}
-        funds={funds}
-        selectedFundId={selectedFundId}
-        activeFund={activeFund}
-      />
-
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <PortfolioChart data={portfolioChart} />
-        </div>
-        <div>
+      {/* Main Grid Layout (Leetcode Profile Style) */}
+      <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6">
+        
+        {/* Left Sidebar - Profile & Summary (lg:col-span-4 xl:col-span-3) */}
+        <div className="lg:col-span-4 xl:col-span-4 flex flex-col gap-6">
+          <SummaryCards
+            summary={summary}
+            portfolioChart={portfolioChart}
+            navHistory={navHistory}
+            funds={funds}
+            selectedFundId={selectedFundId}
+            activeFund={activeFund}
+          />
           <InvestedVsGainPie
             totalInvested={summary.totalInvested}
             currentValue={summary.currentValue}
           />
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div>
-          <MonthlyContributionsBar data={monthlyContributions} />
-        </div>
-        <div className="hidden lg:block">
-          <NavHistoryChart data={navHistory} />
-        </div>
-        <div>
+        {/* Right Main Content (lg:col-span-8 xl:col-span-8) */}
+        <div className="lg:col-span-8 xl:col-span-8 flex flex-col gap-6">
+          <PortfolioChart data={portfolioChart} />
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <NavHistoryChart data={navHistory} />
+            <MonthlyContributionsBar data={monthlyContributions} />
+          </div>
+
           <FeeDragArea data={feeDragChart} />
         </div>
       </div>

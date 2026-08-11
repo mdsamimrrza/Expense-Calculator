@@ -32,14 +32,13 @@ export function Sidebar({ onSignOut }: SidebarProps) {
 
   return (
     <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 border-r border-border bg-card">
-      {/* Logo / App name */}
-      <div className="flex items-center h-16 px-6">
+      {/* Logo / App name & Theme Toggle */}
+      <div className="flex items-center justify-between h-16 px-6 border-b border-border/50">
         <Link href="/dashboard" className="flex items-center gap-2 group">
           <Logo />
         </Link>
+        <ThemeToggle />
       </div>
-
-      <Separator />
 
       {/* Navigation */}
       <nav className="flex-1 flex flex-col gap-1 px-3 py-4">
@@ -68,21 +67,18 @@ export function Sidebar({ onSignOut }: SidebarProps) {
       </nav>
 
       {/* Bottom section */}
-      <div className="px-3 py-4 space-y-2">
+      <div className="px-3 py-4">
         <Separator className="mb-3" />
-        <div className="flex items-center justify-between px-3">
-          <ThemeToggle />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onSignOut}
-            className="text-muted-foreground hover:text-destructive"
-            id="sidebar-signout"
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Sign out
-          </Button>
-        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onSignOut}
+          className="w-full justify-start text-muted-foreground hover:text-destructive px-3 h-10"
+          id="sidebar-signout"
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          Sign out
+        </Button>
       </div>
     </aside>
   );

@@ -414,11 +414,11 @@ export function SummaryCards({
 
   return (
     <>
-      {/* MOBILE REDESIGNED VIEW MATCHING REFERENCE IMAGE 100% */}
-      <div className="flex lg:hidden flex-col gap-3 -mx-4 sm:-mx-6 -mt-9 px-4 pt-0">
+      {/* UNIFIED HERO & STATISTICS VIEW ACROSS ALL DEVICES */}
+      <div className="flex flex-col gap-4 w-full">
         
-        {/* Top Balance & Graph Card (Exact design from screenshot) */}
-        <div className="bg-card rounded-[2rem] p-5 border border-border/60 shadow-sm flex flex-col gap-4">
+        {/* Top Balance & Graph Card */}
+        <div className="bg-card rounded-[2rem] p-5 sm:p-6 border border-border/60 shadow-sm flex flex-col gap-4 w-full overflow-hidden">
           
           {/* Header Row: Wallet Icon + Total Balance + Selector */}
           <div className="flex items-center justify-between">
@@ -436,7 +436,7 @@ export function SummaryCards({
               </div>
             </div>
 
-            {/* Selector Dropdown / Add SIP Button */}
+            {/* Selector Dropdown & Add SIP Button */}
             <div className="flex items-center gap-2">
               {funds.length > 0 && (
                 <Select
@@ -445,7 +445,7 @@ export function SummaryCards({
                     router.push(val === "all" ? "/dashboard?fund=all" : `/dashboard?fund=${val}`)
                   }
                 >
-                  <SelectTrigger className="bg-secondary/60 text-foreground border-border/50 h-9 text-xs font-bold rounded-full px-3 w-auto min-w-[90px] focus:ring-0">
+                  <SelectTrigger className="bg-secondary/60 text-foreground border-border/50 h-9 text-xs font-bold rounded-full px-3.5 w-auto min-w-[100px] focus:ring-0">
                     <SelectValue>
                       {selectedFundId === "all"
                         ? "All Funds"
@@ -485,27 +485,45 @@ export function SummaryCards({
           {/* Graph Section with Y-Axis and Tooltip */}
           <HeroRealGraph points={portfolioChart} summary={summary} />
 
-          {/* Bottom Two Stat Pills (Total Income / Total Spent equivalent) */}
+          {/* Bottom Two Stat Pills */}
           <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border/40 mt-1">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-                <ArrowUpRight className="h-5 w-5" />
+            <div className="flex items-center gap-3 bg-secondary/30 p-2.5 rounded-2xl border border-border/30">
+              <div className="h-9 w-9 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                <ArrowUpRight className="h-4 w-4" />
               </div>
-              <div>
-                <span className="text-[11px] font-medium text-muted-foreground block">Invested</span>
-                <span className="text-sm font-extrabold text-foreground">
+              <div className="min-w-0">
+                <span className="text-[11px] font-medium text-muted-foreground block truncate">Invested</span>
+                <span className="text-sm font-extrabold text-foreground truncate block">
                   {formatCurrencyWhole(summary.totalInvested)}
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-                <ArrowDownRight className="h-5 w-5" />
+            <div className="flex items-center gap-3 bg-secondary/30 p-2.5 rounded-2xl border border-border/30">
+              <div
+                className={cn(
+                  "h-9 w-9 rounded-full text-white flex items-center justify-center shrink-0 shadow-sm",
+                  isPositive ? "bg-emerald-500" : "bg-rose-500"
+                )}
+              >
+                {isPositive ? (
+                  <ArrowUpRight className="h-4 w-4" />
+                ) : (
+                  <ArrowDownRight className="h-4 w-4" />
+                )}
               </div>
-              <div>
-                <span className="text-[11px] font-medium text-muted-foreground block">Gain / Loss</span>
-                <span className="text-sm font-extrabold text-foreground">
+              <div className="min-w-0">
+                <span className="text-[11px] font-medium text-muted-foreground block truncate">Gain / Loss</span>
+                <span
+                  className={cn(
+                    "text-sm font-extrabold truncate block",
+                    summary.gainLoss !== null
+                      ? isPositive
+                        ? "text-emerald-500"
+                        : "text-rose-500"
+                      : "text-foreground"
+                  )}
+                >
                   {summary.gainLoss !== null ? formatCurrencyWhole(summary.gainLoss, true) : "NPR 0"}
                 </span>
               </div>
@@ -513,10 +531,10 @@ export function SummaryCards({
           </div>
         </div>
 
-        {/* Lower Card (Compact Personal Box connected to Detailed Summary Dialog) */}
+        {/* Personal Summary Banner */}
         <Dialog>
           <DialogTrigger asChild>
-            <div className="bg-card rounded-2xl p-3.5 border border-border/60 shadow-sm flex items-center justify-between cursor-pointer hover:border-border transition-all active:scale-[0.99] group">
+            <div className="bg-card rounded-2xl p-4 border border-border/60 shadow-sm flex items-center justify-between cursor-pointer hover:border-border transition-all active:scale-[0.99] group">
               <div className="flex flex-col gap-0.5">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-foreground text-xs">Personal Summary</span>
@@ -619,55 +637,32 @@ export function SummaryCards({
                 </div>
 
                 <div className="bg-secondary/40 rounded-xl p-2.5 flex flex-col gap-0.5 border border-border/40">
-                  <span className="text-[10px] text-muted-foreground font-semibold">Rollover Cash</span>
-                  <span className="text-sm font-extrabold text-emerald-500">
-                    {formatCurrencyWhole(summary.unallottedCash)}
+                  <span className="text-[10px] text-muted-foreground font-semibold">SIP Streak</span>
+                  <span className="text-sm font-extrabold text-amber-500">
+                    {formatStreak(summary.sipStreak)}
                   </span>
                 </div>
               </div>
 
-              {/* Fee & Charges Breakdown Table */}
-              <div className="flex flex-col gap-1.5 pt-1">
-                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                  Charges & Tax Breakdown
-                </span>
-
-                <div className="border border-border/60 rounded-xl overflow-hidden text-xs bg-card">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-secondary/50 border-b border-border/50 text-[10px] text-muted-foreground font-bold">
-                        <th className="py-1.5 px-2.5">Charge Type</th>
-                        <th className="py-1.5 px-2.5 text-center">Rate</th>
-                        <th className="py-1.5 px-2.5 text-right">Est. Deduction</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/40 text-[11px]">
-                      <tr>
-                        <td className="py-1.5 px-2.5 font-medium text-foreground">Entry Load</td>
-                        <td className="py-1.5 px-2.5 text-center font-bold text-emerald-500">0%</td>
-                        <td className="py-1.5 px-2.5 text-right font-medium text-muted-foreground">Free</td>
-                      </tr>
-                      <tr>
-                        <td className="py-1.5 px-2.5 font-medium text-foreground">Mgmt Fee</td>
-                        <td className="py-1.5 px-2.5 text-center font-medium text-foreground">~1.5% p.a.</td>
-                        <td className="py-1.5 px-2.5 text-right font-medium text-muted-foreground">In NAV</td>
-                      </tr>
-                      <tr>
-                        <td className="py-1.5 px-2.5 font-medium text-foreground">CGT (&gt; 1 Yr)</td>
-                        <td className="py-1.5 px-2.5 text-center font-bold text-emerald-500">7.5%</td>
-                        <td className="py-1.5 px-2.5 text-right font-bold text-foreground">
-                          {formatCurrencyWhole(summary.estimatedCgtLongTerm ?? 0)}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="py-1.5 px-2.5 font-medium text-foreground">CGT (&lt; 1 Yr)</td>
-                        <td className="py-1.5 px-2.5 text-center font-bold text-rose-500">10.0%</td>
-                        <td className="py-1.5 px-2.5 text-right font-bold text-foreground">
-                          {formatCurrencyWhole(summary.estimatedCgtShortTerm ?? 0)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+              {/* Tax Estimation */}
+              <div className="bg-secondary/20 rounded-xl p-3 border border-border/40 text-xs space-y-2">
+                <div className="flex items-center justify-between border-b border-border/30 pb-1.5">
+                  <span className="font-bold text-foreground">Capital Gains Tax (CGT)</span>
+                  <span className="text-[10px] text-muted-foreground">Estimated Tax</span>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center text-muted-foreground text-[11px]">
+                    <span>Long-Term (&gt; 1 yr @ 7.5%)</span>
+                    <span className="font-bold text-foreground">
+                      {formatCurrencyWhole(summary.estimatedCgtLongTerm ?? 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-muted-foreground text-[11px]">
+                    <span>Short-Term (&lt; 1 yr @ 10.0%)</span>
+                    <span className="font-bold text-foreground">
+                      {formatCurrencyWhole(summary.estimatedCgtShortTerm ?? 0)}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -680,119 +675,34 @@ export function SummaryCards({
           </DialogContent>
         </Dialog>
 
-        {/* Inline NAV Bar for Active Fund on Mobile */}
-        {selectedFundId !== "all" && activeFund && (
-          <div className="bg-card rounded-2xl px-4 py-2.5 shadow-sm border border-border/60 flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground">Fund NAV:</span>
-            <LatestNavInput
-              fundId={activeFund.id}
-              currentNav={activeFund.latest_nav ? Number(activeFund.latest_nav) : null}
-              currentNavDate={activeFund.latest_nav_date}
-            />
-          </div>
-        )}
-
-        {/* Remaining Stats List (Positioned Above NAV History Card) */}
+        {/* STATISTICS Grid (Responsive across Mobile, Tablet, Laptop & Desktop) */}
         <div className="flex flex-col gap-3">
           <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-1">
             STATISTICS
           </h3>
-          {mobileCards.map((card) => {
-            const Icon = card.icon;
-            return (
-              <div
-                key={card.label}
-                className="bg-card rounded-2xl p-4 border border-border/50 flex items-center justify-between shadow-sm"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center", card.bgColor)}>
-                    <Icon className={cn("h-5 w-5", card.color)} />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-foreground text-sm">{card.label}</h4>
-                    <p className="text-xs text-muted-foreground">{card.subtitle}</p>
-                  </div>
-                </div>
-                <span className="font-extrabold text-foreground text-sm">{card.value}</span>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* NAV History & Price Monitor Card */}
-        {navHistory && navHistory.length > 0 && (
-          <div className="bg-card rounded-[2rem] p-4 border border-border/60 shadow-sm flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-extrabold text-foreground text-sm flex items-center gap-1.5">
-                  <TrendingUp className="h-4 w-4 text-blue-500" />
-                  NAV Monitor & History
-                </h4>
-                <span className="text-[11px] text-muted-foreground">Track historical fund NAV fluctuations</span>
-              </div>
-              <span className="text-xs font-extrabold text-blue-500 bg-blue-500/10 px-2.5 py-1 rounded-full">
-                {activeFund?.latest_nav ? `NPR ${Number(activeFund.latest_nav).toFixed(2)}` : "10.08"}
-              </span>
-            </div>
-
-            <div className="h-40 w-full pt-1">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <LineChart data={navHistory} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={formatDateShort} axisLine={false} />
-                  <YAxis domain={["dataMin - 0.2", "dataMax + 0.2"]} tick={{ fontSize: 10 }} axisLine={false} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: "var(--card)", borderRadius: "12px", border: "1px solid var(--border)", fontSize: "11px" }}
-                    formatter={(val: any) => [`NPR ${Number(val).toFixed(2)}`, "NAV"]}
-                  />
-                  <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3, fill: "#3b82f6" }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* DESKTOP VIEW (Original 6-Card Grid) */}
-      <div className="hidden lg:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {cards.map((card) => {
-          const Icon = card.icon;
-          return (
-            <Card
-              key={card.label}
-              className="border-border/50 card-hover"
-            >
-              <CardContent className="p-5">
-                <div className="flex items-center gap-3 mb-3">
-                  <div
-                    className={cn(
-                      "flex items-center justify-center h-9 w-9 rounded-lg",
-                      card.bgColor
-                    )}
-                  >
-                    <Icon className={cn("h-4 w-4", card.color)} />
-                  </div>
-                  <span className="text-sm text-muted-foreground font-medium">
-                    {card.label}
-                  </span>
-                </div>
-                <p
-                  className={cn(
-                    "text-xl font-bold tabular-nums tracking-tight",
-                    card.color
-                  )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3">
+            {mobileCards.map((card) => {
+              const Icon = card.icon;
+              return (
+                <div
+                  key={card.label}
+                  className="bg-card rounded-2xl p-4 border border-border/50 flex items-center justify-between shadow-sm hover:border-border transition-all"
                 >
-                  {card.value}
-                </p>
-                {card.subtitle && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {card.subtitle}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shrink-0", card.bgColor)}>
+                      <Icon className={cn("h-5 w-5", card.color)} />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="font-bold text-foreground text-sm truncate">{card.label}</h4>
+                      <p className="text-xs text-muted-foreground truncate">{card.subtitle}</p>
+                    </div>
+                  </div>
+                  <span className="font-extrabold text-foreground text-sm shrink-0 ml-2">{card.value}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </>
   );

@@ -72,6 +72,8 @@ export async function signIn(formData: FormData): Promise<ActionResult> {
   redirect("/dashboard");
 }
 
+
+
 export async function signOut(): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.signOut();
