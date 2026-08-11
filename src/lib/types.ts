@@ -128,6 +128,8 @@ export interface ProjectionParams {
   annualReturnPct: ReturnScenario;
   stepUpPct: StepUpRate;
   yearsToProject: number;
+  realPrincipalSoFar: number; // Actual sum of money invested so far (cost basis),
+                               // distinct from currentCorpus which includes gains
 }
 
 // ---------- XIRR types ----------

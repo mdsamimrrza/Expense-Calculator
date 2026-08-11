@@ -35,6 +35,7 @@ export default function ProjectionsPage() {
   const [stepUpPct, setStepUpPct] = useState<StepUpRate>(0);
 
   const [currentCorpus, setCurrentCorpus] = useState<number>(0);
+  const [realPrincipalSoFar, setRealPrincipalSoFar] = useState<number>(0);
   const [monthlySip, setMonthlySip] = useState<number>(5000);
   const [historicalData, setHistoricalData] = useState<Array<{ date: string; value: number }>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -52,6 +53,7 @@ export default function ProjectionsPage() {
             ? summary.totalUnits * summary.latestNav
             : summary.totalInvested || 0;
         setCurrentCorpus(unitsVal);
+        setRealPrincipalSoFar(summary.totalInvested || 0);
 
         // Find active monthly SIP amount from fund config
         if (selectedFundId !== "all") {
@@ -81,6 +83,7 @@ export default function ProjectionsPage() {
     annualReturnPct: returnPct,
     stepUpPct,
     yearsToProject: 20,
+    realPrincipalSoFar,
   };
 
   const tableRows: ProjectionRow[] = calculateProjectionTable(projectionParams);

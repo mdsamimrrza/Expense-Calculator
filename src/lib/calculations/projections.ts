@@ -26,7 +26,7 @@ import { PROJECTION_YEARS, DP_CHARGE } from "../constants";
 export function calculateProjectionTable(
   params: ProjectionParams
 ): ProjectionRow[] {
-  const { currentCorpus, monthlySip, annualReturnPct, stepUpPct } = params;
+  const { currentCorpus, monthlySip, annualReturnPct, stepUpPct, realPrincipalSoFar } = params;
   const monthlyRate = annualReturnPct / 100 / 12;
 
   const rows: ProjectionRow[] = [];
@@ -52,8 +52,8 @@ export function calculateProjectionTable(
       year,
       monthlySip: Math.round(currentMonthlySip), // Current SIP at that year
       corpusValue: Math.round(corpus),
-      totalInvested: Math.round(totalInvested + (currentCorpus > 0 ? currentCorpus : 0)),
-      totalGain: Math.round(corpus - totalInvested - currentCorpus),
+      totalInvested: Math.round(totalInvested + realPrincipalSoFar),
+      totalGain: Math.round(corpus - totalInvested - realPrincipalSoFar),
     });
   }
 

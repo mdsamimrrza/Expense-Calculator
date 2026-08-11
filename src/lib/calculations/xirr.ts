@@ -8,7 +8,6 @@
 // DO NOT simplify to CAGR — XIRR accounts for irregular cash flow timing.
 // ============================================================
 import type { CashFlow } from "../types";
-import { DP_CHARGE } from "../constants";
 
 const MAX_ITERATIONS = 100;
 const TOLERANCE = 1e-7;
@@ -115,7 +114,9 @@ export function buildCashFlows(
   currentValue: number
 ): CashFlow[] {
   const cashFlows: CashFlow[] = entries.map((entry) => ({
-    amount: -(Number(entry.amount) + DP_CHARGE), // Invested + DP charge → negative
+    amount: -Number(entry.amount), // Your actual outflow — DP charge is already
+                                    // netted into fewer units purchased, not an
+                                    // extra cost on top of what you paid
     date: new Date(entry.purchase_date),
   }));
 
