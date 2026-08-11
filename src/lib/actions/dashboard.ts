@@ -108,6 +108,11 @@ export async function getDashboardData(
       ? (gainLoss / totalInvested) * 100
       : null;
 
+  const estimatedCgtLongTerm =
+    gainLoss !== null && gainLoss > 0 ? gainLoss * 0.075 : 0;
+  const estimatedCgtShortTerm =
+    gainLoss !== null && gainLoss > 0 ? gainLoss * 0.10 : 0;
+
   // XIRR
   let xirr: number | null = null;
   if (entries.length >= XIRR_MIN_ENTRIES && currentValue !== null) {
@@ -126,6 +131,8 @@ export async function getDashboardData(
     currentValue,
     gainLoss,
     gainLossPct,
+    estimatedCgtLongTerm,
+    estimatedCgtShortTerm,
     xirr,
     sipStreak,
     latestNav,

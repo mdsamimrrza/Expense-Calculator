@@ -21,8 +21,8 @@ export function Logo({ className, showText = true }: LogoProps) {
           className="w-5 h-5"
         >
           {/* A sleek ascending bar chart representing growth and SIP */}
-          <rect x="3" y="16" width="4" height="4" rx="1" fill="currentColor" stroke="none" opacity="0.6"/>
-          <rect x="10" y="10" width="4" height="10" rx="1" fill="currentColor" stroke="none" opacity="0.8"/>
+          <rect x="3" y="16" width="4" height="4" rx="1" fill="currentColor" stroke="none" opacity="0.6" />
+          <rect x="10" y="10" width="4" height="10" rx="1" fill="currentColor" stroke="none" opacity="0.8" />
           <rect x="17" y="4" width="4" height="16" rx="1" fill="currentColor" stroke="none" />
           {/* An ascending line intersecting the bars */}
           <path d="M1 18l6-6 4 2 9-9" className="text-secondary" />

@@ -39,6 +39,8 @@ export interface DashboardSummary {
   currentValue: number | null; // null if latest_nav not set
   gainLoss: number | null;
   gainLossPct: number | null;
+  estimatedCgtLongTerm: number | null; // 7.5% tax for > 1 year
+  estimatedCgtShortTerm: number | null; // 10.0% tax for < 1 year
   xirr: number | null; // null if < 3 entries or solver fails
   sipStreak: number;
   latestNav: number | null;
