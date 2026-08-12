@@ -119,7 +119,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
         {/* Right Main Content (lg:col-span-8 xl:col-span-8) */}
         <div className="lg:col-span-8 xl:col-span-8 flex flex-col gap-6">
-          <PortfolioChart data={portfolioChart} />
+          <PortfolioChart data={portfolioChart} summary={summary} />
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <NavHistoryChart data={navHistory} />

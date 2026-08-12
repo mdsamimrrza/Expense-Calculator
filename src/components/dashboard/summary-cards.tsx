@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Wallet,
@@ -48,10 +49,10 @@ import {
   formatUnits,
   formatStreak,
   formatDateShort,
+  formatNav,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { EntryForm } from "@/components/entries/entry-form";
-import { LatestNavInput } from "@/components/dashboard/latest-nav-input";
 
 interface SummaryCardsProps {
   summary: DashboardSummary;
@@ -74,10 +75,13 @@ function formatFundShortName(name: string): string {
   return name;
 }
 
+type TimeRange = "1D" | "1W" | "1M" | "1Y" | "ALL";
+const TIME_RANGES: TimeRange[] = ["1D", "1W", "1M", "1Y", "ALL"];
+
 /**
  * Mobile Chart matching the user's reference image exactly:
  * Includes Y-axis labels on the left, horizontal grid lines, vertical drop lines,
- * hollow circular nodes, floating tooltip, and X-axis dates.
+ * hollow circular nodes, floating tooltip, X-axis dates, and timeframe tabs (1D, 1W, 1M, 1Y, ALL).
  */
 function HeroRealGraph({
   points,
@@ -86,9 +90,32 @@ function HeroRealGraph({
   points?: PortfolioChartPoint[];
   summary: DashboardSummary;
 }) {
+  const [timeRange, setTimeRange] = useState<TimeRange>("ALL");
+
+  const activePoints = useMemo(() => {
+    if (!points || points.length <= 1 || timeRange === "ALL") return points;
+
+    const lastPoint = points[points.length - 1];
+    const lastDate = new Date(lastPoint.date).getTime();
+
+    if (timeRange === "1D") return points.slice(-2);
+
+    let cutoffMs = 0;
+    if (timeRange === "1W") cutoffMs = 7 * 24 * 60 * 60 * 1000;
+    else if (timeRange === "1M") cutoffMs = 30 * 24 * 60 * 60 * 1000;
+    else if (timeRange === "1Y") cutoffMs = 365 * 24 * 60 * 60 * 1000;
+
+    const filtered = points.filter((d) => {
+      const ptDate = new Date(d.date).getTime();
+      return lastDate - ptDate <= cutoffMs;
+    });
+
+    return filtered.length >= 2 ? filtered : points.slice(-2);
+  }, [points, timeRange]);
+
   let rawValues: Array<{ val: number; date: string }> = [];
-  if (points && points.length > 0) {
-    rawValues = points.map((p) => ({
+  if (activePoints && activePoints.length > 0) {
+    rawValues = activePoints.map((p) => ({
       val: p.portfolioValue,
       date: p.date ? new Date(p.date).toLocaleDateString("en-US", { weekday: "short" }) : "",
     }));
@@ -126,7 +153,6 @@ function HeroRealGraph({
     val: p.val,
   }));
 
-  // Y-axis tick values matching the reference image layout
   const yTicks = [
     max,
     max * 0.75,
@@ -140,17 +166,37 @@ function HeroRealGraph({
     chartPoints.slice(1).map((c) => `L ${c.x},${c.y}`).join(" ");
   const fillPath = `${dPath} L ${width},${height} L 0,${height} Z`;
 
-  const lastPt = chartPoints[chartPoints.length - 1];
-  const midPt = chartPoints[Math.floor(chartPoints.length / 2)] || lastPt;
+  const midPt = chartPoints[Math.floor(chartPoints.length / 2)] || chartPoints[chartPoints.length - 1];
 
   return (
-    <div className="w-full flex flex-col gap-2 mt-3">
+    <div className="w-full flex flex-col gap-2 mt-2">
+      {/* Time Range Tabs Bar */}
+      <div className="flex items-center justify-between px-1">
+        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Performance Trend</span>
+        <div className="flex items-center gap-1 bg-secondary/50 p-0.5 rounded-full border border-border/30">
+          {TIME_RANGES.map((r) => (
+            <button
+              key={r}
+              onClick={() => setTimeRange(r)}
+              className={cn(
+                "px-2 py-0.5 text-[10px] font-bold rounded-full transition-all select-none",
+                timeRange === r
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="flex w-full items-stretch">
-        {/* Y-Axis Labels Column (Left side as shown in screenshot) */}
+        {/* Y-Axis Labels Column */}
         <div className="flex flex-col justify-between text-[10px] font-semibold text-muted-foreground pr-2 py-1 select-none shrink-0 w-11 text-right">
           {yTicks.map((tick, idx) => (
             <span key={idx}>
-              {tick >= 1000 ? `$${(tick / 1000).toFixed(1)}k` : `$${Math.round(tick)}`}
+              {tick >= 1000 ? `${(tick / 1000).toFixed(1)}k` : Math.round(tick)}
             </span>
           ))}
         </div>
@@ -214,7 +260,7 @@ function HeroRealGraph({
               strokeLinejoin="round"
             />
 
-            {/* Data Point Nodes (Hollow circles matching reference image) */}
+            {/* Data Point Nodes */}
             {chartPoints.map((pt, i) => (
               <circle
                 key={`c-${i}`}
@@ -228,7 +274,7 @@ function HeroRealGraph({
             ))}
           </svg>
 
-          {/* Floating Tooltip Card (Matching the reference image middle popover) */}
+          {/* Floating Tooltip Card */}
           {midPt && (
             <div 
               className="absolute -top-1 left-1/2 -translate-x-1/2 bg-card/95 backdrop-blur border border-border shadow-md rounded-xl px-3 py-1.5 text-[11px] flex flex-col gap-0.5 z-20"
@@ -420,64 +466,105 @@ export function SummaryCards({
         {/* Top Balance & Graph Card */}
         <div className="bg-card rounded-[2rem] p-5 sm:p-6 border border-border/60 shadow-sm flex flex-col gap-4 w-full overflow-hidden">
           
-          {/* Header Row: Wallet Icon + Total Balance + Selector */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-11 w-11 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-600/30 shrink-0">
-                <Wallet className="h-5 w-5" />
+          {/* Header Row: Wallet Icon + Total Portfolio Value + Gain Indicator + Selector */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-11 w-11 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-600/30 shrink-0">
+                  <Wallet className="h-5 w-5" />
+                </div>
+                <div>
+                  <span className="text-xs font-medium text-muted-foreground block leading-none mb-1">
+                    Current Portfolio Value
+                  </span>
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
+                      {summary.currentValue !== null
+                        ? formatCurrencyWhole(summary.currentValue)
+                        : formatCurrencyWhole(summary.totalInvested)}
+                    </h2>
+                    
+                    {/* Up/Down Gain Indicator Badge */}
+                    {summary.gainLoss !== null && (
+                      <div
+                        className={cn(
+                          "flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[11px] font-extrabold",
+                          (summary.gainLoss ?? 0) >= 0
+                            ? "bg-emerald-500/10 text-emerald-500"
+                            : "bg-rose-500/10 text-rose-500"
+                        )}
+                      >
+                        {(summary.gainLoss ?? 0) >= 0 ? (
+                          <ArrowUpRight className="h-3.5 w-3.5" />
+                        ) : (
+                          <ArrowDownRight className="h-3.5 w-3.5" />
+                        )}
+                        <span>
+                          {(summary.gainLoss ?? 0) >= 0 ? "+" : ""}
+                          {formatCurrencyWhole(summary.gainLoss, true)} ({formatPercentage(summary.gainLossPct ?? 0)})
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div>
-                <span className="text-xs font-medium text-muted-foreground block leading-none mb-1">
-                  Available Balance
-                </span>
-                <h2 className="text-2xl font-extrabold text-foreground tracking-tight">
-                  {formatCurrencyWhole(summary.unallottedCash)}
-                </h2>
+
+              {/* Selector Dropdown & Add SIP Button */}
+              <div className="flex items-center gap-2">
+                {funds.length > 0 && (
+                  <Select
+                    value={selectedFundId}
+                    onValueChange={(val) =>
+                      router.push(val === "all" ? "/dashboard?fund=all" : `/dashboard?fund=${val}`)
+                    }
+                  >
+                    <SelectTrigger className="bg-secondary/60 text-foreground border-border/50 h-9 text-xs font-bold rounded-full px-3.5 w-auto min-w-[100px] focus:ring-0">
+                      <SelectValue>
+                        {selectedFundId === "all"
+                          ? "All Funds"
+                          : formatFundShortName(
+                              funds.find((f) => f.id === selectedFundId)?.fund_name || "All Funds"
+                            )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Funds</SelectItem>
+                      {funds.map((f) => (
+                        <SelectItem key={f.id} value={f.id}>
+                          {formatFundShortName(f.fund_name)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {funds.length > 0 && (
+                  <EntryForm
+                    funds={funds}
+                    defaultFundId={activeFund?.id}
+                    trigger={
+                      <Button
+                        size="sm"
+                        className="h-9 w-9 p-0 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-md border-0 shrink-0 flex items-center justify-center"
+                      >
+                        <Plus className="h-4 w-4 stroke-[3]" />
+                      </Button>
+                    }
+                  />
+                )}
               </div>
             </div>
 
-            {/* Selector Dropdown & Add SIP Button */}
-            <div className="flex items-center gap-2">
-              {funds.length > 0 && (
-                <Select
-                  value={selectedFundId}
-                  onValueChange={(val) =>
-                    router.push(val === "all" ? "/dashboard?fund=all" : `/dashboard?fund=${val}`)
-                  }
-                >
-                  <SelectTrigger className="bg-secondary/60 text-foreground border-border/50 h-9 text-xs font-bold rounded-full px-3.5 w-auto min-w-[100px] focus:ring-0">
-                    <SelectValue>
-                      {selectedFundId === "all"
-                        ? "All Funds"
-                        : formatFundShortName(
-                            funds.find((f) => f.id === selectedFundId)?.fund_name || "All Funds"
-                          )}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Funds</SelectItem>
-                    {funds.map((f) => (
-                      <SelectItem key={f.id} value={f.id}>
-                        {formatFundShortName(f.fund_name)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-
-              {funds.length > 0 && (
-                <EntryForm
-                  funds={funds}
-                  defaultFundId={activeFund?.id}
-                  trigger={
-                    <Button
-                      size="sm"
-                      className="h-9 w-9 p-0 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-md border-0 shrink-0 flex items-center justify-center"
-                    >
-                      <Plus className="h-4 w-4 stroke-[3]" />
-                    </Button>
-                  }
-                />
+            {/* Sub-bar: Rollover Wallet / Unallotted Cash + Latest NAV Info */}
+            <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/30">
+              <span className="flex items-center gap-1.5 font-medium">
+                <Coins className="h-3.5 w-3.5 text-blue-500" />
+                Unallotted Cash: <strong className="text-foreground">{formatCurrencyWhole(summary.unallottedCash)}</strong>
+              </span>
+              {summary.latestNav && (
+                <span className="text-[11px] font-semibold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                  NAV: NPR {formatNav(summary.latestNav)}
+                </span>
               )}
             </div>
           </div>
@@ -641,6 +728,49 @@ export function SummaryCards({
                   <span className="text-sm font-extrabold text-amber-500">
                     {formatStreak(summary.sipStreak)}
                   </span>
+                </div>
+              </div>
+
+              {/* Capital Allocation & Reconciliation Breakdown Table */}
+              <div className="bg-secondary/20 rounded-2xl p-3.5 border border-border/40 text-xs space-y-2.5">
+                <div className="flex items-center justify-between border-b border-border/30 pb-2">
+                  <span className="font-bold text-foreground flex items-center gap-1.5">
+                    <Coins className="h-3.5 w-3.5 text-blue-500" />
+                    Capital Reconciliation
+                  </span>
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    Fund Breakdown
+                  </span>
+                </div>
+
+                <div className="space-y-1.5 text-[11px]">
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span>Total Cash Deposited</span>
+                    <strong className="text-foreground font-mono">{formatCurrencyWhole(summary.totalInvested)}</strong>
+                  </div>
+
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span>(-) Rollover Wallet Change</span>
+                    <strong className="text-blue-500 font-mono">-{formatCurrencyWhole(summary.unallottedCash)}</strong>
+                  </div>
+
+                  <div className="flex justify-between items-center font-semibold pt-1 border-t border-border/20 text-foreground">
+                    <span>Effective Deployed Capital</span>
+                    <span className="font-mono text-emerald-500">{formatCurrencyWhole(Math.max(0, summary.totalInvested - summary.unallottedCash))}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-muted-foreground pt-1">
+                    <span>Current Units Value (@ NAV)</span>
+                    <strong className="text-foreground font-mono">{formatCurrencyWhole(summary.currentValue ?? 0)}</strong>
+                  </div>
+
+                  <div className="flex justify-between items-center font-bold pt-1 border-t border-border/30 text-foreground">
+                    <span>Net Investment Return</span>
+                    <span className={cn("font-mono", (summary.gainLoss ?? 0) >= 0 ? "text-emerald-500" : "text-rose-500")}>
+                      {summary.gainLoss !== null ? formatCurrencyWhole(summary.gainLoss, true) : "NPR 0"}
+                      <span className="text-[10px] ml-1">({summary.gainLossPct !== null ? formatPercentage(summary.gainLossPct) : "0%"})</span>
+                    </span>
+                  </div>
                 </div>
               </div>
 

@@ -112,13 +112,14 @@ export async function getDashboardData(
     return sum + leftover;
   }, 0);
 
-  // Option B: Total Combined Portfolio Balance (Units Value + Rollover Cash)
-  const unitsValue = latestNav !== null ? totalUnits * latestNav : null;
-  const currentValue = unitsValue !== null ? unitsValue + unallottedCash : null;
-  const gainLoss = currentValue !== null ? currentValue - totalInvested : null;
+  // Pure Portfolio Value = totalUnits * latestNav (excluding rollover cash)
+  const currentValue = latestNav !== null ? totalUnits * latestNav : null;
+  // Effective Invested = Total Money Deposited minus Unallotted Rollover Wallet Cash
+  const effectiveInvested = Math.max(0, totalInvested - unallottedCash);
+  const gainLoss = currentValue !== null ? currentValue - effectiveInvested : null;
   const gainLossPct =
-    gainLoss !== null && totalInvested > 0
-      ? (gainLoss / totalInvested) * 100
+    gainLoss !== null && effectiveInvested > 0
+      ? (gainLoss / effectiveInvested) * 100
       : null;
 
   const estimatedCgtLongTerm =
@@ -155,31 +156,6 @@ export async function getDashboardData(
 
   // ---- Chart data ----
 
-  // Portfolio value over time
-  let cumulativeUnits = 0;
-  let cumulativeInvested = 0;
-  const portfolioChart: PortfolioChartPoint[] = entries.map((entry) => {
-    cumulativeUnits += Number(entry.units);
-    cumulativeInvested += Number(entry.amount);
-    return {
-      date: entry.purchase_date,
-      portfolioValue: cumulativeUnits * Number(entry.nav),
-      totalInvested: cumulativeInvested,
-    };
-  });
-
-  // Monthly contributions
-  const monthlyMap = new Map<string, number>();
-  for (const entry of entries) {
-    const monthKey = entry.purchase_date ? entry.purchase_date.substring(0, 7) : "";
-    if (monthKey) {
-      monthlyMap.set(monthKey, (monthlyMap.get(monthKey) ?? 0) + Number(entry.amount));
-    }
-  }
-  const monthlyContributions: MonthlyContribution[] = Array.from(
-    monthlyMap.entries()
-  ).map(([month, amount]) => ({ month, amount }));
-
   // NAV history — fetch from dedicated nav_history table
   let navHistory: ChartDataPoint[] = [];
 
@@ -205,6 +181,72 @@ export async function getDashboardData(
       value: Number(entry.nav),
     }));
   }
+
+  // Ensure latestNav and latestNavDate are present in navHistory
+  if (latestNav !== null && latestNavDate) {
+    const existingIdx = navHistory.findIndex((h) => h.date === latestNavDate);
+    if (existingIdx >= 0) {
+      navHistory[existingIdx].value = latestNav;
+    } else {
+      navHistory.push({ date: latestNavDate, value: latestNav });
+      navHistory.sort((a, b) => a.date.localeCompare(b.date));
+    }
+  }
+
+  // Build Portfolio Value timeline reflecting both SIP entries and NAV history updates
+  const timelineDates = Array.from(
+    new Set([
+      ...entries.map((e) => e.purchase_date),
+      ...navHistory.map((h) => h.date),
+    ])
+  ).sort((a, b) => a.localeCompare(b));
+
+  const navMap = new Map<string, number>();
+  for (const h of navHistory) {
+    navMap.set(h.date, h.value);
+  }
+
+  let runningUnits = 0;
+  let runningInvested = 0;
+  let lastKnownNav = entries.length > 0 ? Number(entries[0].nav) : 10;
+
+  const portfolioChart: PortfolioChartPoint[] = [];
+
+  // Track entries processed so far to accumulate units & invested up to each date
+  const processedEntryIds = new Set<string>();
+
+  for (const dt of timelineDates) {
+    const entriesOnDate = entries.filter(
+      (e) => e.purchase_date <= dt && !processedEntryIds.has(e.id)
+    );
+    for (const e of entriesOnDate) {
+      runningUnits += Number(e.units);
+      runningInvested += Number(e.amount);
+      processedEntryIds.add(e.id);
+    }
+
+    if (navMap.has(dt)) {
+      lastKnownNav = navMap.get(dt)!;
+    }
+
+    portfolioChart.push({
+      date: dt,
+      portfolioValue: runningUnits * lastKnownNav,
+      totalInvested: runningInvested,
+    });
+  }
+
+  // Monthly contributions
+  const monthlyMap = new Map<string, number>();
+  for (const entry of entries) {
+    const monthKey = entry.purchase_date ? entry.purchase_date.substring(0, 7) : "";
+    if (monthKey) {
+      monthlyMap.set(monthKey, (monthlyMap.get(monthKey) ?? 0) + Number(entry.amount));
+    }
+  }
+  const monthlyContributions: MonthlyContribution[] = Array.from(
+    monthlyMap.entries()
+  ).map(([month, amount]) => ({ month, amount }));
 
   // Fee drag
   const feeRatePct =
