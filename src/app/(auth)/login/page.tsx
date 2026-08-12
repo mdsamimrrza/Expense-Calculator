@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,31 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { signIn } from "@/lib/actions/auth";
+import { GoogleButton } from "@/components/auth/google-button";
+
+function AuthErrorNotifier() {
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const error = searchParams.get("error");
+    if (error === "auth_failed") {
+      toast({
+        title: "Authentication Failed",
+        description: "Google sign-in was cancelled or failed. Please try again.",
+        variant: "destructive",
+      });
+    } else if (error) {
+      toast({
+        title: "Authentication Error",
+        description: error,
+        variant: "destructive",
+      });
+    }
+  }, [searchParams, toast]);
+
+  return null;
+}
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -42,6 +68,9 @@ export default function LoginPage() {
 
   return (
     <Card className="border-border/50 shadow-xl">
+      <Suspense fallback={null}>
+        <AuthErrorNotifier />
+      </Suspense>
       <CardHeader className="space-y-1">
         <CardTitle className="text-xl">Welcome back</CardTitle>
         <CardDescription>
@@ -50,6 +79,19 @@ export default function LoginPage() {
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
+          <GoogleButton text="Continue with Google" />
+
+          <div className="relative flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border/50" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground font-medium">
+                Or continue with email
+              </span>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -110,8 +152,6 @@ export default function LoginPage() {
             Sign in
           </Button>
 
-
-
           <p className="text-sm text-muted-foreground text-center">
             Don&apos;t have an account?{" "}
             <Link
@@ -126,3 +166,4 @@ export default function LoginPage() {
     </Card>
   );
 }
+

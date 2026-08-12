@@ -100,26 +100,26 @@ export function LatestNavInput({
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-sm text-muted-foreground">Latest NAV:</span>
+    <div className="flex items-center gap-1.5 whitespace-nowrap bg-secondary/40 px-3 py-1.5 rounded-full border border-border/50">
+      <span className="text-xs text-muted-foreground">Latest NAV:</span>
       {currentNav !== null ? (
-        <>
-          <span className="text-sm font-semibold tabular-nums">
+        <div className="flex items-baseline gap-1">
+          <span className="text-sm font-bold tabular-nums text-foreground">
             {formatNav(currentNav)}
           </span>
           {currentNavDate && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-[10px] text-muted-foreground font-medium">
               ({formatDate(currentNavDate)})
             </span>
           )}
-        </>
+        </div>
       ) : (
         <span className="text-sm text-muted-foreground italic">Not set</span>
       )}
       <Button
         size="icon"
         variant="ghost"
-        className="h-7 w-7"
+        className="h-6 w-6 ml-0.5 hover:bg-secondary/80 rounded-full transition-colors"
         onClick={() => setIsEditing(true)}
         id="edit-latest-nav"
       >

@@ -45,7 +45,7 @@ export function ChangePasswordForm() {
   }
 
   return (
-    <Card className="border-border/50">
+    <Card className="border-border/60 rounded-[2rem] shadow-sm bg-card overflow-hidden">
       <CardHeader>
         <CardTitle className="text-base">Change Password</CardTitle>
         <CardDescription className="text-xs">
@@ -53,9 +53,9 @@ export function ChangePasswordForm() {
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="new-password">New Password</Label>
+        <CardContent className="space-y-5 px-6 pb-6">
+          <div className="space-y-1.5">
+            <Label htmlFor="new-password" className="text-xs font-semibold">New Password</Label>
             <div className="relative">
               <Input
                 id="new-password"
@@ -63,6 +63,7 @@ export function ChangePasswordForm() {
                 placeholder="Min 8 chars, 1 uppercase, 1 number"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                className="h-9 rounded-xl text-xs"
                 required
               />
               <Button
@@ -81,18 +82,19 @@ export function ChangePasswordForm() {
               </Button>
             </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="confirm-new-password">Confirm New Password</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="confirm-new-password" className="text-xs font-semibold">Confirm New Password</Label>
             <Input
               id="confirm-new-password"
               type={showPassword ? "text" : "password"}
               placeholder="Re-enter new password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              className="h-9 rounded-xl text-xs"
               required
             />
           </div>
-          <Button type="submit" size="sm" disabled={isLoading || !password}>
+          <Button type="submit" size="sm" className="h-9 rounded-xl font-bold text-xs" disabled={isLoading || !password}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Update Password
           </Button>

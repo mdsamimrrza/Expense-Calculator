@@ -8,6 +8,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Brush,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { MonthlyContribution } from "@/lib/types";
@@ -76,7 +77,9 @@ export function MonthlyContributionsBar({
                 tick={{ fontSize: 10, fill: "currentColor" }}
                 axisLine={false}
                 tickLine={false}
+                minTickGap={30}
               />
+
               <YAxis
                 domain={[0, topTick]}
                 ticks={ticks}
@@ -95,6 +98,15 @@ export function MonthlyContributionsBar({
                 radius={[8, 8, 0, 0]}
                 maxBarSize={36}
               />
+              {data.length > 12 && (
+                <Brush 
+                  dataKey="month" 
+                  height={20} 
+                  stroke="#3b82f6" 
+                  fill="#0f172a" 
+                  tickFormatter={formatMonth}
+                />
+              )}
             </BarChart>
           </ResponsiveContainer>
         </div>

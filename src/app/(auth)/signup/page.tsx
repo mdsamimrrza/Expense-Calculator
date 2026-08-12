@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { signUp } from "@/lib/actions/auth";
+import { GoogleButton } from "@/components/auth/google-button";
 
 export default function SignUpPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -54,6 +55,19 @@ export default function SignUpPage() {
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
+          <GoogleButton text="Sign up with Google" />
+
+          <div className="relative flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border/50" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground font-medium">
+                Or continue with email
+              </span>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -131,3 +145,4 @@ export default function SignUpPage() {
     </Card>
   );
 }
+

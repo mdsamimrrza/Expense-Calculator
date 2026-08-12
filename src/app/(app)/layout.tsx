@@ -16,5 +16,5 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  return <AppShell>{children}</AppShell>;
+  return <AppShell userEmail={user.email}>{children}</AppShell>;
 }

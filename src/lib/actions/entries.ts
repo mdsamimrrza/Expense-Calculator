@@ -34,9 +34,11 @@ export async function createEntry(
   // Additional server-side validation: check purchase_date >= fund start_date
   const { data: fund } = await supabase
     .from("fund_config")
-    .select("start_date")
+    .select("start_date, latest_nav, latest_nav_date")
     .eq("id", parsed.data.fund_id)
     .single();
+
+  const purchaseDateStr = parsed.data.purchase_date.toISOString().split("T")[0];
 
   if (fund) {
     const purchaseDate = new Date(parsed.data.purchase_date);
@@ -54,7 +56,7 @@ export async function createEntry(
     .insert({
       user_id: user.id,
       fund_id: parsed.data.fund_id,
-      purchase_date: parsed.data.purchase_date.toISOString().split("T")[0],
+      purchase_date: purchaseDateStr,
       amount: parsed.data.amount,
       nav: parsed.data.nav,
       units: Math.floor(parsed.data.units), // Guaranteed integer
@@ -66,6 +68,28 @@ export async function createEntry(
   if (error) {
     return { success: false, error: error.message };
   }
+
+  // Auto-update fund_config latest_nav if not set or if entry date is newer/equal
+  if (fund && (!fund.latest_nav || purchaseDateStr >= (fund.latest_nav_date || ""))) {
+    await supabase
+      .from("fund_config")
+      .update({
+        latest_nav: parsed.data.nav,
+        latest_nav_date: purchaseDateStr,
+      })
+      .eq("id", parsed.data.fund_id);
+
+    await supabase.from("nav_history").upsert(
+      {
+        fund_id: parsed.data.fund_id,
+        user_id: user.id,
+        nav_date: purchaseDateStr,
+        nav_value: parsed.data.nav,
+      },
+      { onConflict: "fund_id,nav_date" }
+    );
+  }
+
 
   revalidatePath("/dashboard");
   revalidatePath("/history");
@@ -93,11 +117,19 @@ export async function updateEntry(
 
   const supabase = await createClient();
 
+  const purchaseDateStr = parsed.data.purchase_date.toISOString().split("T")[0];
+
+  const { data: fund } = await supabase
+    .from("fund_config")
+    .select("latest_nav, latest_nav_date")
+    .eq("id", parsed.data.fund_id)
+    .single();
+
   const { data, error } = await supabase
     .from("entries")
     .update({
       fund_id: parsed.data.fund_id,
-      purchase_date: parsed.data.purchase_date.toISOString().split("T")[0],
+      purchase_date: purchaseDateStr,
       amount: parsed.data.amount,
       nav: parsed.data.nav,
       units: Math.floor(parsed.data.units), // Guaranteed integer
@@ -109,6 +141,32 @@ export async function updateEntry(
 
   if (error) {
     return { success: false, error: error.message };
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    await supabase.from("nav_history").upsert(
+      {
+        fund_id: parsed.data.fund_id,
+        user_id: user.id,
+        nav_date: purchaseDateStr,
+        nav_value: parsed.data.nav,
+      },
+      { onConflict: "fund_id,nav_date" }
+    );
+
+    if (fund && (!fund.latest_nav || purchaseDateStr >= (fund.latest_nav_date || ""))) {
+      await supabase
+        .from("fund_config")
+        .update({
+          latest_nav: parsed.data.nav,
+          latest_nav_date: purchaseDateStr,
+        })
+        .eq("id", parsed.data.fund_id);
+    }
   }
 
   revalidatePath("/dashboard");
@@ -235,6 +293,38 @@ export async function importEntriesFromCsv(
       return { success: false, error: error.message };
     }
 
+    const navHistoryRows = validRows.map(row => ({
+      fund_id: row.fund_id,
+      user_id: row.user_id,
+      nav_date: row.purchase_date,
+      nav_value: row.nav,
+    }));
+
+    await supabase.from("nav_history").upsert(
+      navHistoryRows,
+      { onConflict: "fund_id,nav_date" }
+    );
+
+    const maxDateRow = validRows.reduce((prev, current) => 
+      (prev.purchase_date > current.purchase_date) ? prev : current
+    );
+
+    const { data: fund } = await supabase
+      .from("fund_config")
+      .select("latest_nav, latest_nav_date")
+      .eq("id", fundId)
+      .single();
+
+    if (fund && (!fund.latest_nav || maxDateRow.purchase_date >= (fund.latest_nav_date || ""))) {
+      await supabase
+        .from("fund_config")
+        .update({
+          latest_nav: maxDateRow.nav,
+          latest_nav_date: maxDateRow.purchase_date,
+        })
+        .eq("id", fundId);
+    }
+
     imported = validRows.length;
   }
 
@@ -246,3 +336,40 @@ export async function importEntriesFromCsv(
     data: { imported, skipped, errors },
   };
 }
+
+export async function getFundRolloverCash(
+  fundId: string
+): Promise<ActionResult<number>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  const { data: entries, error } = await supabase
+    .from("entries")
+    .select("amount, nav, units, purchase_date, created_at")
+    .eq("fund_id", fundId)
+    .order("purchase_date", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  let runningRollover = 0;
+  for (const entry of entries || []) {
+    const freshAmount = Number(entry.amount);
+    const dpFee = freshAmount >= 5 ? 5 : 0;
+    const totalAvailable = freshAmount + runningRollover;
+    const netCash = Math.max(0, totalAvailable - dpFee);
+    const unitCost = Number(entry.units) * Number(entry.nav);
+    runningRollover = Math.max(0, netCash - unitCost);
+  }
+
+  return { success: true, data: runningRollover };
+}
+

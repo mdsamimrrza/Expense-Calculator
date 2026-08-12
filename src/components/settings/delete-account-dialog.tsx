@@ -61,20 +61,20 @@ export function DeleteAccountDialog() {
   }
 
   return (
-    <Card className="border-rose-500/30 bg-rose-500/5">
-      <CardHeader>
-        <CardTitle className="text-base text-rose-500 flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4" />
+    <Card className="border-rose-500/20 bg-rose-500/5 rounded-[2rem] overflow-hidden">
+      <CardHeader className="px-6 pt-6 pb-4">
+        <CardTitle className="text-base font-extrabold text-rose-500 flex items-center gap-2">
+          <AlertTriangle className="h-4.5 w-4.5" />
           Danger Zone
         </CardTitle>
-        <CardDescription className="text-xs">
+        <CardDescription className="text-xs mt-1 font-medium">
           Permanently delete your account and remove all fund configurations and SIP entries.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-6 pb-6 pt-2">
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button variant="destructive" size="sm">
+            <Button variant="destructive" size="sm" className="rounded-xl font-bold">
               Delete Account
             </Button>
           </DialogTrigger>

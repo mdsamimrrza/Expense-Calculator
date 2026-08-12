@@ -63,6 +63,21 @@ export function EntryForm({
   const isEdit = !!entry;
 
   const [useWholeUnits, setUseWholeUnits] = useState(true);
+  const [carriedRollover, setCarriedRollover] = useState(0);
+
+
+  // Fetch carried forward rollover cash when modal opens or fund changes
+  useEffect(() => {
+    if (open && fundId && !isEdit) {
+      import("@/lib/actions/entries").then(({ getFundRolloverCash }) => {
+        getFundRolloverCash(fundId).then((res) => {
+          if (res.success && typeof res.data === "number") {
+            setCarriedRollover(res.data);
+          }
+        });
+      });
+    }
+  }, [open, fundId, isEdit]);
 
   // Auto-calculate whole units (integer only)
   useEffect(() => {
@@ -70,12 +85,14 @@ export function EntryForm({
       const a = parseFloat(amount);
       const n = parseFloat(nav);
       if (a > 0 && n > 0) {
-        const effectiveAmount = deductDpCharge ? Math.max(0, a - 5) : a;
-        const wholeUnits = Math.floor(effectiveAmount / n);
-        setUnits(wholeUnits.toString());
+        const totalAvail = a + (isEdit ? 0 : carriedRollover);
+        const effectiveAmount = deductDpCharge ? Math.max(0, totalAvail - 5) : totalAvail;
+        const computedUnits = useWholeUnits ? Math.floor(effectiveAmount / n) : effectiveAmount / n;
+        setUnits(useWholeUnits ? computedUnits.toString() : computedUnits.toFixed(4));
       }
     }
-  }, [amount, nav, overrideUnits, deductDpCharge]);
+  }, [amount, nav, overrideUnits, deductDpCharge, useWholeUnits, carriedRollover, isEdit]);
+
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -133,7 +150,7 @@ export function EntryForm({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-sm w-[92vw] rounded-[2rem] p-5 shadow-xl border-border/60">
+      <DialogContent className="w-[95vw] max-w-md md:max-w-lg lg:max-w-xl rounded-[2rem] p-5 md:p-6 lg:p-7 shadow-xl border-border/60 max-h-[90vh] overflow-y-auto">
         <DialogHeader className="text-left">
           <DialogTitle className="text-base font-extrabold tracking-tight">
             {isEdit ? "Edit SIP Entry" : "Add SIP Entry"}
@@ -267,26 +284,56 @@ export function EntryForm({
 
                   {/* Calculation Breakdown Preview */}
                   {parseFloat(amount) > 0 && parseFloat(nav) > 0 && (
-                    <div className="grid grid-cols-2 gap-1.5 pt-2 border-t border-border/40 text-[11px]">
-                      <div>
-                        <span className="text-muted-foreground block">Unit Cost:</span>
-                        <strong className="text-foreground">
-                          NPR {((parseFloat(units) || 0) * parseFloat(nav)).toFixed(2)}
-                        </strong>
+                    <div className="space-y-1.5 pt-2 border-t border-border/40 text-[11px]">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Fresh Deposit Added:</span>
+                        <span className="font-semibold text-foreground">NPR {parseFloat(amount).toFixed(2)}</span>
                       </div>
-                      <div>
-                        <span className="text-muted-foreground block">Rollover Cash:</span>
-                        <strong className="text-emerald-500 font-extrabold">
+                      
+                      {!isEdit && carriedRollover > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">+ Carried-Forward Cash:</span>
+                          <span className="font-semibold text-blue-500">NPR {carriedRollover.toFixed(2)}</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between border-t border-border/30 pt-1.5 mt-0.5">
+                        <span className="text-muted-foreground font-medium">Total Available Cash:</span>
+                        <span className="font-bold text-foreground">NPR {(parseFloat(amount) + (isEdit ? 0 : carriedRollover)).toFixed(2)}</span>
+                      </div>
+
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">- DP Charge Deducted:</span>
+                        <span className="font-medium text-foreground">NPR {deductDpCharge ? "5.00" : "0.00"}</span>
+                      </div>
+
+                      <div className="flex justify-between border-t border-border/30 pt-1.5 mt-0.5">
+                        <span className="text-muted-foreground font-medium">Net Allotment Cash:</span>
+                        <span className="font-bold text-foreground">NPR {Math.max(0, parseFloat(amount) + (isEdit ? 0 : carriedRollover) - (deductDpCharge ? 5 : 0)).toFixed(2)}</span>
+                      </div>
+
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">- Unit Cost ({units || 0} units @ {nav}):</span>
+                        <span className="font-medium text-foreground">NPR {((parseFloat(units) || 0) * parseFloat(nav)).toFixed(2)}</span>
+                      </div>
+
+                      <div className="flex justify-between items-center mt-2 bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">
+                        <span className="text-emerald-700 dark:text-emerald-300 font-medium">
+                          New Leftover Rollover:
+                        </span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-extrabold text-[12px]">
                           NPR {Math.max(
                             0,
-                            (parseFloat(amount) || 0) -
+                            parseFloat(amount) +
+                              (isEdit ? 0 : carriedRollover) -
                               (deductDpCharge ? 5 : 0) -
                               (parseFloat(units) || 0) * parseFloat(nav)
                           ).toFixed(2)}
-                        </strong>
+                        </span>
                       </div>
                     </div>
                   )}
+
                 </div>
               )}
             </div>

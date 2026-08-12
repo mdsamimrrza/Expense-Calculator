@@ -11,7 +11,7 @@ const PROTECTED_ROUTES = ["/dashboard", "/history", "/projections", "/settings",
 // Routes that should redirect to dashboard if already authenticated
 const AUTH_ROUTES = ["/login", "/signup", "/forgot-password"];
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request: {
       headers: request.headers,

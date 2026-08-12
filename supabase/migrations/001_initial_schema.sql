@@ -95,3 +95,31 @@ CREATE TRIGGER set_entries_updated_at
   BEFORE UPDATE ON entries
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================
+-- TABLE: nav_history
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS nav_history (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  fund_id       UUID NOT NULL REFERENCES fund_config(id) ON DELETE CASCADE,
+  nav_date      DATE NOT NULL,
+  nav_value     NUMERIC(8,2) NOT NULL CHECK (nav_value > 0),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT uq_fund_nav_date UNIQUE (fund_id, nav_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_nav_history_user_fund_date ON nav_history(user_id, fund_id, nav_date);
+
+ALTER TABLE nav_history ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "users manage own nav_history"
+  ON nav_history FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "admin reads all nav_history"
+  ON nav_history FOR SELECT
+  USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
+

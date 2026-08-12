@@ -31,6 +31,19 @@ export interface Entry {
   updated_at: string;
 }
 
+export interface EntryBreakdown {
+  freshAmount: number;
+  carriedRollover: number;
+  totalAvailable: number;
+  dpFee: number;
+  netCash: number;
+  units: number;
+  nav: number;
+  unitCost: number;
+  remainingRollover: number;
+}
+
+
 // ---------- Computed / dashboard types ----------
 
 export interface DashboardSummary {
@@ -129,7 +142,7 @@ export interface ProjectionParams {
   stepUpPct: StepUpRate;
   yearsToProject: number;
   realPrincipalSoFar: number; // Actual sum of money invested so far (cost basis),
-                               // distinct from currentCorpus which includes gains
+  // distinct from currentCorpus which includes gains
 }
 
 // ---------- XIRR types ----------
@@ -145,7 +158,9 @@ export interface ActionResult<T = void> {
   success: boolean;
   data?: T;
   error?: string;
+  redirect?: string;
 }
+
 
 // ---------- Fund preset type ----------
 

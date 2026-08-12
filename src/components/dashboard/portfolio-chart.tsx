@@ -26,9 +26,9 @@ interface PortfolioChartProps {
   summary?: DashboardSummary;
 }
 
-type TimeRange = "1D" | "1W" | "1M" | "1Y" | "ALL";
+type TimeRange = "1M" | "3M" | "6M" | "1Y" | "3Y" | "5Y" | "ALL";
 
-const TIME_RANGES: TimeRange[] = ["1D", "1W", "1M", "1Y", "ALL"];
+const TIME_RANGES: TimeRange[] = ["1M", "3M", "6M", "1Y", "3Y", "5Y", "ALL"];
 
 function CustomTooltip({ active, payload, label }: any) {
   if (active && payload && payload.length) {
@@ -89,14 +89,13 @@ export function PortfolioChart({ data, summary }: PortfolioChartProps) {
     const lastPoint = data[data.length - 1];
     const lastDate = new Date(lastPoint.date).getTime();
 
-    if (timeRange === "1D") {
-      return data.slice(-2);
-    }
-
     let cutoffMs = 0;
-    if (timeRange === "1W") cutoffMs = 7 * 24 * 60 * 60 * 1000;
-    else if (timeRange === "1M") cutoffMs = 30 * 24 * 60 * 60 * 1000;
+    if (timeRange === "1M") cutoffMs = 30 * 24 * 60 * 60 * 1000;
+    else if (timeRange === "3M") cutoffMs = 90 * 24 * 60 * 60 * 1000;
+    else if (timeRange === "6M") cutoffMs = 180 * 24 * 60 * 60 * 1000;
     else if (timeRange === "1Y") cutoffMs = 365 * 24 * 60 * 60 * 1000;
+    else if (timeRange === "3Y") cutoffMs = 3 * 365 * 24 * 60 * 60 * 1000;
+    else if (timeRange === "5Y") cutoffMs = 5 * 365 * 24 * 60 * 60 * 1000;
 
     const filtered = data.filter((d) => {
       const ptDate = new Date(d.date).getTime();
@@ -233,6 +232,7 @@ export function PortfolioChart({ data, summary }: PortfolioChartProps) {
                 tick={{ fontSize: 10, fill: "currentColor" }}
                 axisLine={false}
                 tickLine={false}
+                minTickGap={30}
               />
               <YAxis
                 domain={[0, topTick]}
@@ -249,7 +249,7 @@ export function PortfolioChart({ data, summary }: PortfolioChartProps) {
                 name="Portfolio Value"
                 stroke="#3b82f6"
                 strokeWidth={2.5}
-                dot={{ r: 3.5, fill: "#3b82f6", strokeWidth: 0 }}
+                dot={filteredData.length > 15 ? false : { r: 3.5, fill: "#3b82f6", strokeWidth: 0 }}
                 activeDot={{ r: 5, strokeWidth: 0, fill: "#3b82f6" }}
               />
               <Line
@@ -262,6 +262,7 @@ export function PortfolioChart({ data, summary }: PortfolioChartProps) {
                 dot={false}
                 activeDot={{ r: 4, strokeWidth: 0, fill: "#94a3b8" }}
               />
+
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -269,3 +270,4 @@ export function PortfolioChart({ data, summary }: PortfolioChartProps) {
     </Card>
   );
 }
+

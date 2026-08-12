@@ -19,10 +19,21 @@ export const FUND_PRESETS: FundPreset[] = [
   {
     name: "NIBL Sahabhagita Fund",
     feeRate: 1.57,
+    feeBreakdown: {
+      management: 1.25,
+      depository: 0.20,
+      supervision: 0.12,
+    },
   },
   {
     name: "SSIS",
-    feeRate: 1.50,
+    // From scheme documents: Management 1.50% + Depository 0.20% = 1.70% total
+    feeRate: 1.7,
+    feeBreakdown: {
+      management: 1.50,
+      depository: 0.20,
+      supervision: 0.0, // Supervision fee: unspecified in prospectus excerpt; placeholder 0.0
+    },
   },
 ];
 

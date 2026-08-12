@@ -17,10 +17,7 @@ const DAYS_IN_YEAR = 365;
  * Calculate the XIRR (annualized internal rate of return) for a series of cash flows.
  *
  * @param cashFlows Array of { amount, date } — negative = investment, positive = redemption
- * @returns The annualized return as a decimal (e.g. 0.12 for 12%), or null if:
- *   - Fewer than 2 cash flows
- *   - All cash flows are the same sign
- *   - Newton-Raphson doesn't converge
+ * @returns The annualized return as a decimal (e.g. 0.12 for 12%), or null if solver fails.
  */
 export function calculateXirr(cashFlows: CashFlow[]): number | null {
   if (cashFlows.length < 2) return null;
@@ -36,6 +33,21 @@ export function calculateXirr(cashFlows: CashFlow[]): number | null {
   );
 
   const firstDate = sorted[0].date;
+  const lastDate = sorted[sorted.length - 1].date;
+
+  // Day duration between first and last date
+  const totalDays = (lastDate.getTime() - firstDate.getTime()) / 86400000;
+  
+  // If 0 days elapsed (e.g., all entries on same date), return simple percentage gain
+  if (totalDays <= 0) {
+    const totalInvested = sorted
+      .filter((cf) => cf.amount < 0)
+      .reduce((sum, cf) => sum - cf.amount, 0);
+    const currentValue = sorted
+      .filter((cf) => cf.amount > 0)
+      .reduce((sum, cf) => sum + cf.amount, 0);
+    return totalInvested > 0 ? (currentValue - totalInvested) / totalInvested : 0;
+  }
 
   // Day fractions from the first date
   const dayFractions = sorted.map(
@@ -84,8 +96,8 @@ export function calculateXirr(cashFlows: CashFlow[]): number | null {
     const newRate = rate - f / fPrime;
 
     if (Math.abs(newRate - rate) < TOLERANCE) {
-      // Check for reasonable result (-100% to +1000%)
-      if (newRate > -1 && newRate < 10) {
+      // Check for reasonable result (-99% to +1000%)
+      if (newRate > -0.99 && newRate < 10) {
         return newRate;
       }
       return null; // Unreasonable result
@@ -99,8 +111,14 @@ export function calculateXirr(cashFlows: CashFlow[]): number | null {
     }
   }
 
-  // Did not converge
-  return null;
+  // Did not converge — fallback to simple ROI rate
+  const totalInvested = sorted
+    .filter((cf) => cf.amount < 0)
+    .reduce((sum, cf) => sum - cf.amount, 0);
+  const currentValue = sorted
+    .filter((cf) => cf.amount > 0)
+    .reduce((sum, cf) => sum + cf.amount, 0);
+  return totalInvested > 0 ? (currentValue - totalInvested) / totalInvested : 0;
 }
 
 /**
@@ -113,17 +131,25 @@ export function buildCashFlows(
   entries: Array<{ purchase_date: string; amount: number }>,
   currentValue: number
 ): CashFlow[] {
-  const cashFlows: CashFlow[] = entries.map((entry) => ({
-    amount: -Number(entry.amount), // Your actual outflow — DP charge is already
-                                    // netted into fewer units purchased, not an
-                                    // extra cost on top of what you paid
-    date: new Date(entry.purchase_date),
-  }));
+  const cashFlows: CashFlow[] = entries.map((entry) => {
+    const parts = entry.purchase_date.split("-").map(Number);
+    const date =
+      parts.length === 3 && !parts.some(isNaN)
+        ? new Date(parts[0], parts[1] - 1, parts[2])
+        : new Date(entry.purchase_date);
+    return {
+      amount: -Number(entry.amount),
+      date,
+    };
+  });
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   // Current value as a positive cash flow today
   cashFlows.push({
     amount: currentValue,
-    date: new Date(),
+    date: today,
   });
 
   return cashFlows;

@@ -101,16 +101,30 @@ export async function getDashboardData(
     }
   }
 
-  // Calculate unallotted leftover cash across all entries (Rollover Wallet Balance)
-  const unallottedCash = entries.reduce((sum, e) => {
+  // Calculate unallotted leftover cash across all entries (Chronological Rollover Wallet Balance)
+  const fundRolloverMap = new Map<string, number>();
+  const sortedEntries = [...entries].sort(
+    (a, b) =>
+      new Date(a.purchase_date).getTime() - new Date(b.purchase_date).getTime() ||
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+
+  for (const e of sortedEntries) {
+    const carried = fundRolloverMap.get(e.fund_id) || 0;
     const amt = Number(e.amount);
     const u = Number(e.units);
     const n = Number(e.nav);
     const dpFee = amt >= 5 ? 5 : 0;
+    const net = Math.max(0, amt + carried - dpFee);
     const unitCost = u * n;
-    const leftover = Math.max(0, amt - (unitCost + dpFee));
-    return sum + leftover;
-  }, 0);
+    const leftover = Math.max(0, net - unitCost);
+    fundRolloverMap.set(e.fund_id, leftover);
+  }
+
+  const unallottedCash = fundId
+    ? fundRolloverMap.get(fundId) || 0
+    : Array.from(fundRolloverMap.values()).reduce((sum, val) => sum + val, 0);
+
 
   // Pure Portfolio Value = totalUnits * latestNav (excluding rollover cash)
   const currentValue = latestNav !== null ? totalUnits * latestNav : null;
@@ -129,10 +143,11 @@ export async function getDashboardData(
 
   // XIRR
   let xirr: number | null = null;
-  if (entries.length >= XIRR_MIN_ENTRIES && currentValue !== null) {
+  if (entries.length >= 2 && currentValue !== null) {
     const cashFlows = buildCashFlows(entries, currentValue);
     xirr = calculateXirr(cashFlows);
   }
+
 
   // SIP Streak
   const sipStreak = calculateSipStreak(
@@ -156,9 +171,17 @@ export async function getDashboardData(
 
   // ---- Chart data ----
 
-  // NAV history — fetch from dedicated nav_history table
-  let navHistory: ChartDataPoint[] = [];
+  // NAV history — combine entry purchase NAVs and nav_history updates into a unified timeline
+  const combinedNavMap = new Map<string, number>();
 
+  // 1. First add entry purchase NAVs from all SIP entries
+  for (const entry of entries) {
+    if (entry.purchase_date && entry.nav) {
+      combinedNavMap.set(entry.purchase_date, Number(entry.nav));
+    }
+  }
+
+  // 2. Overlay nav_history table rows
   if (fundId && fundId !== "all") {
     const { data: navHistoryRows } = await supabase
       .from("nav_history")
@@ -166,32 +189,33 @@ export async function getDashboardData(
       .eq("fund_id", fundId)
       .order("nav_date", { ascending: true });
 
-    if (navHistoryRows && navHistoryRows.length > 0) {
-      navHistory = navHistoryRows.map((row) => ({
-        date: row.nav_date,
-        value: Number(row.nav_value),
-      }));
+    if (navHistoryRows) {
+      for (const row of navHistoryRows) {
+        combinedNavMap.set(row.nav_date, Number(row.nav_value));
+      }
+    }
+  } else {
+    const { data: navHistoryRows } = await supabase
+      .from("nav_history")
+      .select("nav_date, nav_value")
+      .order("nav_date", { ascending: true });
+
+    if (navHistoryRows) {
+      for (const row of navHistoryRows) {
+        combinedNavMap.set(row.nav_date, Number(row.nav_value));
+      }
     }
   }
 
-  // Fallback: if no nav_history rows yet, derive from entry purchase NAVs
-  if (navHistory.length === 0) {
-    navHistory = entries.map((entry) => ({
-      date: entry.purchase_date,
-      value: Number(entry.nav),
-    }));
-  }
-
-  // Ensure latestNav and latestNavDate are present in navHistory
+  // 3. Ensure latestNav and latestNavDate are included
   if (latestNav !== null && latestNavDate) {
-    const existingIdx = navHistory.findIndex((h) => h.date === latestNavDate);
-    if (existingIdx >= 0) {
-      navHistory[existingIdx].value = latestNav;
-    } else {
-      navHistory.push({ date: latestNavDate, value: latestNav });
-      navHistory.sort((a, b) => a.date.localeCompare(b.date));
-    }
+    combinedNavMap.set(latestNavDate, latestNav);
   }
+
+  const navHistory: ChartDataPoint[] = Array.from(combinedNavMap.entries())
+    .map(([date, value]) => ({ date, value }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
 
   // Build Portfolio Value timeline reflecting both SIP entries and NAV history updates
   const timelineDates = Array.from(

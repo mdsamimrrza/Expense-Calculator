@@ -6,7 +6,7 @@ import { BottomTabBar } from "./bottom-tab-bar";
 import { Header } from "./header";
 import { signOut } from "@/lib/actions/auth";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, userEmail }: { children: React.ReactNode; userEmail?: string }) {
   const router = useRouter();
 
   const handleSignOut = async () => {
@@ -17,10 +17,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       {/* Desktop sidebar */}
-      <Sidebar onSignOut={handleSignOut} />
+      <Sidebar onSignOut={handleSignOut} userEmail={userEmail} />
 
       {/* Mobile header */}
-      <Header onSignOut={handleSignOut} />
+      <Header onSignOut={handleSignOut} userEmail={userEmail} />
 
       {/* Main content area */}
       <main className="lg:pl-64 pb-20 lg:pb-0">

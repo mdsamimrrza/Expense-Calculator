@@ -75,6 +75,7 @@ export function NavHistoryChart({ data }: NavHistoryChartProps) {
                 tick={{ fontSize: 10, fill: "currentColor" }}
                 axisLine={false}
                 tickLine={false}
+                minTickGap={30}
               />
               <YAxis
                 domain={["dataMin - 0.5", "dataMax + 0.5"]}
@@ -96,9 +97,10 @@ export function NavHistoryChart({ data }: NavHistoryChartProps) {
                 name="NAV"
                 stroke="#10b981"
                 strokeWidth={2.5}
-                dot={{ r: 3.5, fill: "#10b981", strokeWidth: 0 }}
+                dot={data.length > 15 ? false : { r: 3.5, fill: "#10b981", strokeWidth: 0 }}
                 activeDot={{ r: 5, strokeWidth: 0, fill: "#10b981" }}
               />
+
             </LineChart>
           </ResponsiveContainer>
         </div>

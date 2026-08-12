@@ -30,6 +30,7 @@ const STEPS = [
   { title: "Fee Rate", description: "Annual fee percentage" },
   { title: "Monthly SIP", description: "Your planned monthly investment" },
   { title: "Start Date", description: "When did you start?" },
+  { title: "Current NAV", description: "Current market NAV of the fund" },
 ];
 
 export function OnboardingWizard() {
@@ -42,6 +43,8 @@ export function OnboardingWizard() {
   const [startDate, setStartDate] = useState(
     new Date().toISOString().split("T")[0]
   );
+  const [latestNav, setLatestNav] = useState("10.00");
+
   const router = useRouter();
   const { toast } = useToast();
 
@@ -70,6 +73,8 @@ export function OnboardingWizard() {
         return parseFloat(monthlySip) > 0;
       case 3:
         return startDate.length > 0;
+      case 4:
+        return parseFloat(latestNav) > 0;
       default:
         return false;
     }
@@ -83,8 +88,10 @@ export function OnboardingWizard() {
     formData.set("fee_rate_pct", feeRate);
     formData.set("start_date", startDate);
     formData.set("monthly_sip", monthlySip);
+    formData.set("latest_nav", latestNav);
 
     const result = await createFundConfig(formData);
+
 
     if (result.success) {
       toast({
@@ -213,6 +220,27 @@ export function OnboardingWizard() {
                 />
               </div>
             )}
+
+            {/* Step 4: Current NAV */}
+            {step === 4 && (
+              <div className="space-y-2">
+                <Label htmlFor="current-nav">Current NAV (NPR)</Label>
+                <Input
+                  id="current-nav"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={latestNav}
+                  onChange={(e) => setLatestNav(e.target.value)}
+                  placeholder="e.g. 10.50"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  Current market NAV for tracking portfolio valuation and returns.
+                </p>
+              </div>
+            )}
+
           </CardContent>
 
           <CardFooter className="flex justify-between">

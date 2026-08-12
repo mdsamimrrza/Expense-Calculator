@@ -15,6 +15,7 @@ export async function createFundConfig(
     fee_rate_pct: parseFloat(formData.get("fee_rate_pct") as string),
     start_date: formData.get("start_date") as string,
     monthly_sip: parseFloat(formData.get("monthly_sip") as string),
+    latest_nav: parseFloat(formData.get("latest_nav") as string),
   };
 
   const parsed = fundConfigSchema.safeParse(rawData);
@@ -31,14 +32,18 @@ export async function createFundConfig(
     return { success: false, error: "Not authenticated" };
   }
 
+  const startDateStr = parsed.data.start_date.toISOString().split("T")[0];
+
   const { data, error } = await supabase
     .from("fund_config")
     .insert({
       user_id: user.id,
       fund_name: parsed.data.fund_name,
       fee_rate_pct: parsed.data.fee_rate_pct,
-      start_date: parsed.data.start_date.toISOString().split("T")[0],
+      start_date: startDateStr,
       monthly_sip: parsed.data.monthly_sip,
+      latest_nav: parsed.data.latest_nav,
+      latest_nav_date: startDateStr,
     })
     .select()
     .single();
@@ -47,8 +52,21 @@ export async function createFundConfig(
     return { success: false, error: error.message };
   }
 
+  if (data) {
+    await supabase.from("nav_history").upsert(
+      {
+        fund_id: data.id,
+        user_id: user.id,
+        nav_date: startDateStr,
+        nav_value: parsed.data.latest_nav,
+      },
+      { onConflict: "fund_id,nav_date" }
+    );
+  }
+
   return { success: true, data: data as FundConfig };
 }
+
 
 export async function updateFundConfig(
   id: string,
@@ -59,6 +77,7 @@ export async function updateFundConfig(
     fee_rate_pct: parseFloat(formData.get("fee_rate_pct") as string),
     start_date: formData.get("start_date") as string,
     monthly_sip: parseFloat(formData.get("monthly_sip") as string),
+    latest_nav: parseFloat(formData.get("latest_nav") as string),
   };
 
   const parsed = fundConfigSchema.safeParse(rawData);
@@ -67,14 +86,32 @@ export async function updateFundConfig(
   }
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const startDateStr = parsed.data.start_date.toISOString().split("T")[0];
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  // Fetch existing fund to check if latest_nav changed
+  const { data: existingFund } = await supabase
+    .from("fund_config")
+    .select("latest_nav, latest_nav_date")
+    .eq("id", id)
+    .single();
+
+  const navChanged = existingFund?.latest_nav !== parsed.data.latest_nav;
+  const newNavDate = navChanged ? todayStr : existingFund?.latest_nav_date;
 
   const { data, error } = await supabase
     .from("fund_config")
     .update({
       fund_name: parsed.data.fund_name,
       fee_rate_pct: parsed.data.fee_rate_pct,
-      start_date: parsed.data.start_date.toISOString().split("T")[0],
+      start_date: startDateStr,
       monthly_sip: parsed.data.monthly_sip,
+      latest_nav: parsed.data.latest_nav,
+      ...(navChanged && { latest_nav_date: newNavDate }),
     })
     .eq("id", id)
     .select()
@@ -84,8 +121,22 @@ export async function updateFundConfig(
     return { success: false, error: error.message };
   }
 
+  if (user && navChanged) {
+    await supabase.from("nav_history").upsert(
+      {
+        fund_id: id,
+        user_id: user.id,
+        nav_date: newNavDate,
+        nav_value: parsed.data.latest_nav,
+      },
+      { onConflict: "fund_id,nav_date" }
+    );
+  }
+
   return { success: true, data: data as FundConfig };
 }
+
+
 
 export async function deleteFundConfig(id: string): Promise<ActionResult> {
   const supabase = await createClient();

@@ -25,9 +25,10 @@ const navItems = [
 
 interface SidebarProps {
   onSignOut: () => void;
+  userEmail?: string;
 }
 
-export function Sidebar({ onSignOut }: SidebarProps) {
+export function Sidebar({ onSignOut, userEmail }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -68,6 +69,14 @@ export function Sidebar({ onSignOut }: SidebarProps) {
 
       {/* Bottom section */}
       <div className="px-3 py-4">
+        {userEmail && (
+          <div className="px-3 mb-2 flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
+            <p className="text-xs text-muted-foreground truncate font-medium" title={userEmail}>
+              {userEmail}
+            </p>
+          </div>
+        )}
         <Separator className="mb-3" />
         <Button
           variant="ghost"
