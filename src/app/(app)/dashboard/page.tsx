@@ -54,7 +54,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header & Controls Row */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 -mb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">SIP Dashboard</h1>
           <p className="text-sm text-muted-foreground">
@@ -106,8 +106,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             totalInvested={summary.totalInvested}
             currentValue={summary.currentValue}
           />
-          <FeeDragArea 
-            data={feeDragChart} 
+          <FeeDragArea
+            data={feeDragChart}
             feeRatePct={
               selectedFundId !== "all" && activeFund
                 ? Number(activeFund.fee_rate_pct || 0)

@@ -4,8 +4,6 @@ import { getFundConfigs } from "@/lib/actions/fund-config";
 import { EntryTable } from "@/components/entries/entry-table";
 import { EntryForm } from "@/components/entries/entry-form";
 import { CsvImportDialog } from "@/components/entries/csv-import-dialog";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
@@ -54,26 +52,8 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
         </div>
       </div>
 
-      {/* Multi-fund Filter Tabs */}
-      {funds.length > 1 && (
-        <div className="p-1 rounded-xl border border-border/50 bg-card/50 w-fit">
-          <Tabs defaultValue={selectedFundId}>
-            <TabsList>
-              <TabsTrigger value="all" asChild>
-                <Link href="/history?fund=all">All Funds</Link>
-              </TabsTrigger>
-              {funds.map((fund) => (
-                <TabsTrigger key={fund.id} value={fund.id} asChild>
-                  <Link href={`/history?fund=${fund.id}`}>{fund.fund_name}</Link>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        </div>
-      )}
-
-      {/* History Table */}
-      <EntryTable entries={entries} funds={funds} total={total} />
+      {/* History Table (Now includes Fund Filter & Search Bar) */}
+      <EntryTable entries={entries} funds={funds} total={total} selectedFundId={selectedFundId} />
     </div>
   );
 }

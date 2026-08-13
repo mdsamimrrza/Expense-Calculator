@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -12,6 +13,10 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ChartDataPoint } from "@/lib/types";
 import { formatNav, formatDateShort } from "@/lib/format";
+import { cn } from "@/lib/utils";
+
+type TimeRange = "1M" | "3M" | "6M" | "1Y" | "3Y" | "5Y" | "ALL";
+const TIME_RANGES: TimeRange[] = ["1M", "3M", "6M", "1Y", "3Y", "5Y", "ALL"];
 
 interface NavHistoryChartProps {
   data: ChartDataPoint[];
@@ -32,6 +37,29 @@ function CustomNavTooltip({ active, payload, label }: any) {
 }
 
 export function NavHistoryChart({ data }: NavHistoryChartProps) {
+  const [timeRange, setTimeRange] = useState<TimeRange>("ALL");
+
+  const filteredData = useMemo(() => {
+    if (data.length <= 1 || timeRange === "ALL") return data;
+
+    const lastPoint = data[data.length - 1];
+    const lastDate = new Date(lastPoint.date).getTime();
+
+    let cutoffMs = 0;
+    if (timeRange === "1M") cutoffMs = 30 * 24 * 60 * 60 * 1000;
+    else if (timeRange === "3M") cutoffMs = 90 * 24 * 60 * 60 * 1000;
+    else if (timeRange === "6M") cutoffMs = 180 * 24 * 60 * 60 * 1000;
+    else if (timeRange === "1Y") cutoffMs = 365 * 24 * 60 * 60 * 1000;
+    else if (timeRange === "3Y") cutoffMs = 3 * 365 * 24 * 60 * 60 * 1000;
+    else if (timeRange === "5Y") cutoffMs = 5 * 365 * 24 * 60 * 60 * 1000;
+
+    const filtered = data.filter((d) => {
+      const ptDate = new Date(d.date).getTime();
+      return lastDate - ptDate <= cutoffMs;
+    });
+
+    return filtered.length >= 2 ? filtered : data.slice(-2);
+  }, [data, timeRange]);
   if (data.length === 0) {
     return (
       <Card className="border-border/60 rounded-[2rem] shadow-sm bg-card">
@@ -47,21 +75,41 @@ export function NavHistoryChart({ data }: NavHistoryChartProps) {
 
   return (
     <Card className="border-border/60 rounded-[2rem] shadow-sm overflow-hidden bg-card">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-extrabold tracking-tight">NAV History</CardTitle>
-          {data.length > 0 && (
-            <span className="text-xs font-extrabold text-emerald-500 bg-emerald-500/10 px-2.5 py-1 rounded-full">
-              NPR {formatNav(data[data.length - 1].value)}
-            </span>
-          )}
+      <CardHeader className="pb-3 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-col gap-1">
+            <CardTitle className="text-base font-extrabold tracking-tight">NAV History</CardTitle>
+            {data.length > 0 && (
+              <span className="text-xs font-extrabold text-emerald-500 bg-emerald-500/10 px-2.5 py-1 rounded-full self-start">
+                NPR {formatNav(data[data.length - 1].value)}
+              </span>
+            )}
+          </div>
+
+          {/* Time Range Selector Tabs */}
+          <div className="flex items-center gap-1 bg-secondary/50 p-1 rounded-full border border-border/40 shrink-0 self-start sm:self-center">
+            {TIME_RANGES.map((range) => (
+              <button
+                key={range}
+                onClick={() => setTimeRange(range)}
+                className={cn(
+                  "px-3 py-1 text-xs font-bold rounded-full transition-all duration-150 select-none",
+                  timeRange === range
+                    ? "bg-primary text-primary-foreground shadow-sm scale-[1.02]"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+                )}
+              >
+                {range}
+              </button>
+            ))}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
         <div className="h-[250px] w-full pt-2">
           <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <LineChart
-              data={data}
+              data={filteredData}
               margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
             >
               <CartesianGrid
@@ -97,7 +145,7 @@ export function NavHistoryChart({ data }: NavHistoryChartProps) {
                 name="NAV"
                 stroke="#10b981"
                 strokeWidth={2.5}
-                dot={data.length > 15 ? false : { r: 3.5, fill: "#10b981", strokeWidth: 0 }}
+                dot={filteredData.length > 15 ? false : { r: 3.5, fill: "#10b981", strokeWidth: 0 }}
                 activeDot={{ r: 5, strokeWidth: 0, fill: "#10b981" }}
               />
 

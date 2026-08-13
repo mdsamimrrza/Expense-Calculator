@@ -76,6 +76,10 @@ export interface PortfolioChartPoint {
 export interface MonthlyContribution {
   month: string; // "YYYY-MM"
   amount: number;
+  breakdown?: Array<{
+    fundName: string;
+    amount: number;
+  }>;
 }
 
 export interface FeeDragPoint {

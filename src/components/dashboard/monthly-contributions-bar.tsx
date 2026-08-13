@@ -21,12 +21,30 @@ interface MonthlyContributionsBarProps {
 
 function CustomTooltip({ active, payload, label }: any) {
   if (active && payload && payload.length) {
+    const data = payload[0].payload as MonthlyContribution;
     return (
-      <div className="bg-slate-900 text-white px-3 py-1.5 rounded-xl shadow-xl border border-slate-800 flex items-center gap-2 text-xs font-semibold">
-        <span className="text-[11px] text-slate-400">{formatMonth(String(label || ""))}:</span>
-        <span className="font-extrabold text-blue-400">
-          NPR {formatCurrencyWhole(Number(payload[0].value || 0)).replace("NPR ", "")}
-        </span>
+      <div className="bg-slate-900 text-white px-3.5 py-3 rounded-xl shadow-xl border border-slate-800 flex flex-col gap-1.5 min-w-[160px]">
+        <div className="flex items-center justify-between gap-4 text-[11px] font-semibold border-b border-slate-800 pb-1.5">
+          <span className="text-slate-400">{formatMonth(String(label || ""))}</span>
+          <span className="font-extrabold text-blue-400">
+            {formatCurrencyWhole(data.amount)}
+          </span>
+        </div>
+        {data.breakdown && data.breakdown.length > 0 && (
+          <div className="flex flex-col gap-1 pt-1">
+            {data.breakdown.map((item, idx) => (
+              <div key={idx} className="flex items-center justify-between gap-4 text-[11px]">
+                <div className="flex items-center gap-1.5 overflow-hidden">
+                  <div className="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0" />
+                  <span className="text-slate-300 truncate max-w-[140px]">{item.fundName}</span>
+                </div>
+                <span className="font-semibold text-slate-200 shrink-0">
+                  {formatCurrencyWhole(item.amount).replace("NPR ", "")}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   }

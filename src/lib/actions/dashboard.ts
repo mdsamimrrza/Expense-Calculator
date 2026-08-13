@@ -261,16 +261,27 @@ export async function getDashboardData(
   }
 
   // Monthly contributions
-  const monthlyMap = new Map<string, number>();
+  const monthlyMap = new Map<string, { total: number; breakdownMap: Map<string, number> }>();
   for (const entry of entries) {
     const monthKey = entry.purchase_date ? entry.purchase_date.substring(0, 7) : "";
     if (monthKey) {
-      monthlyMap.set(monthKey, (monthlyMap.get(monthKey) ?? 0) + Number(entry.amount));
+      if (!monthlyMap.has(monthKey)) {
+        monthlyMap.set(monthKey, { total: 0, breakdownMap: new Map() });
+      }
+      const mData = monthlyMap.get(monthKey)!;
+      mData.total += Number(entry.amount);
+
+      const fundName = funds.find((f) => f.id === entry.fund_id)?.fund_name || "Unknown Fund";
+      mData.breakdownMap.set(fundName, (mData.breakdownMap.get(fundName) || 0) + Number(entry.amount));
     }
   }
   const monthlyContributions: MonthlyContribution[] = Array.from(
     monthlyMap.entries()
-  ).map(([month, amount]) => ({ month, amount }));
+  ).map(([month, mData]) => ({ 
+    month, 
+    amount: mData.total,
+    breakdown: Array.from(mData.breakdownMap.entries()).map(([fundName, amount]) => ({ fundName, amount }))
+  }));
 
   // Fee drag
   const feeRatePct =

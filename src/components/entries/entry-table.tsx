@@ -2,8 +2,9 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2, Loader2, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Pencil, Trash2, Loader2, ArrowUpDown, ChevronLeft, ChevronRight, Search, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -24,6 +25,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { deleteEntry } from "@/lib/actions/entries";
 import { EntryForm } from "./entry-form";
+import { HistoryFundSelector } from "./history-fund-selector";
 import type { Entry, FundConfig } from "@/lib/types";
 import { formatCurrency, formatDate, formatNav, formatUnits } from "@/lib/format";
 
@@ -31,14 +33,21 @@ interface EntryTableProps {
   entries: Entry[];
   funds: FundConfig[];
   total: number;
+  selectedFundId: string;
 }
 
-export function EntryTable({ entries, funds }: EntryTableProps) {
+export function EntryTable({ entries, funds, selectedFundId }: EntryTableProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" }>({ key: "purchase_date", direction: "desc" });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<number | "all">(10);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+
+  const toggleCard = (id: string) => {
+    setExpandedCardId((prev) => (prev === id ? null : id));
+  };
 
   const router = useRouter();
   const { toast } = useToast();
@@ -90,12 +99,47 @@ export function EntryTable({ entries, funds }: EntryTableProps) {
     return map;
   }, [entries]);
 
-  const sortedEntries = useMemo(() => {
-    return [...entries].sort((a, b) => {
-      const diff = new Date(a.purchase_date).getTime() - new Date(b.purchase_date).getTime();
-      return sortOrder === "asc" ? diff : -diff;
+  const filteredEntries = useMemo(() => {
+    if (!searchQuery.trim()) return entries;
+    const lowerQuery = searchQuery.toLowerCase();
+    return entries.filter((entry) => {
+      const fundName = fundMap.get(entry.fund_id) || "";
+      const searchStr = `${entry.purchase_date} ${entry.amount} ${entry.nav} ${entry.units} ${entry.notes || ""} ${fundName}`.toLowerCase();
+      return searchStr.includes(lowerQuery);
     });
-  }, [entries, sortOrder]);
+  }, [entries, searchQuery, fundMap]);
+
+  const sortedEntries = useMemo(() => {
+    return [...filteredEntries].sort((a, b) => {
+      let aVal: any, bVal: any;
+
+      if (sortConfig.key === "fund") {
+        aVal = fundMap.get(a.fund_id) || "";
+        bVal = fundMap.get(b.fund_id) || "";
+      } else if (sortConfig.key === "rollover") {
+        aVal = breakdownMap.get(a.id)?.remainingRollover || 0;
+        bVal = breakdownMap.get(b.id)?.remainingRollover || 0;
+      } else {
+        aVal = a[sortConfig.key as keyof Entry];
+        bVal = b[sortConfig.key as keyof Entry];
+      }
+
+      if (sortConfig.key === "purchase_date" || sortConfig.key === "created_at") {
+        aVal = new Date(aVal as string).getTime();
+        bVal = new Date(bVal as string).getTime();
+      } else if (["amount", "nav", "units"].includes(sortConfig.key)) {
+        aVal = Number(aVal);
+        bVal = Number(bVal);
+      } else if (typeof aVal === "string") {
+        aVal = aVal.toLowerCase();
+        bVal = (bVal as string).toLowerCase();
+      }
+
+      if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
+      if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [filteredEntries, sortConfig, fundMap, breakdownMap]);
 
   // Pagination Math
   const totalEntries = sortedEntries.length;
@@ -131,6 +175,32 @@ export function EntryTable({ entries, funds }: EntryTableProps) {
     setIsDeleting(false);
   }
 
+  const handleSort = (key: string) => {
+    setSortConfig((current) => ({
+      key,
+      direction: current.key === key && current.direction === "asc" ? "desc" : "asc",
+    }));
+  };
+
+  const SortableHead = ({ label, sortKey, align = "left" }: { label: string; sortKey: string; align?: "left" | "right" }) => {
+    const isActive = sortConfig.key === sortKey;
+    return (
+      <TableHead className={align === "right" ? "text-right" : ""}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleSort(sortKey)}
+          className={`h-8 text-xs font-semibold hover:bg-muted/50 ${
+            align === "right" ? "flex justify-end ml-auto -mr-3" : "-ml-3"
+          } ${isActive ? "text-foreground" : "text-muted-foreground"}`}
+        >
+          {label}
+          <ArrowUpDown className={`ml-1 h-3 w-3 ${isActive ? "opacity-100" : "opacity-40"}`} />
+        </Button>
+      </TableHead>
+    );
+  };
+
   if (entries.length === 0) {
     return (
       <Card className="border-border/50">
@@ -146,28 +216,39 @@ export function EntryTable({ entries, funds }: EntryTableProps) {
 
   return (
     <div className="space-y-4">
+      {/* Filters (Fund & Search) */}
+      <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
+        {funds.length > 1 && (
+          <div className="w-full sm:w-auto">
+            <HistoryFundSelector funds={funds} selectedFundId={selectedFundId} />
+          </div>
+        )}
+        <div className="relative w-full sm:max-w-[320px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by date, amount, notes..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="pl-9 h-9 rounded-xl bg-card border-border/50 text-xs shadow-sm"
+          />
+        </div>
+      </div>
+
       {/* Desktop Table View */}
       <div className="hidden sm:block rounded-xl border border-border/50 bg-card overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-                  className="-ml-3 h-8 text-xs font-semibold"
-                >
-                  Date
-                  <ArrowUpDown className="ml-1 h-3 w-3" />
-                </Button>
-              </TableHead>
-              {funds.length > 1 && <TableHead>Fund</TableHead>}
-              <TableHead className="text-right">Deposit Amount</TableHead>
-              <TableHead className="text-right">NAV</TableHead>
-              <TableHead className="text-right">Units</TableHead>
-              <TableHead className="text-right">Rollover Leftover</TableHead>
-              <TableHead>Notes</TableHead>
+              <SortableHead label="Date" sortKey="purchase_date" />
+              {funds.length > 1 && <SortableHead label="Fund" sortKey="fund" />}
+              <SortableHead label="Deposit Amount" sortKey="amount" align="right" />
+              <SortableHead label="NAV" sortKey="nav" align="right" />
+              <SortableHead label="Units" sortKey="units" align="right" />
+              <SortableHead label="Rollover Leftover" sortKey="rollover" align="right" />
+              <SortableHead label="Notes" sortKey="notes" />
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -231,8 +312,14 @@ export function EntryTable({ entries, funds }: EntryTableProps) {
       <div className="sm:hidden space-y-3">
         {paginatedEntries.map((entry) => {
           const b = breakdownMap.get(entry.id);
+          const isExpanded = expandedCardId === entry.id;
+          
           return (
-            <Card key={entry.id} className="border-border/50">
+            <Card 
+              key={entry.id} 
+              className="border-border/50 cursor-pointer overflow-hidden transition-all duration-200 hover:border-primary/50"
+              onClick={() => toggleCard(entry.id)}
+            >
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
@@ -241,7 +328,7 @@ export function EntryTable({ entries, funds }: EntryTableProps) {
                       <p className="text-xs text-muted-foreground">{fundMap.get(entry.fund_id)}</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                     <EntryForm
                       funds={funds}
                       entry={entry}
@@ -259,6 +346,14 @@ export function EntryTable({ entries, funds }: EntryTableProps) {
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground"
+                      onClick={() => toggleCard(entry.id)}
+                    >
+                      <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                    </Button>
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-xs pt-1 border-t border-border/40">
@@ -275,31 +370,40 @@ export function EntryTable({ entries, funds }: EntryTableProps) {
                     <span className="font-mono font-medium">{formatUnits(Number(entry.units))}</span>
                   </div>
                 </div>
-                {b && (
-                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-2 border-t border-border/40 bg-secondary/20 p-2 rounded-lg">
-                    <div>
-                      <span className="text-muted-foreground block">Carried Rollover:</span>
-                      <span className="font-mono text-blue-500 font-medium">+ {formatCurrency(b.carriedRollover)}</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground block">Total Available:</span>
-                      <span className="font-mono font-medium">{formatCurrency(b.totalAvailable)}</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground block">Net Cash for Units:</span>
-                      <span className="font-mono font-medium">{formatCurrency(b.netCash)}</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground block">Ending Rollover:</span>
-                      <span className="font-mono text-emerald-500 font-bold">{formatCurrency(b.remainingRollover)}</span>
-                    </div>
+                
+                <div 
+                  className={`grid transition-all duration-200 ease-in-out ${
+                    isExpanded ? "grid-rows-[1fr] opacity-100 mt-3" : "grid-rows-[0fr] opacity-0 mt-0"
+                  }`}
+                >
+                  <div className="overflow-hidden">
+                    {b && (
+                      <div className="grid grid-cols-2 gap-2 text-[11px] pt-2 border-t border-border/40 bg-secondary/20 p-2 rounded-lg">
+                        <div>
+                          <span className="text-muted-foreground block">Carried Rollover:</span>
+                          <span className="font-mono text-blue-500 font-medium">+ {formatCurrency(b.carriedRollover)}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground block">Total Available:</span>
+                          <span className="font-mono font-medium">{formatCurrency(b.totalAvailable)}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground block">Net Cash for Units:</span>
+                          <span className="font-mono font-medium">{formatCurrency(b.netCash)}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground block">Ending Rollover:</span>
+                          <span className="font-mono text-emerald-500 font-bold">{formatCurrency(b.remainingRollover)}</span>
+                        </div>
+                      </div>
+                    )}
+                    {entry.notes && (
+                      <p className="text-xs text-muted-foreground italic bg-muted/40 p-2 rounded mt-2">
+                        {entry.notes}
+                      </p>
+                    )}
                   </div>
-                )}
-                {entry.notes && (
-                  <p className="text-xs text-muted-foreground italic bg-muted/40 p-2 rounded">
-                    {entry.notes}
-                  </p>
-                )}
+                </div>
               </CardContent>
             </Card>
           );
