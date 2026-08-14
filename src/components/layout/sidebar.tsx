@@ -6,29 +6,29 @@ import {
   LayoutDashboard,
   History,
   TrendingUp,
+  Receipt,
   Settings,
-  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { APP_NAME } from "@/lib/constants";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "./theme-toggle";
 import { Logo } from "@/components/ui/logo";
+import { UserAvatarMenu } from "./user-avatar-menu";
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "History", href: "/history", icon: History },
   { label: "Projections", href: "/projections", icon: TrendingUp },
+  { label: "Tax & Settlement", href: "/tax-breakdown", icon: Receipt },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 
 interface SidebarProps {
   onSignOut: () => void;
   userEmail?: string;
+  userName?: string;
 }
 
-export function Sidebar({ onSignOut, userEmail }: SidebarProps) {
+export function Sidebar({ onSignOut, userEmail, userName }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -67,27 +67,14 @@ export function Sidebar({ onSignOut, userEmail }: SidebarProps) {
         })}
       </nav>
 
-      {/* Bottom section */}
-      <div className="px-3 py-4">
-        {userEmail && (
-          <div className="px-3 mb-2 flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
-            <p className="text-xs text-muted-foreground truncate font-medium" title={userEmail}>
-              {userEmail}
-            </p>
-          </div>
-        )}
-        <Separator className="mb-3" />
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onSignOut}
-          className="w-full justify-start text-muted-foreground hover:text-destructive px-3 h-10"
-          id="sidebar-signout"
-        >
-          <LogOut className="h-4 w-4 mr-2" />
-          Sign out
-        </Button>
+      {/* Bottom section: User Profile Card */}
+      <div className="px-3 py-4 border-t border-border/50">
+        <UserAvatarMenu
+          userEmail={userEmail}
+          userName={userName}
+          onSignOut={onSignOut}
+          variant="full-card"
+        />
       </div>
     </aside>
   );

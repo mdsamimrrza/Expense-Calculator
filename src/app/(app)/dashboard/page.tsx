@@ -54,26 +54,23 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header & Controls Row */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 -mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">SIP Dashboard</h1>
           <p className="text-sm text-muted-foreground">
             Track your mutual fund performance, returns, and fee impact.
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full lg:w-auto min-w-0">
-          {/* Fund tabs removed as requested, relying on the dropdown in Portfolio Value card */}
 
-          {selectedFundId !== "all" && activeFund && (
-            <div className="flex-shrink-0 mt-1 sm:mt-0">
-              <LatestNavInput
-                fundId={activeFund.id}
-                currentNav={activeFund.latest_nav ? Number(activeFund.latest_nav) : null}
-                currentNavDate={activeFund.latest_nav_date}
-              />
-            </div>
-          )}
-        </div>
+        {selectedFundId !== "all" && activeFund && (
+          <div className="w-full sm:w-auto flex-shrink-0 mt-1 sm:mt-0">
+            <LatestNavInput
+              fundId={activeFund.id}
+              currentNav={activeFund.latest_nav ? Number(activeFund.latest_nav) : null}
+              currentNavDate={activeFund.latest_nav_date}
+            />
+          </div>
+        )}
       </div>
 
       {/* 1. Top 4 KPI Summary Cards & Personal Summary */}

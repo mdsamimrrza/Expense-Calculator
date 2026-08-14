@@ -1,133 +1,69 @@
 "use server";
 
+import { auth, signOut as nextAuthSignOut } from "@/auth";
 import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
-import {
-  signupSchema,
-  loginSchema,
-  forgotPasswordSchema,
-  resetPasswordSchema,
-} from "@/lib/schemas/auth";
 import type { ActionResult } from "@/lib/types";
+import { checkEmailRateLimit } from "@/lib/rate-limit";
 
 export async function signUp(formData: FormData): Promise<ActionResult> {
-  const rawData = {
-    email: formData.get("email") as string,
-    password: formData.get("password") as string,
-    confirmPassword: formData.get("confirmPassword") as string,
-  };
-
-  const parsed = signupSchema.safeParse(rawData);
-  if (!parsed.success) {
-    return { success: false, error: parsed.error.errors[0].message };
+  const email = formData.get("email") as string;
+  if (email) {
+    const rateCheck = checkEmailRateLimit(email);
+    if (!rateCheck.success) {
+      return { success: false, error: rateCheck.error };
+    }
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signUp({
-    email: parsed.data.email,
-    password: parsed.data.password,
-    options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SUPABASE_URL ? "" : "http://localhost:3000"}/auth/callback`,
-    },
-  });
-
-  if (error) {
-    return { success: false, error: error.message };
-  }
-
-  return { success: true };
+  return { success: false, error: "Email/password signup is disabled. Please use Google Login." };
 }
 
 export async function signIn(formData: FormData): Promise<ActionResult> {
-  const rawData = {
-    email: formData.get("email") as string,
-    password: formData.get("password") as string,
-  };
-
-  const parsed = loginSchema.safeParse(rawData);
-  if (!parsed.success) {
-    return { success: false, error: parsed.error.errors[0].message };
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
-    email: parsed.data.email,
-    password: parsed.data.password,
-  });
-
-  if (error) {
-    return { success: false, error: error.message };
-  }
-
-  // Check if user has completed onboarding (has any fund_config rows)
-  const { data: funds } = await supabase
-    .from("fund_config")
-    .select("id")
-    .limit(1);
-
-  if (!funds || funds.length === 0) {
-    redirect("/onboarding");
-  }
-
-  redirect("/dashboard");
+  return { success: false, error: "Email/password login is disabled. Please use Google Login." };
 }
 
-
-
 export async function signOut(): Promise<void> {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-  redirect("/login");
+  await nextAuthSignOut({ redirectTo: "/" });
 }
 
 export async function forgotPassword(
   formData: FormData
 ): Promise<ActionResult> {
-  const rawData = {
-    email: formData.get("email") as string,
-  };
-
-  const parsed = forgotPasswordSchema.safeParse(rawData);
-  if (!parsed.success) {
-    return { success: false, error: parsed.error.errors[0].message };
+  const email = formData.get("email") as string;
+  if (!email) {
+    return { success: false, error: "Email address is required." };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.resetPasswordForEmail(
-    parsed.data.email,
-    {
-      redirectTo: `${process.env.NEXT_PUBLIC_SUPABASE_URL ? "" : "http://localhost:3000"}/reset-password`,
-    }
-  );
-
-  if (error) {
-    return { success: false, error: error.message };
+  // Rate Limiting: Max 5 email requests per hour per email address
+  const rateCheck = checkEmailRateLimit(email);
+  if (!rateCheck.success) {
+    return { success: false, error: rateCheck.error };
   }
 
-  return { success: true };
+  return { success: false, error: "Password reset is disabled. Please use Google Login." };
 }
 
 export async function resetPassword(
   formData: FormData
 ): Promise<ActionResult> {
-  const rawData = {
-    password: formData.get("password") as string,
-    confirmPassword: formData.get("confirmPassword") as string,
-  };
+  return { success: false, error: "Password reset is disabled. Please use Google Login." };
+}
 
-  const parsed = resetPasswordSchema.safeParse(rawData);
-  if (!parsed.success) {
-    return { success: false, error: parsed.error.errors[0].message };
+export async function deleteAccount(): Promise<ActionResult> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.updateUser({
-    password: parsed.data.password,
-  });
+  const { error } = await supabase
+    .schema("next_auth")
+    .from("users")
+    .delete()
+    .eq("id", session.user.id);
 
   if (error) {
     return { success: false, error: error.message };
   }
-
-  redirect("/login");
+  
+  return { success: true };
 }

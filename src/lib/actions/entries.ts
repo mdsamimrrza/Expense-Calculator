@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { entrySchema, csvRowSchema } from "@/lib/schemas/entry";
 import type { ActionResult, Entry, CsvImportResult } from "@/lib/types";
@@ -23,9 +24,8 @@ export async function createEntry(
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await auth();
+  const user = session?.user;
 
   if (!user) {
     return { success: false, error: "Not authenticated" };
@@ -143,9 +143,8 @@ export async function updateEntry(
     return { success: false, error: error.message };
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await auth();
+  const user = session?.user;
 
   if (user) {
     await supabase.from("nav_history").upsert(
@@ -203,8 +202,17 @@ export async function getEntries(
   const { fundId, page = 1, pageSize = 20, sortOrder = "desc" } = params;
 
   const supabase = await createClient();
+  const session = await auth();
+  const user = session?.user;
 
-  let query = supabase.from("entries").select("*", { count: "exact" });
+  if (!user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  let query = supabase
+    .from("entries")
+    .select("*", { count: "exact" })
+    .eq("user_id", user.id);
 
   if (fundId) {
     query = query.eq("fund_id", fundId);
@@ -240,9 +248,8 @@ export async function importEntriesFromCsv(
   }>
 ): Promise<ActionResult<CsvImportResult>> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await auth();
+  const user = session?.user;
 
   if (!user) {
     return { success: false, error: "Not authenticated" };
@@ -276,7 +283,7 @@ export async function importEntriesFromCsv(
     const units = parsed.data.units ?? Math.floor(effectiveCash / parsed.data.nav);
 
     validRows.push({
-      user_id: user.id,
+      user_id: user.id!,
       fund_id: fundId,
       purchase_date: new Date(parsed.data.date).toISOString().split("T")[0],
       amount: parsed.data.amount,
@@ -341,17 +348,17 @@ export async function getFundRolloverCash(
   fundId: string
 ): Promise<ActionResult<number>> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await auth();
+  const user = session?.user;
 
-  if (!user) {
+  if (!user?.id) {
     return { success: false, error: "Not authenticated" };
   }
 
   const { data: entries, error } = await supabase
     .from("entries")
     .select("amount, nav, units, purchase_date, created_at")
+    .eq("user_id", user.id)
     .eq("fund_id", fundId)
     .order("purchase_date", { ascending: true })
     .order("created_at", { ascending: true });

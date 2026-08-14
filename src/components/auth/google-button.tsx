@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -21,22 +21,7 @@ export function GoogleButton({
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
-      const supabase = createClient();
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-
-      if (error) {
-        toast({
-          title: "Authentication Failed",
-          description: error.message,
-          variant: "destructive",
-        });
-        setIsLoading(false);
-      }
+      await signIn("google", { callbackUrl: "/dashboard" });
     } catch (err) {
       toast({
         title: "Error",

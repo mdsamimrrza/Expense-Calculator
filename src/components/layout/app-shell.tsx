@@ -4,23 +4,30 @@ import { useRouter } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { BottomTabBar } from "./bottom-tab-bar";
 import { Header } from "./header";
-import { signOut } from "@/lib/actions/auth";
+import { signOut } from "next-auth/react";
 
-export function AppShell({ children, userEmail }: { children: React.ReactNode; userEmail?: string }) {
+export function AppShell({
+  children,
+  userEmail,
+  userName,
+}: {
+  children: React.ReactNode;
+  userEmail?: string;
+  userName?: string;
+}) {
   const router = useRouter();
 
   const handleSignOut = async () => {
-    await signOut();
-    router.push("/");
+    await signOut({ callbackUrl: "/" });
   };
 
   return (
     <div className="min-h-screen bg-background">
       {/* Desktop sidebar */}
-      <Sidebar onSignOut={handleSignOut} userEmail={userEmail} />
+      <Sidebar onSignOut={handleSignOut} userEmail={userEmail} userName={userName} />
 
       {/* Mobile header */}
-      <Header onSignOut={handleSignOut} userEmail={userEmail} />
+      <Header onSignOut={handleSignOut} userEmail={userEmail} userName={userName} />
 
       {/* Main content area */}
       <main className="lg:pl-64 pb-20 lg:pb-0">

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/auth";
 import type {
   ActionResult,
   DashboardSummary,
@@ -34,11 +35,18 @@ export async function getDashboardData(
   fundId?: string
 ): Promise<ActionResult<DashboardData>> {
   const supabase = await createClient();
+  const session = await auth();
+  const user = session?.user;
+
+  if (!user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
 
   // Fetch fund configs
   const { data: fundsRaw, error: fundsError } = await supabase
     .from("fund_config")
     .select("*")
+    .eq("user_id", user.id)
     .eq("is_active", true)
     .order("created_at", { ascending: true });
 
@@ -52,6 +60,7 @@ export async function getDashboardData(
   let entriesQuery = supabase
     .from("entries")
     .select("*")
+    .eq("user_id", user.id)
     .order("purchase_date", { ascending: true });
 
   if (fundId && fundId !== "all") {
@@ -186,6 +195,7 @@ export async function getDashboardData(
     const { data: navHistoryRows } = await supabase
       .from("nav_history")
       .select("nav_date, nav_value")
+      .eq("user_id", user.id)
       .eq("fund_id", fundId)
       .order("nav_date", { ascending: true });
 
@@ -198,6 +208,7 @@ export async function getDashboardData(
     const { data: navHistoryRows } = await supabase
       .from("nav_history")
       .select("nav_date, nav_value")
+      .eq("user_id", user.id)
       .order("nav_date", { ascending: true });
 
     if (navHistoryRows) {

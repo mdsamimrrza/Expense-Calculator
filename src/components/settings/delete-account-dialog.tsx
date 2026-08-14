@@ -22,7 +22,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { createClient } from "@/lib/supabase/client";
+import { signOut } from "next-auth/react";
+import { deleteAccount } from "@/lib/actions/auth";
 import { useRouter } from "next/navigation";
 
 export function DeleteAccountDialog() {
@@ -36,25 +37,30 @@ export function DeleteAccountDialog() {
     if (confirmText !== "DELETE") return;
     setIsLoading(true);
 
-    const supabase = createClient();
-    // Delete current user account and wipe session
-    const { error } = await supabase.rpc("delete_user_account");
+    try {
+      const result = await deleteAccount();
 
-    if (error) {
-      // Fallback if custom RPC isn't deployed yet: sign out user
-      await supabase.auth.signOut();
-      toast({
-        title: "Account sign out triggered",
-        description: "Please contact support for complete server-side data purging.",
-      });
-      router.push("/login");
-    } else {
-      await supabase.auth.signOut();
-      toast({
-        title: "Account deleted",
-        description: "Your account and portfolio data have been removed.",
-      });
-      router.push("/login");
+      if (!result.success) {
+        // Fallback if custom RPC isn't deployed yet: sign out user
+        await signOut({ callbackUrl: "/login" });
+        toast({
+          title: "Account sign out triggered",
+          description: "Please contact support for complete server-side data purging.",
+        });
+        router.push("/login");
+      } else {
+        await signOut({ callbackUrl: "/login" });
+        toast({
+          title: "Account deleted",
+          description: "Your account and portfolio data have been removed.",
+        });
+      }
+    } catch (error: any) {
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "An unexpected error occurred.",
+        });
     }
 
     setIsLoading(false);

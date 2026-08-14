@@ -51,6 +51,7 @@ interface SummaryCardsProps {
   activeFund?: FundConfig;
   isLoading?: boolean;
   mobileChartSlot?: React.ReactNode;
+  latestNavSlot?: React.ReactNode;
 }
 
 /** Helper to shorten long fund names for small pills (e.g. NMB Saral Bachat Fund-E -> NMB Saral) */
@@ -73,6 +74,7 @@ export function SummaryCards({
   activeFund,
   isLoading,
   mobileChartSlot,
+  latestNavSlot,
 }: SummaryCardsProps) {
   const router = useRouter();
 
@@ -102,20 +104,20 @@ export function SummaryCards({
     <div className="flex flex-col gap-4 w-full">
       {/* 4 KPI Summary Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-        {/* CARD 1: Portfolio Value & Actions */}
-        <div className="bg-card rounded-[2rem] p-5 border border-border/60 shadow-sm flex flex-col justify-between gap-3 overflow-hidden">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2.5">
-              <div className="h-9 w-9 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-600/25 shrink-0">
-                <Wallet className="h-4.5 w-4.5" />
+        {/* CARD 1: Portfolio Value & Actions (Redesigned for Mobile & Compact on Laptop) */}
+        <div className="bg-gradient-to-br from-card via-card/95 to-blue-950/20 sm:bg-card rounded-[2.25rem] sm:rounded-[2rem] p-4 sm:p-4 border border-blue-500/20 sm:border-border/60 shadow-lg shadow-blue-500/5 sm:shadow-sm flex flex-col justify-between gap-2 sm:gap-2.5 overflow-hidden relative group">
+          <div className="flex items-center justify-between gap-2 z-10">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 sm:h-8 sm:w-8 rounded-xl sm:rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-600/30 shrink-0">
+                <Wallet className="h-4 w-4 sm:h-4 sm:w-4" />
               </div>
-              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+              <span className="text-[10px] sm:text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                 Portfolio Value
               </span>
             </div>
 
             {/* Fund Selector & Add SIP Button */}
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-2 sm:gap-1.5 shrink-0 mr-2 sm:mr-0">
               {funds.length > 0 && (
                 <Select
                   value={selectedFundId}
@@ -123,16 +125,16 @@ export function SummaryCards({
                     router.push(val === "all" ? "/dashboard?fund=all" : `/dashboard?fund=${val}`)
                   }
                 >
-                  <SelectTrigger className="bg-secondary/60 text-foreground border-border/50 h-8 text-[11px] font-bold rounded-full px-2.5 w-auto min-w-[90px] focus:ring-0">
+                  <SelectTrigger className="bg-secondary/80 sm:bg-secondary/60 text-foreground border-border/60 h-9 sm:h-7.5 text-xs sm:text-[11px] font-extrabold rounded-full px-3.5 sm:px-2.5 w-auto min-w-[85px] focus:ring-0 shadow-sm">
                     <SelectValue>
                       {selectedFundId === "all"
                         ? "All Funds"
                         : formatFundShortName(
-                            funds.find((f) => f.id === selectedFundId)?.fund_name || "All Funds"
-                          )}
+                          funds.find((f) => f.id === selectedFundId)?.fund_name || "All Funds"
+                        )}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-2xl">
                     <SelectItem value="all">All Funds</SelectItem>
                     {funds.map((f) => (
                       <SelectItem key={f.id} value={f.id}>
@@ -150,9 +152,9 @@ export function SummaryCards({
                   trigger={
                     <Button
                       size="sm"
-                      className="h-8 w-8 p-0 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-md border-0 shrink-0 flex items-center justify-center"
+                      className="h-9 w-9 sm:h-8 sm:w-8 p-0 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-md shadow-blue-600/30 border-0 shrink-0 flex items-center justify-center transition-transform active:scale-95"
                     >
-                      <Plus className="h-4 w-4 stroke-[3]" />
+                      <Plus className="h-5 w-5 sm:h-4 sm:w-4 stroke-[2.5]" />
                     </Button>
                   }
                 />
@@ -160,30 +162,37 @@ export function SummaryCards({
             </div>
           </div>
 
-          <div className="flex flex-col gap-1">
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
+          <div className="flex flex-col gap-1 z-10 pl-3.5 sm:pl-0">
+            <h2 className="text-2xl sm:text-2xl lg:text-[1.65rem] font-extrabold text-foreground tracking-tight">
               {currentValueDisplay}
             </h2>
             {summary.gainLoss !== null && (
               <div className="flex items-center gap-1">
                 <span
                   className={cn(
-                    "inline-flex items-center gap-0.5 text-xs font-extrabold px-2.5 py-0.5 rounded-full",
+                    "inline-flex items-center gap-0.5 text-[11px] sm:text-[11px] font-extrabold px-2.5 sm:px-2 py-0.5 rounded-full border shadow-sm",
                     isPositive
-                      ? "bg-emerald-500/10 text-emerald-500"
-                      : "bg-rose-500/10 text-rose-500"
+                      ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                      : "bg-rose-500/10 text-rose-500 border-rose-500/20"
                   )}
                 >
                   {isPositive ? (
-                    <ArrowUpRight className="h-3.5 w-3.5" />
+                    <ArrowUpRight className="h-3 w-3 sm:h-3 sm:w-3 stroke-[2.5]" />
                   ) : (
-                    <ArrowDownRight className="h-3.5 w-3.5" />
+                    <ArrowDownRight className="h-3 w-3 sm:h-3 sm:w-3 stroke-[2.5]" />
                   )}
                   <span>
                     {isPositive ? "+" : ""}
                     {formatCurrencyWhole(summary.gainLoss, true)} ({formatPercentage(summary.gainLossPct ?? 0)})
                   </span>
                 </span>
+              </div>
+            )}
+
+            {/* In-Card NAV Slot */}
+            {latestNavSlot && (
+              <div className="mt-2.5 sm:mt-1.5 pt-2.5 sm:pt-1.5 border-t border-border/40 w-full">
+                {latestNavSlot}
               </div>
             )}
           </div>
@@ -247,7 +256,7 @@ export function SummaryCards({
             </div>
             {summary.latestNav && (
               <div className="text-right">
-                <span className="text-[11px] text-muted-foreground block font-medium">Current NAV</span>
+                <span className="text-[11px] text-muted-foreground block font-medium" title="Net Asset Value (Price per unit)">NAV (Net Asset Value)</span>
                 <span className="text-lg font-extrabold text-emerald-500 tracking-tight">
                   NPR {formatNav(summary.latestNav)}
                 </span>
@@ -275,7 +284,9 @@ export function SummaryCards({
 
           <div className="flex items-baseline justify-between gap-2">
             <div>
-              <span className="text-[11px] text-muted-foreground block font-medium">Annualized (XIRR)</span>
+              <span className="text-[11px] text-muted-foreground block font-medium">
+                XIRR Return <span className="text-[9px] text-muted-foreground/80 font-normal block sm:inline sm:ml-1">(Extended Internal Rate of Return)</span>
+              </span>
               <span className="text-lg font-extrabold text-foreground tracking-tight">
                 {summary.xirr !== null ? formatPercentage(summary.xirr * 100) : "—"}
               </span>
@@ -485,6 +496,16 @@ export function SummaryCards({
                 </div>
               </div>
             </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full rounded-xl text-xs font-bold h-9 border-blue-500/30 text-blue-500 hover:bg-blue-500/10 flex items-center justify-center gap-2"
+              onClick={() => router.push("/tax-breakdown")}
+            >
+              <span>View Full Tax & Settlement Ledger</span>
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            </Button>
           </div>
 
           <DialogFooter className="mt-2">

@@ -261,7 +261,7 @@ export function EntryTable({ entries, funds, selectedFundId }: EntryTableProps) 
                     {formatDate(entry.purchase_date)}
                   </TableCell>
                   {funds.length > 1 && (
-                    <TableCell className="text-muted-foreground text-xs">
+                    <TableCell className="text-muted-foreground text-xs font-medium">
                       {fundMap.get(entry.fund_id) || "—"}
                     </TableCell>
                   )}
@@ -325,7 +325,7 @@ export function EntryTable({ entries, funds, selectedFundId }: EntryTableProps) 
                   <div>
                     <p className="font-semibold text-sm">{formatDate(entry.purchase_date)}</p>
                     {funds.length > 1 && (
-                      <p className="text-xs text-muted-foreground">{fundMap.get(entry.fund_id)}</p>
+                      <p className="text-xs text-muted-foreground font-medium">{fundMap.get(entry.fund_id) || "—"}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>

@@ -145,7 +145,7 @@ export default function ProjectionsPage() {
                 <SelectContent>
                   {RETURN_SCENARIOS.map((r) => (
                     <SelectItem key={r} value={r.toString()}>
-                      {r}% CAGR
+                      {r}% CAGR (Compound Annual Growth Rate)
                     </SelectItem>
                   ))}
                 </SelectContent>

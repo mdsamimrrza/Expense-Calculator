@@ -14,13 +14,14 @@ import { Filter } from "lucide-react";
 interface HistoryFundSelectorProps {
   funds: FundConfig[];
   selectedFundId: string;
+  basePath?: string;
 }
 
-export function HistoryFundSelector({ funds, selectedFundId }: HistoryFundSelectorProps) {
+export function HistoryFundSelector({ funds, selectedFundId, basePath = "/history" }: HistoryFundSelectorProps) {
   const router = useRouter();
 
   const handleFundChange = (val: string) => {
-    router.push(`/history?fund=${val}`);
+    router.push(`${basePath}?fund=${val}`);
   };
 
   return (

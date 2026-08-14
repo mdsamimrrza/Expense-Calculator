@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,7 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { signIn } from "@/lib/actions/auth";
+import { signIn } from "next-auth/react";
 import { GoogleButton } from "@/components/auth/google-button";
 
 function AuthErrorNotifier() {
@@ -45,7 +44,7 @@ function AuthErrorNotifier() {
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [isEmailSent, setIsEmailSent] = useState(false);
   const { toast } = useToast();
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -53,15 +52,40 @@ export default function LoginPage() {
     setIsLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const result = await signIn(formData);
+    const email = formData.get("email") as string;
+    
+    if (!email) {
+      setIsLoading(false);
+      return;
+    }
 
-    // signIn redirects on success, so we only handle errors
-    if (result && !result.success) {
+    try {
+      const result = await signIn("nodemailer", { 
+        email, 
+        redirect: false,
+        callbackUrl: "/dashboard" 
+      });
+
+      if (result?.error) {
+        toast({
+          title: "Login failed",
+          description: result.error,
+          variant: "destructive",
+        });
+      } else {
+        setIsEmailSent(true);
+        toast({
+          title: "Check your email",
+          description: "A secure login link has been sent to your email address.",
+        });
+      }
+    } catch (err) {
       toast({
-        title: "Login failed",
-        description: result.error,
+        title: "Error",
+        description: "Something went wrong. Please try again.",
         variant: "destructive",
       });
+    } finally {
       setIsLoading(false);
     }
   }
@@ -92,74 +116,40 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="you@example.com"
-              required
-              autoComplete="email"
-              disabled={isLoading}
-            />
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
-              <Link
-                href="/forgot-password"
-                className="text-xs text-primary hover:underline"
-              >
-                Forgot password?
-              </Link>
+          {isEmailSent ? (
+            <div className="text-center p-4 bg-primary/10 text-primary rounded-lg font-medium">
+              Check your email for the secure login link!
             </div>
-            <div className="relative">
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
               <Input
-                id="password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter your password"
+                id="email"
+                name="email"
+                type="email"
+                placeholder="you@example.com"
                 required
-                autoComplete="current-password"
+                autoComplete="email"
                 disabled={isLoading}
               />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                onClick={() => setShowPassword(!showPassword)}
-                tabIndex={-1}
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <Eye className="h-4 w-4 text-muted-foreground" />
-                )}
-              </Button>
             </div>
-          </div>
+          )}
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
-          <Button
-            type="submit"
-            className="w-full font-bold"
-            disabled={isLoading}
-            id="login-submit"
-          >
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Sign in
-          </Button>
+          {!isEmailSent && (
+            <Button
+              type="submit"
+              className="w-full font-bold"
+              disabled={isLoading}
+              id="login-submit"
+            >
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Send Login Link
+            </Button>
+          )}
 
           <p className="text-sm text-muted-foreground text-center">
-            Don&apos;t have an account?{" "}
-            <Link
-              href="/signup"
-              className="text-primary hover:underline font-medium"
-            >
-              Sign up
-            </Link>
+            New here? No problem! Just enter your email above to create an account.
           </p>
         </CardFooter>
       </form>

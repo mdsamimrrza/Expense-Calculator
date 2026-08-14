@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/auth";
 import {
   fundConfigSchema,
   updateLatestNavSchema,
@@ -24,9 +25,8 @@ export async function createFundConfig(
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await auth();
+  const user = session?.user;
 
   if (!user) {
     return { success: false, error: "Not authenticated" };
@@ -86,9 +86,8 @@ export async function updateFundConfig(
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await auth();
+  const user = session?.user;
 
   const startDateStr = parsed.data.start_date.toISOString().split("T")[0];
   const todayStr = new Date().toISOString().split("T")[0];
@@ -183,9 +182,8 @@ export async function updateLatestNav(
 
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await auth();
+  const user = session?.user;
 
   if (!user) {
     return { success: false, error: "Not authenticated" };
@@ -225,10 +223,17 @@ export async function updateLatestNav(
 
 export async function getFundConfigs(): Promise<ActionResult<FundConfig[]>> {
   const supabase = await createClient();
+  const session = await auth();
+  const user = session?.user;
+
+  if (!user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
 
   const { data, error } = await supabase
     .from("fund_config")
     .select("*")
+    .eq("user_id", user.id)
     .eq("is_active", true)
     .order("created_at", { ascending: true });
 

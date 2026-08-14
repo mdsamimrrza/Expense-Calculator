@@ -100,30 +100,32 @@ export function LatestNavInput({
   }
 
   return (
-    <div className="flex items-center gap-1.5 whitespace-nowrap bg-secondary/40 px-3 py-1.5 rounded-full border border-border/50">
-      <span className="text-xs text-muted-foreground">Latest NAV:</span>
-      {currentNav !== null ? (
-        <div className="flex items-baseline gap-1">
-          <span className="text-sm font-bold tabular-nums text-foreground">
-            {formatNav(currentNav)}
-          </span>
-          {currentNavDate && (
-            <span className="text-[10px] text-muted-foreground font-medium">
-              ({formatDate(currentNavDate)})
+    <div className="flex items-center justify-between w-full sm:w-auto gap-2 whitespace-nowrap bg-secondary/40 px-4 py-2 sm:px-3 sm:py-1.5 rounded-full border border-border/50 shadow-sm">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-medium text-muted-foreground">Latest NAV:</span>
+        {currentNav !== null ? (
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-sm font-bold tabular-nums text-foreground">
+              {formatNav(currentNav)}
             </span>
-          )}
-        </div>
-      ) : (
-        <span className="text-sm text-muted-foreground italic">Not set</span>
-      )}
+            {currentNavDate && (
+              <span className="text-[11px] text-muted-foreground font-medium">
+                ({formatDate(currentNavDate)})
+              </span>
+            )}
+          </div>
+        ) : (
+          <span className="text-sm text-muted-foreground italic">Not set</span>
+        )}
+      </div>
       <Button
         size="icon"
         variant="ghost"
-        className="h-6 w-6 ml-0.5 hover:bg-secondary/80 rounded-full transition-colors"
+        className="h-7 w-7 hover:bg-secondary/80 rounded-full transition-colors shrink-0"
         onClick={() => setIsEditing(true)}
         id="edit-latest-nav"
       >
-        <Pencil className="h-3 w-3" />
+        <Pencil className="h-3.5 w-3.5" />
       </Button>
     </div>
   );
