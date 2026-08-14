@@ -81,7 +81,11 @@ async function sendVerificationRequest(params: any) {
   }
 }
 
-const providers: Provider[] = [Google];
+const providers: Provider[] = [
+  Google({
+    allowDangerousEmailAccountLinking: true,
+  }),
+];
 
 if (process.env.EMAIL_SERVER_USER && process.env.EMAIL_SERVER_PASSWORD) {
   providers.push(
