@@ -101,12 +101,15 @@ if (process.env.EMAIL_SERVER_USER && process.env.EMAIL_SERVER_PASSWORD) {
   );
 }
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
+const supabaseSecret = process.env.SUPABASE_SERVICE_ROLE_KEY || "placeholder-key";
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   providers,
   adapter: SupabaseAdapter({
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    secret: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    url: supabaseUrl,
+    secret: supabaseSecret,
   }),
   callbacks: {
     async jwt({ token, user }) {
