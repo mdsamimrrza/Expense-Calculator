@@ -47,6 +47,14 @@ export default function LoginPage() {
   const [isEmailSent, setIsEmailSent] = useState(false);
   const { toast } = useToast();
 
+  useEffect(() => {
+    const handlePageShow = () => {
+      setIsLoading(false);
+    };
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setIsLoading(true);
