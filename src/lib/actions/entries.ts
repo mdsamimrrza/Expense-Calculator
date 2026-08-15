@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { entrySchema, csvRowSchema } from "@/lib/schemas/entry";
+import { DP_CHARGE } from "@/lib/constants";
 import type { ActionResult, Entry, CsvImportResult } from "@/lib/types";
 
 export async function createEntry(
@@ -31,12 +32,19 @@ export async function createEntry(
     return { success: false, error: "Not authenticated" };
   }
 
-  // Additional server-side validation: check purchase_date >= fund start_date
+  // Verify the fund belongs to this user before doing anything with it —
+  // without this check, a user could submit someone else's fund_id and
+  // corrupt that fund's latest_nav/nav_history via the update below.
   const { data: fund } = await supabase
     .from("fund_config")
     .select("start_date, latest_nav, latest_nav_date")
     .eq("id", parsed.data.fund_id)
+    .eq("user_id", user.id)
     .single();
+
+  if (!fund) {
+    return { success: false, error: "Fund not found" };
+  }
 
   const purchaseDateStr = parsed.data.purchase_date.toISOString().split("T")[0];
 
@@ -77,7 +85,8 @@ export async function createEntry(
         latest_nav: parsed.data.nav,
         latest_nav_date: purchaseDateStr,
       })
-      .eq("id", parsed.data.fund_id);
+      .eq("id", parsed.data.fund_id)
+      .eq("user_id", user.id);
 
     await supabase.from("nav_history").upsert(
       {
@@ -116,15 +125,30 @@ export async function updateEntry(
   }
 
   const supabase = await createClient();
+  const session = await auth();
+  const user = session?.user;
+
+  if (!user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
 
   const purchaseDateStr = parsed.data.purchase_date.toISOString().split("T")[0];
 
+  // Verify the target fund belongs to this user before referencing it
   const { data: fund } = await supabase
     .from("fund_config")
     .select("latest_nav, latest_nav_date")
     .eq("id", parsed.data.fund_id)
+    .eq("user_id", user.id)
     .single();
 
+  if (!fund) {
+    return { success: false, error: "Fund not found" };
+  }
+
+  // CRITICAL: must scope by user_id — the server client uses the service
+  // role key (bypasses RLS entirely), so this application-level filter is
+  // the only thing preventing one user from editing another user's entry.
   const { data, error } = await supabase
     .from("entries")
     .update({
@@ -136,6 +160,7 @@ export async function updateEntry(
       notes: parsed.data.notes || null,
     })
     .eq("id", id)
+    .eq("user_id", user.id)
     .select()
     .single();
 
@@ -143,29 +168,25 @@ export async function updateEntry(
     return { success: false, error: error.message };
   }
 
-  const session = await auth();
-  const user = session?.user;
+  await supabase.from("nav_history").upsert(
+    {
+      fund_id: parsed.data.fund_id,
+      user_id: user.id,
+      nav_date: purchaseDateStr,
+      nav_value: parsed.data.nav,
+    },
+    { onConflict: "fund_id,nav_date" }
+  );
 
-  if (user) {
-    await supabase.from("nav_history").upsert(
-      {
-        fund_id: parsed.data.fund_id,
-        user_id: user.id,
-        nav_date: purchaseDateStr,
-        nav_value: parsed.data.nav,
-      },
-      { onConflict: "fund_id,nav_date" }
-    );
-
-    if (fund && (!fund.latest_nav || purchaseDateStr >= (fund.latest_nav_date || ""))) {
-      await supabase
-        .from("fund_config")
-        .update({
-          latest_nav: parsed.data.nav,
-          latest_nav_date: purchaseDateStr,
-        })
-        .eq("id", parsed.data.fund_id);
-    }
+  if (fund && (!fund.latest_nav || purchaseDateStr >= (fund.latest_nav_date || ""))) {
+    await supabase
+      .from("fund_config")
+      .update({
+        latest_nav: parsed.data.nav,
+        latest_nav_date: purchaseDateStr,
+      })
+      .eq("id", parsed.data.fund_id)
+      .eq("user_id", user.id);
   }
 
   revalidatePath("/dashboard");
@@ -175,12 +196,32 @@ export async function updateEntry(
 }
 
 export async function deleteEntry(id: string): Promise<ActionResult> {
+  const session = await auth();
+  const user = session?.user;
+
+  if (!user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
   const supabase = await createClient();
 
-  const { error } = await supabase.from("entries").delete().eq("id", id);
+  // CRITICAL: must scope by user_id — the server client uses the service
+  // role key (bypasses RLS entirely), so this application-level filter is
+  // the ONLY thing preventing one user from deleting another user's entry.
+  const { error, count } = await supabase
+    .from("entries")
+    .delete({ count: "exact" })
+    .eq("id", id)
+    .eq("user_id", user.id);
 
   if (error) {
     return { success: false, error: error.message };
+  }
+
+  if (count === 0) {
+    // Either the entry doesn't exist, or it belongs to someone else —
+    // don't distinguish the two in the response (avoid leaking existence).
+    return { success: false, error: "Entry not found" };
   }
 
   revalidatePath("/dashboard");
@@ -255,6 +296,18 @@ export async function importEntriesFromCsv(
     return { success: false, error: "Not authenticated" };
   }
 
+  // Verify the fund belongs to this user before importing anything into it
+  const { data: fund, error: fundLookupError } = await supabase
+    .from("fund_config")
+    .select("latest_nav, latest_nav_date")
+    .eq("id", fundId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (fundLookupError || !fund) {
+    return { success: false, error: "Fund not found" };
+  }
+
   let imported = 0;
   let skipped = 0;
   const errors: Array<{ row: number; message: string }> = [];
@@ -279,7 +332,7 @@ export async function importEntriesFromCsv(
       continue;
     }
 
-    const effectiveCash = Math.max(0, parsed.data.amount - 5);
+    const effectiveCash = Math.max(0, parsed.data.amount - DP_CHARGE);
     const units = parsed.data.units ?? Math.floor(effectiveCash / parsed.data.nav);
 
     validRows.push({
@@ -316,20 +369,15 @@ export async function importEntriesFromCsv(
       (prev.purchase_date > current.purchase_date) ? prev : current
     );
 
-    const { data: fund } = await supabase
-      .from("fund_config")
-      .select("latest_nav, latest_nav_date")
-      .eq("id", fundId)
-      .single();
-
-    if (fund && (!fund.latest_nav || maxDateRow.purchase_date >= (fund.latest_nav_date || ""))) {
+    if (!fund.latest_nav || maxDateRow.purchase_date >= (fund.latest_nav_date || "")) {
       await supabase
         .from("fund_config")
         .update({
           latest_nav: maxDateRow.nav,
           latest_nav_date: maxDateRow.purchase_date,
         })
-        .eq("id", fundId);
+        .eq("id", fundId)
+        .eq("user_id", user.id);
     }
 
     imported = validRows.length;

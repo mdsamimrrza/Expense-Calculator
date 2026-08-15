@@ -123,7 +123,7 @@ export async function getDashboardData(
     const amt = Number(e.amount);
     const u = Number(e.units);
     const n = Number(e.nav);
-    const dpFee = amt >= 5 ? 5 : 0;
+    const dpFee = amt >= DP_CHARGE ? DP_CHARGE : 0;
     const net = Math.max(0, amt + carried - dpFee);
     const unitCost = u * n;
     const leftover = Math.max(0, net - unitCost);
@@ -145,14 +145,49 @@ export async function getDashboardData(
       ? (gainLoss / effectiveInvested) * 100
       : null;
 
-  const estimatedCgtLongTerm =
-    gainLoss !== null && gainLoss > 0 ? gainLoss * 0.075 : 0;
-  const estimatedCgtShortTerm =
-    gainLoss !== null && gainLoss > 0 ? gainLoss * 0.10 : 0;
+  // Per-fund latest NAV lookup — needed for per-lot valuation below, since
+  // a blended/scalar NAV is only valid when exactly one fund is in view.
+  const fundLatestNavMap = new Map<string, number>();
+  for (const f of funds) {
+    if (f.latest_nav) fundLatestNavMap.set(f.id, Number(f.latest_nav));
+  }
+
+  // Capital Gains Tax — Nepal IRD taxes each LOT of units separately based
+  // on THAT lot's own holding period (> 365 days = long-term @ 7.5%, else
+  // short-term @ 10%), not the portfolio's total gain at both rates at
+  // once. Every entry is its own lot with its own purchase date and cost.
+  const todayMs = Date.now();
+  const MS_PER_DAY = 1000 * 60 * 60 * 24;
+  let longTermGainSum = 0;
+  let shortTermGainSum = 0;
+
+  for (const e of entries) {
+    const fundNav = fundLatestNavMap.get(e.fund_id);
+    if (fundNav === undefined) continue; // Can't value this lot without a current NAV
+
+    const lotCostBasis = Number(e.amount);
+    const lotCurrentValue = Number(e.units) * fundNav;
+    const lotGain = lotCurrentValue - lotCostBasis;
+
+    const purchaseMs = new Date(e.purchase_date).getTime();
+    const daysHeld = (todayMs - purchaseMs) / MS_PER_DAY;
+
+    if (daysHeld > 365) {
+      longTermGainSum += lotGain;
+    } else {
+      shortTermGainSum += lotGain;
+    }
+  }
+
+  // Tax applies only to NET positive gain within each bucket — a losing
+  // lot offsets gains within the same bucket, but each bucket is taxed
+  // once, at its own rate, never both rates on the same rupee of gain.
+  const estimatedCgtLongTerm = longTermGainSum > 0 ? longTermGainSum * 0.075 : 0;
+  const estimatedCgtShortTerm = shortTermGainSum > 0 ? shortTermGainSum * 0.10 : 0;
 
   // XIRR
   let xirr: number | null = null;
-  if (entries.length >= 2 && currentValue !== null) {
+  if (entries.length >= XIRR_MIN_ENTRIES && currentValue !== null) {
     const cashFlows = buildCashFlows(entries, currentValue);
     xirr = calculateXirr(cashFlows);
   }
@@ -180,96 +215,128 @@ export async function getDashboardData(
 
   // ---- Chart data ----
 
-  // NAV history — combine entry purchase NAVs and nav_history updates into a unified timeline
-  const combinedNavMap = new Map<string, number>();
+  // NAV history & Portfolio Value timeline — built PER FUND throughout,
+  // because a blended/scalar NAV is only valid when exactly one fund is in
+  // view. The previous version kept a single Map<date, nav> where, in
+  // "All Funds" view, one fund's NAV entry could silently overwrite
+  // another fund's entry on a shared date, and then multiplied ALL funds'
+  // combined units by that one arbitrary NAV — producing a portfolio
+  // value graph that was mathematically wrong the moment a second fund
+  // was tracked. Fixed to track each fund's own units and NAV
+  // independently, matching how the summary's "All Funds" currentValue is
+  // already (correctly) computed above.
 
-  // 1. First add entry purchase NAVs from all SIP entries
+  const fundNavTimeline = new Map<string, Map<string, number>>(); // fundId -> date -> nav
+  const ensureFundMap = (fid: string) => {
+    if (!fundNavTimeline.has(fid)) fundNavTimeline.set(fid, new Map());
+    return fundNavTimeline.get(fid)!;
+  };
+
+  // 1. Seed with entry purchase NAVs, each tagged to its own fund
   for (const entry of entries) {
     if (entry.purchase_date && entry.nav) {
-      combinedNavMap.set(entry.purchase_date, Number(entry.nav));
+      ensureFundMap(entry.fund_id).set(entry.purchase_date, Number(entry.nav));
     }
   }
 
-  // 2. Overlay nav_history table rows
+  // 2. Overlay nav_history rows, each tagged to its own fund_id (never mixed)
+  let navHistoryQuery = supabase
+    .from("nav_history")
+    .select("fund_id, nav_date, nav_value")
+    .eq("user_id", user.id)
+    .order("nav_date", { ascending: true });
+
   if (fundId && fundId !== "all") {
-    const { data: navHistoryRows } = await supabase
-      .from("nav_history")
-      .select("nav_date, nav_value")
-      .eq("user_id", user.id)
-      .eq("fund_id", fundId)
-      .order("nav_date", { ascending: true });
+    navHistoryQuery = navHistoryQuery.eq("fund_id", fundId);
+  }
 
-    if (navHistoryRows) {
-      for (const row of navHistoryRows) {
-        combinedNavMap.set(row.nav_date, Number(row.nav_value));
-      }
-    }
-  } else {
-    const { data: navHistoryRows } = await supabase
-      .from("nav_history")
-      .select("nav_date, nav_value")
-      .eq("user_id", user.id)
-      .order("nav_date", { ascending: true });
-
-    if (navHistoryRows) {
-      for (const row of navHistoryRows) {
-        combinedNavMap.set(row.nav_date, Number(row.nav_value));
-      }
+  const { data: navHistoryRows } = await navHistoryQuery;
+  if (navHistoryRows) {
+    for (const row of navHistoryRows) {
+      ensureFundMap(row.fund_id).set(row.nav_date, Number(row.nav_value));
     }
   }
 
-  // 3. Ensure latestNav and latestNavDate are included
-  if (latestNav !== null && latestNavDate) {
-    combinedNavMap.set(latestNavDate, latestNav);
+  // 3. Ensure each fund's own latest NAV/date is included in ITS OWN map
+  for (const f of funds) {
+    if (f.latest_nav && f.latest_nav_date) {
+      ensureFundMap(f.id).set(f.latest_nav_date, Number(f.latest_nav));
+    }
   }
 
-  const navHistory: ChartDataPoint[] = Array.from(combinedNavMap.entries())
-    .map(([date, value]) => ({ date, value }))
-    .sort((a, b) => a.date.localeCompare(b.date));
-
-
-  // Build Portfolio Value timeline reflecting both SIP entries and NAV history updates
+  // Combined timeline of every date anything happened, across every fund in view
   const timelineDates = Array.from(
     new Set([
       ...entries.map((e) => e.purchase_date),
-      ...navHistory.map((h) => h.date),
+      ...Array.from(fundNavTimeline.values()).flatMap((m) => Array.from(m.keys())),
     ])
   ).sort((a, b) => a.localeCompare(b));
 
-  const navMap = new Map<string, number>();
-  for (const h of navHistory) {
-    navMap.set(h.date, h.value);
+  // Running state PER FUND — units accumulated and last-known NAV, each
+  // tracked independently so one fund's price can never leak into another's.
+  const runningUnitsByFund = new Map<string, number>();
+  const lastKnownNavByFund = new Map<string, number>();
+  for (const f of funds) {
+    const firstEntry = entries
+      .filter((e) => e.fund_id === f.id)
+      .sort((a, b) => a.purchase_date.localeCompare(b.purchase_date))[0];
+    if (firstEntry) lastKnownNavByFund.set(f.id, Number(firstEntry.nav));
+    runningUnitsByFund.set(f.id, 0);
   }
 
-  let runningUnits = 0;
-  let runningInvested = 0;
-  let lastKnownNav = entries.length > 0 ? Number(entries[0].nav) : 10;
-
-  const portfolioChart: PortfolioChartPoint[] = [];
-
-  // Track entries processed so far to accumulate units & invested up to each date
   const processedEntryIds = new Set<string>();
+  const portfolioChart: PortfolioChartPoint[] = [];
+  const blendedNavPoints: ChartDataPoint[] = []; // used only for "All Funds" NAV chart
+  let runningInvested = 0;
 
   for (const dt of timelineDates) {
     const entriesOnDate = entries.filter(
       (e) => e.purchase_date <= dt && !processedEntryIds.has(e.id)
     );
     for (const e of entriesOnDate) {
-      runningUnits += Number(e.units);
+      runningUnitsByFund.set(e.fund_id, (runningUnitsByFund.get(e.fund_id) || 0) + Number(e.units));
       runningInvested += Number(e.amount);
       processedEntryIds.add(e.id);
     }
 
-    if (navMap.has(dt)) {
-      lastKnownNav = navMap.get(dt)!;
+    // Update each fund's own last-known NAV independently
+    for (const [fid, fundMap] of fundNavTimeline.entries()) {
+      if (fundMap.has(dt)) {
+        lastKnownNavByFund.set(fid, fundMap.get(dt)!);
+      }
+    }
+
+    let portfolioValue = 0;
+    let totalUnitsAtDate = 0;
+    for (const f of funds) {
+      const units = runningUnitsByFund.get(f.id) || 0;
+      const nav = lastKnownNavByFund.get(f.id) || 0;
+      portfolioValue += units * nav;
+      totalUnitsAtDate += units;
     }
 
     portfolioChart.push({
       date: dt,
-      portfolioValue: runningUnits * lastKnownNav,
+      portfolioValue,
       totalInvested: runningInvested,
     });
+
+    if (totalUnitsAtDate > 0) {
+      blendedNavPoints.push({ date: dt, value: portfolioValue / totalUnitsAtDate });
+    }
   }
+
+  // NAV history chart: a single selected fund shows its own real NAV
+  // series. "All Funds" has no single meaningful NAV to show (different
+  // funds trade at unrelated price levels), so it shows the weighted
+  // blended per-unit value of the combined position instead of one fund's
+  // price silently overwriting another's on a shared date.
+  const navHistory: ChartDataPoint[] =
+    fundId && fundId !== "all"
+      ? Array.from((fundNavTimeline.get(fundId) ?? new Map()).entries())
+          .map(([date, value]) => ({ date, value }))
+          .sort((a, b) => a.date.localeCompare(b.date))
+      : blendedNavPoints;
 
   // Monthly contributions
   const monthlyMap = new Map<string, { total: number; breakdownMap: Map<string, number> }>();

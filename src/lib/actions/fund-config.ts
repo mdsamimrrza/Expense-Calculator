@@ -89,19 +89,32 @@ export async function updateFundConfig(
   const session = await auth();
   const user = session?.user;
 
+  if (!user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
   const startDateStr = parsed.data.start_date.toISOString().split("T")[0];
   const todayStr = new Date().toISOString().split("T")[0];
 
-  // Fetch existing fund to check if latest_nav changed
+  // Fetch existing fund to check if latest_nav changed — scoped to this
+  // user so a non-owned fund_id returns null rather than someone else's data
   const { data: existingFund } = await supabase
     .from("fund_config")
     .select("latest_nav, latest_nav_date")
     .eq("id", id)
+    .eq("user_id", user.id)
     .single();
+
+  if (!existingFund) {
+    return { success: false, error: "Fund not found" };
+  }
 
   const navChanged = existingFund?.latest_nav !== parsed.data.latest_nav;
   const newNavDate = navChanged ? todayStr : existingFund?.latest_nav_date;
 
+  // CRITICAL: must scope by user_id — the server client uses the service
+  // role key (bypasses RLS entirely), so this is the only thing preventing
+  // one user from updating another user's fund configuration.
   const { data, error } = await supabase
     .from("fund_config")
     .update({
@@ -113,6 +126,7 @@ export async function updateFundConfig(
       ...(navChanged && { latest_nav_date: newNavDate }),
     })
     .eq("id", id)
+    .eq("user_id", user.id)
     .select()
     .single();
 
@@ -120,7 +134,7 @@ export async function updateFundConfig(
     return { success: false, error: error.message };
   }
 
-  if (user && navChanged) {
+  if (navChanged) {
     await supabase.from("nav_history").upsert(
       {
         fund_id: id,
@@ -138,13 +152,22 @@ export async function updateFundConfig(
 
 
 export async function deleteFundConfig(id: string): Promise<ActionResult> {
+  const session = await auth();
+  const user = session?.user;
+
+  if (!user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
   const supabase = await createClient();
 
-  // Check if entries exist — block deletion if they do
+  // Check if entries exist — block deletion if they do. Scoped to this
+  // user's own fund; also acts as an implicit ownership check below.
   const { count, error: countError } = await supabase
     .from("entries")
     .select("id", { count: "exact", head: true })
-    .eq("fund_id", id);
+    .eq("fund_id", id)
+    .eq("user_id", user.id);
 
   if (countError) {
     return { success: false, error: countError.message };
@@ -157,10 +180,21 @@ export async function deleteFundConfig(id: string): Promise<ActionResult> {
     };
   }
 
-  const { error } = await supabase.from("fund_config").delete().eq("id", id);
+  // CRITICAL: must scope by user_id — the server client uses the service
+  // role key (bypasses RLS entirely), so this application-level filter is
+  // the only thing preventing one user from deleting another user's fund.
+  const { error, count: deletedCount } = await supabase
+    .from("fund_config")
+    .delete({ count: "exact" })
+    .eq("id", id)
+    .eq("user_id", user.id);
 
   if (error) {
     return { success: false, error: error.message };
+  }
+
+  if (deletedCount === 0) {
+    return { success: false, error: "Fund not found" };
   }
 
   return { success: true };
@@ -191,17 +225,29 @@ export async function updateLatestNav(
 
   const navDate = parsed.data.latest_nav_date.toISOString().split("T")[0];
 
-  // Update the fund_config with latest NAV
-  const { error } = await supabase
+  // CRITICAL: must scope by user_id — the server client uses the service
+  // role key (bypasses RLS entirely), so this application-level filter is
+  // the only thing preventing one user from overwriting another user's
+  // fund NAV. Being logged in is necessary but not sufficient — being the
+  // owner of this specific fund_id is what's actually required here.
+  const { error, count } = await supabase
     .from("fund_config")
-    .update({
-      latest_nav: parsed.data.latest_nav,
-      latest_nav_date: navDate,
-    })
-    .eq("id", parsed.data.fund_id);
+    .update(
+      {
+        latest_nav: parsed.data.latest_nav,
+        latest_nav_date: navDate,
+      },
+      { count: "exact" }
+    )
+    .eq("id", parsed.data.fund_id)
+    .eq("user_id", user.id);
 
   if (error) {
     return { success: false, error: error.message };
+  }
+
+  if (count === 0) {
+    return { success: false, error: "Fund not found" };
   }
 
   // Log to nav_history table for historical NAV tracking
