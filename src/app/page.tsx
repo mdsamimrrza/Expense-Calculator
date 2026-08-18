@@ -1,3 +1,5 @@
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, TrendingUp, ShieldCheck, PieChart, Calculator, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -5,7 +7,13 @@ import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Logo } from "@/components/ui/logo";
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  // Redirect logged-in users straight to their dashboard
+  const session = await auth();
+  if (session) {
+    redirect("/dashboard");
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col selection:bg-primary/20">
       {/* Top Navbar */}
@@ -33,7 +41,7 @@ export default function LandingPage() {
           </div>
 
           <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-foreground leading-[1.15]">
-            Track Your Nepali Mutual Fund SIPs with <span className="text-primary">Precision & Clarity</span>
+            Track Your Nepali Mutual Fund SIPs with <span className="text-primary">Precision &amp; Clarity</span>
           </h1>
 
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto font-normal">
@@ -48,7 +56,7 @@ export default function LandingPage() {
               </Link>
             </Button>
             <Button size="lg" variant="outline" className="w-full sm:w-auto h-12 px-8 text-base" asChild>
-              <Link href="/login">Explore Dashboard</Link>
+              <Link href="/login">Sign In</Link>
             </Button>
           </div>
 
@@ -56,7 +64,7 @@ export default function LandingPage() {
           <div className="pt-8 flex flex-wrap items-center justify-center gap-6 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-              Support for NMB, NIBL, SSIS & more
+              Support for NMB, NIBL, SSIS &amp; more
             </span>
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="h-4 w-4 text-emerald-500" />
@@ -112,7 +120,7 @@ export default function LandingPage() {
                 <div className="h-10 w-10 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
                   <ShieldCheck className="h-5 w-5" />
                 </div>
-                <h3 className="font-semibold text-lg">Private & Isolated</h3>
+                <h3 className="font-semibold text-lg">Private &amp; Isolated</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Your data is protected by Supabase Row Level Security. Only you can view or modify your portfolio entries.
                 </p>
