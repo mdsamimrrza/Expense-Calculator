@@ -360,7 +360,7 @@ export async function deleteAccount(): Promise<ActionResult> {
     return { success: false, error: "Not authenticated" };
   }
 
-  const supabase = getServiceClient();
+  const supabase = getNextAuthClient();
   const { error } = await supabase
     .from("users")
     .delete()
