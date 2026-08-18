@@ -5,9 +5,10 @@
 -- ============================================================
 
 -- 1. Password storage for email+password users
---    Linked to existing next_auth.users via foreign key
-CREATE TABLE IF NOT EXISTS next_auth.user_passwords (
-  user_id uuid PRIMARY KEY REFERENCES next_auth.users(id) ON DELETE CASCADE,
+--    Lives in public schema (always accessible via PostgREST)
+--    References next_auth.users via user_id
+CREATE TABLE IF NOT EXISTS public.user_passwords (
+  user_id uuid PRIMARY KEY,
   password_hash text NOT NULL,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
@@ -26,6 +27,9 @@ CREATE TABLE IF NOT EXISTS public.otp_tokens (
 
 CREATE INDEX IF NOT EXISTS idx_otp_tokens_email ON public.otp_tokens(email);
 
--- Auto-cleanup old/used OTP tokens (optional, keeps table clean)
--- You can run this manually or set up a cron job via pg_cron
--- DELETE FROM public.otp_tokens WHERE expires_at < now() OR used = true;
+-- Enable RLS (Row Level Security) — service role bypasses it automatically
+ALTER TABLE public.user_passwords ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.otp_tokens ENABLE ROW LEVEL SECURITY;
+
+-- Auto-cleanup old/used OTP tokens (optional — run manually to keep table clean)
+-- DELETE FROM public.otp_tokens WHERE expires_at < now() OR (used = true AND created_at < now() - interval '1 day');

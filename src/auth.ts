@@ -17,11 +17,16 @@ declare module "next-auth" {
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
 const supabaseSecret = process.env.SUPABASE_SERVICE_ROLE_KEY || "placeholder-key";
 
-// Service-role client for reading next_auth schema tables
-function getServiceClient() {
+// Client for next_auth schema (users, accounts)
+function getNextAuthClient() {
   return createClient(supabaseUrl, supabaseSecret, {
     db: { schema: "next_auth" },
   });
+}
+
+// Client for public schema (user_passwords, otp_tokens)
+function getPublicClient() {
+  return createClient(supabaseUrl, supabaseSecret);
 }
 
 const providers: Provider[] = [
@@ -39,10 +44,11 @@ const providers: Provider[] = [
       const email = (credentials.email as string).toLowerCase().trim();
       const password = credentials.password as string;
 
-      const supabase = getServiceClient();
+      const nextAuthClient = getNextAuthClient();
+      const publicClient = getPublicClient();
 
       // 1. Find user in next_auth.users by email
-      const { data: userRows, error: userErr } = await supabase
+      const { data: userRows, error: userErr } = await nextAuthClient
         .from("users")
         .select("id, email, name, image")
         .eq("email", email)
@@ -52,8 +58,8 @@ const providers: Provider[] = [
 
       const user = userRows[0];
 
-      // 2. Check password hash in next_auth.user_passwords
-      const { data: pwRows, error: pwErr } = await supabase
+      // 2. Check password hash in public.user_passwords
+      const { data: pwRows, error: pwErr } = await publicClient
         .from("user_passwords")
         .select("password_hash")
         .eq("user_id", user.id)

@@ -10,9 +10,10 @@ import { checkEmailRateLimit } from "@/lib/rate-limit";
 import type { ActionResult } from "@/lib/types";
 
 // ────────────────────────────────────────────────
-// Supabase service-role client (next_auth schema)
+// next_auth schema client (users, accounts tables)
+// NOTE: next_auth schema must be in exposed schemas in Supabase API settings
 // ────────────────────────────────────────────────
-function getServiceClient() {
+function getNextAuthClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -20,7 +21,8 @@ function getServiceClient() {
   );
 }
 
-// Public schema client (for otp_tokens)
+// Public schema client (otp_tokens + user_passwords live here)
+// public schema is always exposed via PostgREST — no config needed
 function getPublicClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -117,10 +119,11 @@ export async function signUp(formData: FormData): Promise<ActionResult> {
     return { success: false, error: "Passwords do not match." };
   }
 
-  const supabase = getServiceClient();
+  const nextAuthClient = getNextAuthClient();
+  const publicClient = getPublicClient();
 
-  // Check if email already exists
-  const { data: existing } = await supabase
+  // Check if email already exists in next_auth.users
+  const { data: existing } = await nextAuthClient
     .from("users")
     .select("id")
     .eq("email", email)
@@ -131,25 +134,27 @@ export async function signUp(formData: FormData): Promise<ActionResult> {
   }
 
   // Create user in next_auth.users
-  const { data: newUser, error: createErr } = await supabase
+  const { data: newUser, error: createErr } = await nextAuthClient
     .from("users")
     .insert({ email, emailVerified: new Date().toISOString() })
     .select("id")
     .single();
 
   if (createErr || !newUser) {
+    console.error("[signUp] user creation error:", createErr);
     return { success: false, error: "Failed to create account. Please try again." };
   }
 
-  // Hash password and store in user_passwords
+  // Hash password and store in public.user_passwords
   const passwordHash = await bcrypt.hash(password, 12);
-  const { error: pwErr } = await supabase
+  const { error: pwErr } = await publicClient
     .from("user_passwords")
     .insert({ user_id: newUser.id, password_hash: passwordHash });
 
   if (pwErr) {
+    console.error("[signUp] password insert error:", pwErr);
     // Rollback user creation
-    await supabase.from("users").delete().eq("id", newUser.id);
+    await nextAuthClient.from("users").delete().eq("id", newUser.id);
     return { success: false, error: "Failed to create account. Please try again." };
   }
 
@@ -179,10 +184,10 @@ export async function forgotPassword(formData: FormData): Promise<ActionResult> 
     return { success: false, error: rateCheck.error };
   }
 
-  const supabase = getServiceClient();
+  const nextAuthClient = getNextAuthClient();
 
   // Check if user exists (don't reveal if they don't — security best practice)
-  const { data: userRows } = await supabase
+  const { data: userRows } = await nextAuthClient
     .from("users")
     .select("id")
     .eq("email", email)
@@ -309,24 +314,26 @@ export async function resetPassword(
     return { success: false, error: "Invalid or expired reset session. Please start over." };
   }
 
-  const supabase = getServiceClient();
+  const nextAuthClient = getNextAuthClient();
 
-  // Get user id
-  const { data: userRows } = await supabase
+  // Get user id from next_auth.users
+  const { data: userRows, error: userErr } = await nextAuthClient
     .from("users")
     .select("id")
     .eq("email", email.toLowerCase().trim())
     .limit(1);
 
-  if (!userRows || userRows.length === 0) {
+  if (userErr || !userRows || userRows.length === 0) {
+    console.error("[resetPassword] user lookup error:", userErr);
     return { success: false, error: "User not found." };
   }
 
   const userId = userRows[0].id;
   const passwordHash = await bcrypt.hash(newPassword, 12);
 
-  // Upsert password (works for both new password users and first-time reset)
-  const { error: upsertErr } = await supabase
+  // Upsert into public.user_passwords
+  // (public schema is always accessible via PostgREST service role)
+  const { error: upsertErr } = await publicClient
     .from("user_passwords")
     .upsert(
       { user_id: userId, password_hash: passwordHash, updated_at: new Date().toISOString() },
@@ -334,6 +341,7 @@ export async function resetPassword(
     );
 
   if (upsertErr) {
+    console.error("[resetPassword] upsert error:", upsertErr);
     return { success: false, error: "Failed to update password. Please try again." };
   }
 
