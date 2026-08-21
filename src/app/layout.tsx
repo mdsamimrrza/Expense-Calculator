@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { ServiceWorkerRegister } from "@/components/providers/service-worker-register";
 import { Toaster } from "@/components/ui/toaster";
 import { SplashScreen } from "@/components/ui/splash-screen";
 import { APP_NAME, APP_DESCRIPTION } from "@/lib/constants";
@@ -44,6 +45,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <ServiceWorkerRegister />
           <SplashScreen />
           {children}
           <Toaster />

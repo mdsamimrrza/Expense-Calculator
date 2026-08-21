@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getFundConfigs } from "@/lib/actions/fund-config";
 import { FundConfigForm } from "@/components/settings/fund-config-form";
+import { NotificationSettings } from "@/components/settings/notification-settings";
 import { DeleteAccountDialog } from "@/components/settings/delete-account-dialog";
 import { redirect } from "next/navigation";
 import { Settings, User, ShieldCheck, Coins, Building2 } from "lucide-react";
@@ -36,7 +37,7 @@ export default async function SettingsPage() {
           <div>
             <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">Account Settings</h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 font-medium">
-              Manage your mutual fund configurations, security preferences, and account profile.
+              Manage your mutual fund configurations, installment reminders, and account profile.
             </p>
           </div>
         </div>
@@ -45,10 +46,12 @@ export default async function SettingsPage() {
       {/* Responsive 2-Column Laptop Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
-        {/* Main Column: Fund Manager (8 Cols on Laptop) */}
+        {/* Main Column: Fund Manager & Notifications (8 Cols on Laptop) */}
         <div className="lg:col-span-8 space-y-6">
+          <NotificationSettings userEmail={userEmail} />
           <FundConfigForm funds={funds} />
         </div>
+
 
         {/* Side Column: Profile & Danger Zone (4 Cols on Laptop) */}
         <div className="lg:col-span-4 space-y-6">
