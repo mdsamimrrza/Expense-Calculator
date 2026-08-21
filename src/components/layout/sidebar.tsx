@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./theme-toggle";
+import { NotificationBell } from "./notification-bell";
 import { Logo } from "@/components/ui/logo";
 import { UserAvatarMenu } from "./user-avatar-menu";
 
@@ -33,13 +34,17 @@ export function Sidebar({ onSignOut, userEmail, userName }: SidebarProps) {
 
   return (
     <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 border-r border-border bg-card">
-      {/* Logo / App name & Theme Toggle */}
+      {/* Logo / App name & Theme Toggle / Notifications */}
       <div className="flex items-center justify-between h-16 px-6 border-b border-border/50">
         <Link href="/dashboard" className="flex items-center gap-2 group">
           <Logo />
         </Link>
-        <ThemeToggle />
+        <div className="flex items-center gap-1.5">
+          <NotificationBell />
+          <ThemeToggle />
+        </div>
       </div>
+
 
       {/* Navigation */}
       <nav className="flex-1 flex flex-col gap-1 px-3 py-4">

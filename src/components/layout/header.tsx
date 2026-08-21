@@ -1,6 +1,7 @@
 "use client";
 
 import { ThemeToggle } from "./theme-toggle";
+import { NotificationBell } from "./notification-bell";
 import { Logo } from "@/components/ui/logo";
 import Link from "next/link";
 import { UserAvatarMenu } from "./user-avatar-menu";
@@ -22,10 +23,12 @@ export function Header({ title, onSignOut, userEmail, userName }: HeaderProps) {
           <Logo />
         </Link>
       )}
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-1.5 sm:gap-2.5">
+        <NotificationBell />
         <ThemeToggle />
         <UserAvatarMenu userEmail={userEmail} userName={userName} onSignOut={onSignOut} />
       </div>
     </header>
   );
 }
+

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bell, Mail, Smartphone, Send, CheckCircle2, AlertCircle, Loader2, Sparkles } from "lucide-react";
+import { Bell, Mail, Smartphone, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -33,8 +33,6 @@ export function NotificationSettings({ userEmail }: NotificationSettingsProps) {
   const [reminderDay, setReminderDay] = useState("1");
   const [notifyDaysBefore, setNotifyDaysBefore] = useState("2");
   const [isSaving, setIsSaving] = useState(false);
-  const [isTestingPush, setIsTestingPush] = useState(false);
-  const [isTestingEmail, setIsTestingEmail] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   const { toast } = useToast();
@@ -108,73 +106,6 @@ export function NotificationSettings({ userEmail }: NotificationSettingsProps) {
     }
   }
 
-  async function handleTestPush() {
-    if (!isSubscribed) {
-      toast({
-        title: "Push not enabled",
-        description: "Please enable mobile push notifications on this device first.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsTestingPush(true);
-    try {
-      const res = await fetch("/api/notifications/test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "push" }),
-      });
-
-      const json = await res.json();
-      if (res.ok) {
-        toast({
-          title: "Test Push Dispatched! 📲",
-          description: "Check your phone status bar or notification tray.",
-        });
-      } else {
-        throw new Error(json.error || "Failed to deliver test push");
-      }
-    } catch (err: any) {
-      toast({
-        title: "Test Failed",
-        description: err?.message || "Could not send test push.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsTestingPush(false);
-    }
-  }
-
-  async function handleTestEmail() {
-    setIsTestingEmail(true);
-    try {
-      const res = await fetch("/api/notifications/test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "email" }),
-      });
-
-      const json = await res.json();
-      if (res.ok) {
-        toast({
-          title: "Test Email Sent! 📧",
-          description: `Check your inbox at ${userEmail}.`,
-        });
-      } else {
-        throw new Error(json.error || "Failed to send test email");
-      }
-    } catch (err: any) {
-      toast({
-        title: "Email Test Failed",
-        description: err?.message || "Could not send test email.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsTestingEmail(false);
-    }
-  }
-
   return (
     <Card className="border-border/60 rounded-[2rem] shadow-sm bg-card overflow-hidden">
       <CardHeader className="px-6 pt-6 pb-4">
@@ -186,7 +117,7 @@ export function NotificationSettings({ userEmail }: NotificationSettingsProps) {
             <div>
               <CardTitle className="text-lg font-extrabold">Installment Reminders</CardTitle>
               <CardDescription className="text-xs mt-0.5 font-medium">
-                Receive monthly SIP payment alerts on your mobile phone and email.
+                Automatic monthly SIP payment alerts on your mobile device and email.
               </CardDescription>
             </div>
           </div>
@@ -216,7 +147,7 @@ export function NotificationSettings({ userEmail }: NotificationSettingsProps) {
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                Receive native pop-up reminders on your mobile lock screen even when app is closed.
+                Receive automatic pop-up reminders on your mobile lock screen when an installment is approaching.
               </p>
             </div>
           </div>
@@ -328,46 +259,6 @@ export function NotificationSettings({ userEmail }: NotificationSettingsProps) {
               </SelectContent>
             </Select>
             <p className="text-[11px] text-muted-foreground">How early you want to be notified.</p>
-          </div>
-        </div>
-
-        {/* Live Test Buttons */}
-        <div className="pt-3 border-t border-border/40 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Sparkles className="h-4 w-4 text-amber-400" />
-            <span>Verify your notifications are working immediately:</span>
-          </div>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isTestingPush || !isSubscribed}
-              onClick={handleTestPush}
-              className="rounded-xl font-bold h-8 text-xs flex-1 sm:flex-initial"
-            >
-              {isTestingPush ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-              ) : (
-                <Send className="h-3.5 w-3.5 mr-1.5 text-blue-400" />
-              )}
-              Test Mobile Push
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isTestingEmail || !emailEnabled}
-              onClick={handleTestEmail}
-              className="rounded-xl font-bold h-8 text-xs flex-1 sm:flex-initial"
-            >
-              {isTestingEmail ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-              ) : (
-                <Mail className="h-3.5 w-3.5 mr-1.5 text-purple-400" />
-              )}
-              Test Email
-            </Button>
           </div>
         </div>
       </CardContent>

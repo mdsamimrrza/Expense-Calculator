@@ -120,13 +120,11 @@ async function handleCronReminders(req: Request) {
       };
 
       // Determine installment target day (1-28)
-      const targetDay = pref.reminder_day || 1;
-      const daysBefore = pref.notify_days_before ?? 2;
+      const targetDay = Math.max(1, Math.min(28, Number(pref.reminder_day) || 1));
+      const daysBefore = Number(pref.notify_days_before ?? 2);
 
-      // Due date object for current month
-      const dueDate = new Date(currentYear, currentMonth, targetDay);
-      const diffTime = dueDate.getTime() - today.getTime();
-      const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      // Exact day difference in current month
+      const daysRemaining = targetDay - currentDay;
 
       // Trigger if today matches the notify window (e.g. exactly daysBefore days left, or exactly due today)
       const shouldNotify = daysRemaining === daysBefore || daysRemaining === 0;
@@ -136,10 +134,32 @@ async function handleCronReminders(req: Request) {
       }
 
       const user = userMap.get(fund.user_id);
+      const dueDate = new Date(currentYear, currentMonth, targetDay);
       const formattedDueDate = dueDate.toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
         year: "numeric",
+      });
+
+      // Log notification to notifications_log table for in-app history
+      const notifTitle =
+        daysRemaining === 0
+          ? `SIP Installment Due Today: ${fund.fund_name}`
+          : `SIP Reminder: Due in ${daysRemaining} Days (${fund.fund_name})`;
+
+      const notifBody =
+        daysRemaining === 0
+          ? `Your planned monthly deposit of NPR ${Number(fund.monthly_sip).toLocaleString()} is due today.`
+          : `Your planned monthly installment of NPR ${Number(fund.monthly_sip).toLocaleString()} is due on ${formattedDueDate}.`;
+
+      await supabase.from("notifications_log").insert({
+        user_id: fund.user_id,
+        title: notifTitle,
+        body: notifBody,
+        type: daysRemaining === 0 ? "due_today" : "installment_reminder",
+        channel: pref.push_enabled && pref.email_enabled ? "all" : pref.push_enabled ? "push" : "email",
+        url: "/history",
+        is_read: false,
       });
 
       // Send Push Notifications
