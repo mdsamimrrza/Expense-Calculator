@@ -48,9 +48,10 @@ export default async function SettingsPage() {
         
         {/* Main Column: Fund Manager & Notifications (8 Cols on Laptop) */}
         <div className="lg:col-span-8 space-y-6">
-          <NotificationSettings userEmail={userEmail} />
           <FundConfigForm funds={funds} />
+          <NotificationSettings userEmail={userEmail} />
         </div>
+
 
 
         {/* Side Column: Profile & Danger Zone (4 Cols on Laptop) */}
