@@ -3,6 +3,17 @@
 -- Run this in the Supabase SQL Editor
 -- ============================================================
 
+-- Ensure next_auth schema and helper uid() function exist
+CREATE SCHEMA IF NOT EXISTS next_auth;
+
+CREATE OR REPLACE FUNCTION next_auth.uid() RETURNS uuid
+LANGUAGE sql STABLE AS $$
+  select coalesce(
+    nullif(current_setting('request.jwt.claim.sub', true), ''),
+    (current_setting('request.jwt.claims', true)::jsonb ->> 'sub')
+  )::uuid
+$$;
+
 -- 1. Push Subscriptions Table
 CREATE TABLE IF NOT EXISTS public.push_subscriptions (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -28,21 +39,27 @@ CREATE TABLE IF NOT EXISTS public.notification_preferences (
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Grant table access
+GRANT ALL ON TABLE public.push_subscriptions TO postgres, service_role, authenticated;
+GRANT ALL ON TABLE public.notification_preferences TO postgres, service_role, authenticated;
+
 -- 3. Row Level Security
 ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notification_preferences ENABLE ROW LEVEL SECURITY;
 
 -- Subscriptions RLS
+DROP POLICY IF EXISTS "users manage own push_subscriptions" ON public.push_subscriptions;
 CREATE POLICY "users manage own push_subscriptions"
   ON public.push_subscriptions FOR ALL
-  USING (next_auth.uid() = user_id)
-  WITH CHECK (next_auth.uid() = user_id);
+  USING (next_auth.uid() = user_id OR auth.uid() = user_id)
+  WITH CHECK (next_auth.uid() = user_id OR auth.uid() = user_id);
 
 -- Preferences RLS
+DROP POLICY IF EXISTS "users manage own notification_preferences" ON public.notification_preferences;
 CREATE POLICY "users manage own notification_preferences"
   ON public.notification_preferences FOR ALL
-  USING (next_auth.uid() = user_id)
-  WITH CHECK (next_auth.uid() = user_id);
+  USING (next_auth.uid() = user_id OR auth.uid() = user_id)
+  WITH CHECK (next_auth.uid() = user_id OR auth.uid() = user_id);
 
 -- 4. Triggers for updated_at
 CREATE OR REPLACE FUNCTION public.set_updated_at()
