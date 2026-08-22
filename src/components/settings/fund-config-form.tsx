@@ -249,9 +249,25 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
               >
                 <ChevronLeft className="h-3.5 w-3.5 mr-0.5" /> Prev
               </Button>
-              <span className="font-extrabold px-2 text-foreground text-xs">
-                Page {validCurrentPage} of {totalPages}
-              </span>
+
+              {/* Numbered Page Buttons for Quick Jump */}
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                  <button
+                    key={pageNum}
+                    type="button"
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`h-8 w-8 rounded-xl font-extrabold text-xs transition-all ${
+                      validCurrentPage === pageNum
+                        ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20 scale-105"
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
+              </div>
+
               <Button
                 variant="outline"
                 size="sm"
