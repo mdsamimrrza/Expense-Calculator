@@ -8,19 +8,9 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  Calendar,
-  Clock,
   Sparkles,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 
@@ -39,8 +29,6 @@ export function NotificationSettings({ userEmail }: NotificationSettingsProps) {
   } = usePushNotifications();
 
   const [emailEnabled, setEmailEnabled] = useState(true);
-  const [reminderDay, setReminderDay] = useState("1");
-  const [notifyDaysBefore, setNotifyDaysBefore] = useState("2");
   const [isSaving, setIsSaving] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
@@ -55,8 +43,6 @@ export function NotificationSettings({ userEmail }: NotificationSettingsProps) {
           const json = await res.json();
           if (json.data) {
             setEmailEnabled(json.data.email_enabled ?? true);
-            setReminderDay(String(json.data.reminder_day || 1));
-            setNotifyDaysBefore(String(json.data.notify_days_before ?? 2));
           }
         }
       } catch (err) {
@@ -68,7 +54,7 @@ export function NotificationSettings({ userEmail }: NotificationSettingsProps) {
     loadPreferences();
   }, []);
 
-  async function handleSavePreferences(newEmailEnabled?: boolean, newDay?: string, newDaysBefore?: string) {
+  async function handleSavePreferences(newEmailEnabled?: boolean) {
     setIsSaving(true);
     try {
       const res = await fetch("/api/notifications/preferences", {
@@ -77,8 +63,8 @@ export function NotificationSettings({ userEmail }: NotificationSettingsProps) {
         body: JSON.stringify({
           push_enabled: isSubscribed,
           email_enabled: newEmailEnabled !== undefined ? newEmailEnabled : emailEnabled,
-          reminder_day: Number(newDay || reminderDay),
-          notify_days_before: Number(newDaysBefore || notifyDaysBefore),
+          reminder_day: 1,
+          notify_days_before: 2,
         }),
       });
 
@@ -88,7 +74,7 @@ export function NotificationSettings({ userEmail }: NotificationSettingsProps) {
 
       toast({
         title: "Preferences Saved",
-        description: "Your monthly installment reminder schedule has been updated.",
+        description: "Your reminder channels have been updated.",
       });
     } catch (err: any) {
       toast({
@@ -132,11 +118,11 @@ export function NotificationSettings({ userEmail }: NotificationSettingsProps) {
                   Installment Reminders
                 </CardTitle>
                 <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-500 dark:text-amber-400 border border-amber-500/30">
-                  Automated
+                  Standard
                 </span>
               </div>
               <CardDescription className="text-[11px] font-medium text-muted-foreground">
-                Monthly SIP payment alerts via mobile push and email.
+                Automatic monthly SIP deposit alerts via mobile push and email.
               </CardDescription>
             </div>
           </div>
@@ -152,8 +138,8 @@ export function NotificationSettings({ userEmail }: NotificationSettingsProps) {
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-3 p-4 sm:p-5">
-        {/* Channel 1: Mobile PWA Push Notification (Compact Row) */}
+      <CardContent className="space-y-2.5 p-4 sm:p-5">
+        {/* Channel 1: Mobile PWA Push Notification */}
         <div className="flex items-center justify-between p-3 rounded-2xl border border-border/50 bg-secondary/30 hover:bg-secondary/50 transition-all gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="h-8 w-8 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/25">
@@ -161,7 +147,7 @@ export function NotificationSettings({ userEmail }: NotificationSettingsProps) {
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <h4 className="font-bold text-xs sm:text-sm text-foreground">Mobile Push</h4>
+                <h4 className="font-bold text-xs sm:text-sm text-foreground">Mobile Push Notifications</h4>
                 {isSubscribed ? (
                   <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
                     ● Active
@@ -175,7 +161,7 @@ export function NotificationSettings({ userEmail }: NotificationSettingsProps) {
                 )}
               </div>
               <p className="text-[11px] text-muted-foreground truncate">
-                Native lock-screen alert on your phone.
+                Native lock-screen alerts on your phone when installment is due.
               </p>
             </div>
           </div>
@@ -205,7 +191,7 @@ export function NotificationSettings({ userEmail }: NotificationSettingsProps) {
           </button>
         </div>
 
-        {/* Channel 2: Email Notifications (Compact Row) */}
+        {/* Channel 2: Email Notifications */}
         <div className="flex items-center justify-between p-3 rounded-2xl border border-border/50 bg-secondary/30 hover:bg-secondary/50 transition-all gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="h-8 w-8 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center shrink-0 border border-purple-500/25">
@@ -213,7 +199,7 @@ export function NotificationSettings({ userEmail }: NotificationSettingsProps) {
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <h4 className="font-bold text-xs sm:text-sm text-foreground">Email Alert</h4>
+                <h4 className="font-bold text-xs sm:text-sm text-foreground">Email Notifications</h4>
                 {emailEnabled ? (
                   <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
                     ● Active
@@ -223,7 +209,7 @@ export function NotificationSettings({ userEmail }: NotificationSettingsProps) {
                 )}
               </div>
               <p className="text-[11px] text-muted-foreground truncate">
-                Sent to <strong className="text-foreground/90 font-medium">{userEmail}</strong>
+                Statements sent to <strong className="text-foreground/90 font-medium">{userEmail}</strong>
               </p>
             </div>
           </div>
@@ -251,64 +237,11 @@ export function NotificationSettings({ userEmail }: NotificationSettingsProps) {
           </button>
         </div>
 
-        {/* Schedule & Timing Controls (Compact 2-col) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-0.5">
-          <div className="space-y-1.5 p-3 rounded-2xl bg-secondary/20 border border-border/40">
-            <Label className="text-[11px] font-extrabold text-foreground flex items-center gap-1.5">
-              <Calendar className="h-3 w-3 text-amber-500" /> Due Day
-            </Label>
-            <Select
-              value={reminderDay}
-              onValueChange={(val) => {
-                setReminderDay(val);
-                handleSavePreferences(undefined, val);
-              }}
-              disabled={isSaving || isInitialLoading}
-            >
-              <SelectTrigger className="h-8 text-xs font-semibold rounded-xl bg-background/80 border-border/50 focus:ring-1 focus:ring-amber-500">
-                <SelectValue placeholder="Select day" />
-              </SelectTrigger>
-              <SelectContent className="max-h-56 rounded-xl">
-                {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
-                  <SelectItem key={day} value={String(day)} className="text-xs">
-                    Day {day} of every month
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5 p-3 rounded-2xl bg-secondary/20 border border-border/40">
-            <Label className="text-[11px] font-extrabold text-foreground flex items-center gap-1.5">
-              <Clock className="h-3 w-3 text-blue-400" /> Advance Notice
-            </Label>
-            <Select
-              value={notifyDaysBefore}
-              onValueChange={(val) => {
-                setNotifyDaysBefore(val);
-                handleSavePreferences(undefined, undefined, val);
-              }}
-              disabled={isSaving || isInitialLoading}
-            >
-              <SelectTrigger className="h-8 text-xs font-semibold rounded-xl bg-background/80 border-border/50 focus:ring-1 focus:ring-blue-400">
-                <SelectValue placeholder="Advance Notice" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="0" className="text-xs">Only on Due Date</SelectItem>
-                <SelectItem value="1" className="text-xs">1 Day Before & on Due Date</SelectItem>
-                <SelectItem value="2" className="text-xs">2 Days Before & on Due Date</SelectItem>
-                <SelectItem value="3" className="text-xs">3 Days Before & on Due Date</SelectItem>
-                <SelectItem value="5" className="text-xs">5 Days Before & on Due Date</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Compact Schedule Insight Footer */}
+        {/* Standard Schedule Note */}
         <div className="p-2.5 px-3 rounded-xl bg-secondary/20 border border-border/40 flex items-center gap-2 text-[11px] text-muted-foreground">
           <Sparkles className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-          <span className="truncate">
-            Fires automatically on <strong>Day {reminderDay}</strong> (and {notifyDaysBefore}d before) at <strong>8:45 AM</strong>.
+          <span>
+            Standard Schedule: Alerts are sent automatically <strong>2 days before & on your installment date</strong>.
           </span>
         </div>
       </CardContent>
