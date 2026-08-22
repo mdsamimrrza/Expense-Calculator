@@ -46,15 +46,12 @@ export default async function SettingsPage() {
       {/* Responsive 2-Column Laptop Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
-        {/* Main Column: Fund Manager & Notifications (8 Cols on Laptop) */}
+        {/* Main Column: Fund Manager (8 Cols on Laptop) */}
         <div className="lg:col-span-8 space-y-6">
           <FundConfigForm funds={funds} />
-          <NotificationSettings userEmail={userEmail} />
         </div>
 
-
-
-        {/* Side Column: Profile & Danger Zone (4 Cols on Laptop) */}
+        {/* Side Column: Profile, Reminders & Danger Zone (4 Cols on Laptop) */}
         <div className="lg:col-span-4 space-y-6">
           
           {/* Account Profile Card */}
@@ -95,10 +92,14 @@ export default async function SettingsPage() {
             </div>
           </div>
 
+          {/* Installment Reminders Card (Right after Portfolio Owner) */}
+          <NotificationSettings userEmail={userEmail} />
+
           {/* Danger Zone Card */}
           <DeleteAccountDialog />
 
         </div>
+
 
       </div>
     </div>
