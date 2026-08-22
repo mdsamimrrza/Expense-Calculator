@@ -49,9 +49,13 @@ export default async function SettingsPage() {
         {/* Main Column: Fund Manager (8 Cols on Laptop) */}
         <div className="lg:col-span-8 space-y-6">
           <FundConfigForm funds={funds} />
+          {/* On Laptop/Desktop: Installment Reminders sits in the main 8-col section */}
+          <div className="hidden lg:block">
+            <NotificationSettings userEmail={userEmail} />
+          </div>
         </div>
 
-        {/* Side Column: Profile, Reminders & Danger Zone (4 Cols on Laptop) */}
+        {/* Side Column: Profile & Danger Zone (4 Cols on Laptop) */}
         <div className="lg:col-span-4 space-y-6">
           
           {/* Account Profile Card */}
@@ -92,13 +96,16 @@ export default async function SettingsPage() {
             </div>
           </div>
 
-          {/* Installment Reminders Card (Right after Portfolio Owner) */}
-          <NotificationSettings userEmail={userEmail} />
+          {/* On Mobile Only: Installment Reminders sits right after Portfolio Owner */}
+          <div className="block lg:hidden">
+            <NotificationSettings userEmail={userEmail} />
+          </div>
 
           {/* Danger Zone Card */}
           <DeleteAccountDialog />
 
         </div>
+
 
 
       </div>
