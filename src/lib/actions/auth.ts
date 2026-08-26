@@ -3,7 +3,7 @@
 import { signOut as nextAuthSignOut } from "@/auth";
 import { auth } from "@/auth";
 import { createClient } from "@supabase/supabase-js";
-import { createTransport } from "nodemailer";
+import { resend, DEFAULT_FROM_EMAIL } from "@/lib/resend";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { checkEmailRateLimit } from "@/lib/rate-limit";
@@ -34,18 +34,9 @@ function getPublicClient() {
 // OTP Email Sender
 // ────────────────────────────────────────────────
 async function sendOtpEmail(email: string, otp: string) {
-  const transport = createTransport({
-    host: process.env.EMAIL_SERVER_HOST,
-    port: Number(process.env.EMAIL_SERVER_PORT) || 587,
-    auth: {
-      user: process.env.EMAIL_SERVER_USER,
-      pass: process.env.EMAIL_SERVER_PASSWORD,
-    },
-  });
-
-  await transport.sendMail({
+  const { error } = await resend.emails.send({
     to: email,
-    from: process.env.EMAIL_FROM,
+    from: DEFAULT_FROM_EMAIL,
     subject: `🔐 Your SahakariSIP Password Reset Code`,
     text: `Your OTP code is: ${otp}\n\nThis code expires in 10 minutes. Do not share it with anyone.`,
     html: `
@@ -97,6 +88,11 @@ async function sendOtpEmail(email: string, otp: string) {
       </html>
     `,
   });
+
+  if (error) {
+    console.error("[sendOtpEmail] Resend error:", error);
+    throw new Error(error.message);
+  }
 }
 
 // ────────────────────────────────────────────────

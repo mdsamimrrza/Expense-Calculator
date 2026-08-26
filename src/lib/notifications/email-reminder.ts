@@ -1,16 +1,5 @@
-import { createTransport } from "nodemailer";
 import { formatCurrencyWhole } from "@/lib/format";
-
-function getMailTransport() {
-  return createTransport({
-    host: process.env.EMAIL_SERVER_HOST,
-    port: Number(process.env.EMAIL_SERVER_PORT) || 587,
-    auth: {
-      user: process.env.EMAIL_SERVER_USER,
-      pass: process.env.EMAIL_SERVER_PASSWORD,
-    },
-  });
-}
+import { resend, DEFAULT_FROM_EMAIL } from "@/lib/resend";
 
 export interface InstallmentEmailProps {
   to: string;
@@ -24,7 +13,6 @@ export interface InstallmentEmailProps {
 
 export async function sendInstallmentReminderEmail(props: InstallmentEmailProps): Promise<{ success: boolean; error?: string }> {
   try {
-    const transport = getMailTransport();
     const appUrl = props.appUrl || process.env.NEXTAUTH_URL || "https://expense-calculator-taupe.vercel.app";
     const historyUrl = `${appUrl}/history`;
     const settingsUrl = `${appUrl}/settings`;
@@ -40,9 +28,9 @@ export async function sendInstallmentReminderEmail(props: InstallmentEmailProps)
       ? `🚨 Action Required: Your SIP Installment for ${props.fundName} is Due Today!`
       : `📅 Upcoming SIP Reminder: ${formattedAmount} due in ${props.daysRemaining} days (${props.fundName})`;
 
-    await transport.sendMail({
+    const { error } = await resend.emails.send({
       to: props.to,
-      from: process.env.EMAIL_FROM || "no-reply@sahakarisip.com",
+      from: DEFAULT_FROM_EMAIL,
       subject,
       text: `Hello ${props.userName || "Investor"},\n\nYour planned monthly SIP installment for ${props.fundName} (${formattedAmount}) is ${badgeText}.\n\nDue Date: ${props.dueDate}\n\nRecord your deposit entry: ${historyUrl}\n\nHappy Investing,\nSahakariSIP Team`,
       html: `
@@ -160,6 +148,11 @@ export async function sendInstallmentReminderEmail(props: InstallmentEmailProps)
         </html>
       `,
     });
+
+    if (error) {
+      console.error("[sendInstallmentReminderEmail] Resend error:", error);
+      return { success: false, error: error.message };
+    }
 
     return { success: true };
   } catch (err: any) {
