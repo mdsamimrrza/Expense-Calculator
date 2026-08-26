@@ -358,8 +358,11 @@ NEXTAUTH_URL=https://expense-calculator-taupe.vercel.app
 AUTH_GOOGLE_ID=your-google-client-id
 AUTH_GOOGLE_SECRET=your-google-client-secret
 
-RESEND_API_KEY=re_xxxxxxxxx
-EMAIL_FROM=onboarding@resend.dev
+EMAIL_SERVER_HOST=smtp.gmail.com
+EMAIL_SERVER_PORT=587
+EMAIL_SERVER_USER=your-email@gmail.com
+EMAIL_SERVER_PASSWORD=your-app-password
+EMAIL_FROM=your-email@gmail.com
 ```
 
 ---
