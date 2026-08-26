@@ -38,10 +38,6 @@ export async function getLatestNotifications(): Promise<{
       .limit(4);
 
     if (error) {
-      if (error.code === "PGRST205") {
-        // Table not created in Supabase yet
-        return { success: true, notifications: [], unreadCount: 0 };
-      }
       console.error("[getLatestNotifications] DB error:", error);
       return { success: false, notifications: [], unreadCount: 0, error: error.message };
     }
@@ -81,7 +77,6 @@ export async function markNotificationAsRead(id: string): Promise<{ success: boo
       .eq("user_id", session.user.id);
 
     if (error) {
-      if (error.code === "PGRST205") return { success: true };
       return { success: false, error: error.message };
     }
 
@@ -106,7 +101,6 @@ export async function markAllNotificationsAsRead(): Promise<{ success: boolean; 
       .eq("is_read", false);
 
     if (error) {
-      if (error.code === "PGRST205") return { success: true };
       return { success: false, error: error.message };
     }
 

@@ -1,74 +1,53 @@
 ﻿import { NextResponse } from "next/server";
-import { DEFAULT_FROM_EMAIL, sendTestEmail } from "@/lib/resend";
+import { createTransport } from "nodemailer";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const to = searchParams.get("to") || "mdsamimrrza@gmail.com";
 
-    const { data, error } = await sendTestEmail(to);
+    const user = process.env.EMAIL_SERVER_USER || "sahakarisip.app@gmail.com";
+    const pass = process.env.EMAIL_SERVER_PASSWORD;
 
-    if (error) {
+    if (!pass || pass.includes("REPLACE_WITH")) {
       return NextResponse.json(
         {
           success: false,
-          error: error.message,
-          hint: "Make sure you replaced 're_xxxxxxxxx' with your valid Resend API key in .env. When sending from onboarding@resend.dev, the recipient must be the account owner email on free tier.",
+          error: "EMAIL_SERVER_PASSWORD is not configured in .env",
+          hint: "Generate a 16-character Google App Password for sahakarisip.app@gmail.com and set it in .env as EMAIL_SERVER_PASSWORD",
         },
         { status: 400 }
       );
     }
+
+    const transport = createTransport({
+      host: process.env.EMAIL_SERVER_HOST || "smtp.gmail.com",
+      port: Number(process.env.EMAIL_SERVER_PORT) || 587,
+      auth: { user, pass },
+    });
+
+    const fromAddress = process.env.EMAIL_FROM || `"SahakariSIP" <${user}>`;
+
+    const info = await transport.sendMail({
+      from: fromAddress,
+      to,
+      subject: "Hello from SahakariSIP! 🎉",
+      html: "<p>Congrats! Your <strong>sahakarisip.app@gmail.com</strong> email delivery is working perfectly!</p>",
+      text: "Congrats! Your sahakarisip.app@gmail.com email delivery is working perfectly!",
+    });
 
     return NextResponse.json({
       success: true,
       message: `Test email successfully sent to ${to}!`,
-      from: DEFAULT_FROM_EMAIL,
-      data,
+      from: fromAddress,
+      messageId: info.messageId,
     });
   } catch (err: any) {
     return NextResponse.json(
       {
         success: false,
         error: err?.message || "Failed to send email",
-      },
-      { status: 500 }
-    );
-  }
-}
-
-export async function POST(request: Request) {
-  try {
-    let to = "mdsamimrrza@gmail.com";
-    try {
-      const body = await request.json();
-      if (body?.to) to = body.to;
-    } catch {
-      // Use default if body not provided
-    }
-
-    const { data, error } = await sendTestEmail(to);
-
-    if (error) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: error.message,
-        },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: `Test email sent to ${to}`,
-      from: DEFAULT_FROM_EMAIL,
-      data,
-    });
-  } catch (err: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: err?.message || "Failed to send email",
+        hint: "Make sure 2-Step Verification is enabled on sahakarisip.app@gmail.com and you generated a 16-character App Password.",
       },
       { status: 500 }
     );
