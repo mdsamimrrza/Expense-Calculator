@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendWebPush } from "@/lib/notifications/web-push";
 import { sendInstallmentReminderEmail } from "@/lib/notifications/email-reminder";
+import { nepalTodayAD, parseADString, scheduleAD } from "@/lib/calendar/bs";
 
 export async function GET(req: Request) {
   return handleCronReminders(req);
@@ -45,7 +46,7 @@ async function handleCronReminders(req: Request) {
     // 3. Fetch all notification preferences and push subscriptions
     const { data: preferences } = await supabase
       .from("notification_preferences")
-      .select("user_id, push_enabled, email_enabled, reminder_day, notify_days_before");
+      .select("user_id, push_enabled, email_enabled, notify_days_before");
 
     const prefMap = new Map<string, any>();
     if (preferences) {
@@ -77,28 +78,29 @@ async function handleCronReminders(req: Request) {
       users.forEach((u) => userMap.set(u.id, { email: u.email, name: u.name }));
     }
 
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth(); // 0-indexed
-    const currentDay = today.getDate();
+    // "Today" in Nepal time so the cron behaves identically on UTC servers.
+    const todayStr = nepalTodayAD();
 
-    // First day of current month in YYYY-MM-DD
-    const monthStartStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-01`;
-    const nextMonthStartStr =
-      currentMonth === 11
-        ? `${currentYear + 1}-01-01`
-        : `${currentYear}-${String(currentMonth + 2).padStart(2, "0")}-01`;
+    // A payment cycle runs from one installment due date to the next, so the
+    // previous due date is at most ~2 BS months before today. 70 days safely
+    // covers that span for the "already deposited" lookup below.
+    const { year: todayY, month: todayM, day: todayD } = parseADString(todayStr);
+    const cutoff = new Date(Date.UTC(todayY, todayM, todayD) - 70 * 24 * 60 * 60 * 1000);
+    const cutoffStr = `${cutoff.getUTCFullYear()}-${String(cutoff.getUTCMonth() + 1).padStart(2, "0")}-${String(cutoff.getUTCDate()).padStart(2, "0")}`;
 
-    // Fetch current month's entries to check if already deposited
-    const { data: monthlyEntries } = await supabase
+    const { data: recentEntries } = await supabase
       .from("entries")
       .select("user_id, fund_id, purchase_date")
-      .gte("purchase_date", monthStartStr)
-      .lt("purchase_date", nextMonthStartStr);
+      .gt("purchase_date", cutoffStr);
 
-    const depositedFunds = new Set<string>();
-    if (monthlyEntries) {
-      monthlyEntries.forEach((e) => depositedFunds.add(`${e.user_id}_${e.fund_id}`));
+    const entryDates = new Map<string, string[]>();
+    if (recentEntries) {
+      recentEntries.forEach((e) => {
+        const key = `${e.user_id}_${e.fund_id}`;
+        const list = entryDates.get(key) || [];
+        list.push(e.purchase_date);
+        entryDates.set(key, list);
+      });
     }
 
     let pushSentCount = 0;
@@ -107,24 +109,26 @@ async function handleCronReminders(req: Request) {
 
     // 4. Iterate over funds and evaluate reminders
     for (const fund of funds) {
-      // If user has already deposited this month for this fund, skip reminder
-      if (depositedFunds.has(`${fund.user_id}_${fund.id}`)) {
+      // Installment falls on (start day − 2) of every month: e.g. a fund
+      // started on the 10th is due on the 8th of each following month.
+      const dueDay = Math.max(1, parseADString(fund.start_date).day - 2);
+      const { nextDue, prevDue, daysRemaining } = scheduleAD(dueDay, todayStr);
+
+      // Skip if the current cycle is already paid (any entry recorded after the
+      // previous due date; an entry ON the previous due date belongs to that
+      // earlier cycle).
+      const dates = entryDates.get(`${fund.user_id}_${fund.id}`) || [];
+      if (dates.some((d) => d > prevDue)) {
         continue;
       }
 
       const pref = prefMap.get(fund.user_id) || {
         push_enabled: true,
         email_enabled: true,
-        reminder_day: 1,
         notify_days_before: 2,
       };
 
-      // Determine installment target day (1-28)
-      const targetDay = Math.max(1, Math.min(28, Number(pref.reminder_day) || 1));
       const daysBefore = Number(pref.notify_days_before ?? 2);
-
-      // Exact day difference in current month
-      const daysRemaining = targetDay - currentDay;
 
       // Trigger if today matches the notify window (e.g. exactly daysBefore days left, or exactly due today)
       const shouldNotify = daysRemaining === daysBefore || daysRemaining === 0;
@@ -134,8 +138,7 @@ async function handleCronReminders(req: Request) {
       }
 
       const user = userMap.get(fund.user_id);
-      const dueDate = new Date(currentYear, currentMonth, targetDay);
-      const formattedDueDate = dueDate.toLocaleDateString("en-US", {
+      const formattedDueDate = new Date(`${nextDue}T12:00:00`).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
         year: "numeric",

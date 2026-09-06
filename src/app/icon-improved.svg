@@ -1,0 +1,40 @@
+<svg width="512" height="512" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F5BA38" />
+      <stop offset="100%" stop-color="#D49B22" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="24" height="24" rx="5.5" fill="url(#gold)" />
+
+  <!-- 3 Perfectly Aligned Vertical Bars -->
+  <rect x="3.5" y="15" width="3.2" height="5.5" rx="1" fill="#0D1B2A" opacity="0.8" />
+  <rect x="9.5" y="10" width="3.2" height="10.5" rx="1" fill="#0D1B2A" opacity="0.9" />
+  <rect x="15.5" y="5" width="3.2" height="15.5" rx="1" fill="#0D1B2A" />
+
+  <!-- Cutout Border Behind Line & Arrow for Crisp Layering -->
+  <path d="M 2 17.5 L 6.5 12 L 11 15 L 17 6.5" 
+        stroke="url(#gold)" 
+        stroke-width="2.6" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" />
+  <polygon points="19.8,3.6 13.8,6.4 17.6,10.2" 
+           stroke="url(#gold)"
+           stroke-width="2"
+           stroke-linejoin="round"
+           fill="url(#gold)" />
+
+  <!-- Sharp Trending Line -->
+  <path d="M 2 17.5 L 6.5 12 L 11 15 L 17 6.5" 
+        stroke="#0D1B2A" 
+        stroke-width="1.8" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" />
+
+  <!-- Solid Sharp Arrowhead on 3rd Peak -->
+  <polygon points="19.8,3.6 13.8,6.4 17.6,10.2" 
+           fill="#0D1B2A" />
+</svg>
+
