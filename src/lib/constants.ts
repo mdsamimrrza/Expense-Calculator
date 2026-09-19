@@ -49,10 +49,11 @@ export const APP_TAGLINE =
 
 // ---------- Android app distribution ----------
 
-// GitHub release link for the Android APK. Used by the landing page's
-// download buttons.
+// Direct-download URL for the Android APK asset on GitHub Releases.
+// Pointing at the asset file (not the release page) makes the download
+// buttons start the download immediately.
 export const APP_DOWNLOAD_URL =
-  "https://github.com/mdsamimrrza/sahakari-sip-mobile/releases/tag/v1.0.0";
+  "https://github.com/mdsamimrrza/sahakari-sip-mobile/releases/download/v1.0.0/SahakariSIP-v1.0.0.apk";
 
 // ---------- Currency ----------
 
