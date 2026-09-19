@@ -50,10 +50,9 @@ export const APP_TAGLINE =
 // ---------- Android app distribution ----------
 
 // GitHub release link for the Android APK. Used by the landing page's
-// download buttons. TODO: replace with the real release link, e.g.
-// https://github.com/user/repo/releases/latest
+// download buttons.
 export const APP_DOWNLOAD_URL =
-  "https://github.com/YOUR_USERNAME/sahakarisip/releases/latest";
+  "https://github.com/mdsamimrrza/sahakari-sip-mobile/releases/tag/v1.0.0";
 
 // ---------- Currency ----------
 
