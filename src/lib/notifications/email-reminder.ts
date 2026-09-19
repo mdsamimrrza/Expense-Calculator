@@ -25,7 +25,7 @@ export interface InstallmentEmailProps {
 export async function sendInstallmentReminderEmail(props: InstallmentEmailProps): Promise<{ success: boolean; error?: string }> {
   try {
     const transport = getMailTransport();
-    const appUrl = props.appUrl || process.env.NEXTAUTH_URL || "https://expense-calculator-taupe.vercel.app";
+    const appUrl = props.appUrl || process.env.NEXTAUTH_URL || "https://sahakari-sip.vercel.app";
     const historyUrl = `${appUrl}/history`;
     const settingsUrl = `${appUrl}/settings`;
 

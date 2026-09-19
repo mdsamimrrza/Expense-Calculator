@@ -353,7 +353,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 SUPABASE_JWT_SECRET=your-jwt-secret
 
 AUTH_SECRET=your-32-byte-hex-secret
-NEXTAUTH_URL=https://expense-calculator-taupe.vercel.app
+NEXTAUTH_URL=https://sahakari-sip.vercel.app
 
 AUTH_GOOGLE_ID=your-google-client-id
 AUTH_GOOGLE_SECRET=your-google-client-secret
