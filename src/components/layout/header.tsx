@@ -11,9 +11,10 @@ interface HeaderProps {
   onSignOut?: () => void;
   userEmail?: string;
   userName?: string;
+  userImage?: string;
 }
 
-export function Header({ title, onSignOut, userEmail, userName }: HeaderProps) {
+export function Header({ title, onSignOut, userEmail, userName, userImage }: HeaderProps) {
   return (
     <header className="sticky top-0 z-40 flex items-center justify-between h-14 px-4 sm:px-6 border-b border-border/60 bg-card/95 backdrop-blur-sm lg:hidden">
       {title ? (
@@ -26,7 +27,7 @@ export function Header({ title, onSignOut, userEmail, userName }: HeaderProps) {
       <div className="flex items-center gap-1.5 sm:gap-2.5">
         <NotificationBell />
         <ThemeToggle />
-        <UserAvatarMenu userEmail={userEmail} userName={userName} onSignOut={onSignOut} />
+        <UserAvatarMenu userEmail={userEmail} userName={userName} userImage={userImage} onSignOut={onSignOut} />
       </div>
     </header>
   );

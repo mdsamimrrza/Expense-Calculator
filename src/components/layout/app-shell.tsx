@@ -10,10 +10,12 @@ export function AppShell({
   children,
   userEmail,
   userName,
+  userImage,
 }: {
   children: React.ReactNode;
   userEmail?: string;
   userName?: string;
+  userImage?: string;
 }) {
   const router = useRouter();
 
@@ -24,10 +26,10 @@ export function AppShell({
   return (
     <div className="min-h-screen bg-background">
       {/* Desktop sidebar */}
-      <Sidebar onSignOut={handleSignOut} userEmail={userEmail} userName={userName} />
+      <Sidebar onSignOut={handleSignOut} userEmail={userEmail} userName={userName} userImage={userImage} />
 
       {/* Mobile header */}
-      <Header onSignOut={handleSignOut} userEmail={userEmail} userName={userName} />
+      <Header onSignOut={handleSignOut} userEmail={userEmail} userName={userName} userImage={userImage} />
 
       {/* Main content area */}
       <main className="lg:pl-64 pb-20 lg:pb-0">

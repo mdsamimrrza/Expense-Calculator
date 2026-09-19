@@ -27,9 +27,10 @@ interface SidebarProps {
   onSignOut: () => void;
   userEmail?: string;
   userName?: string;
+  userImage?: string;
 }
 
-export function Sidebar({ onSignOut, userEmail, userName }: SidebarProps) {
+export function Sidebar({ onSignOut, userEmail, userName, userImage }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -77,6 +78,7 @@ export function Sidebar({ onSignOut, userEmail, userName }: SidebarProps) {
         <UserAvatarMenu
           userEmail={userEmail}
           userName={userName}
+          userImage={userImage}
           onSignOut={onSignOut}
           variant="full-card"
         />

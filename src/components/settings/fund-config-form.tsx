@@ -123,7 +123,7 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
 
     if (result.success) {
       toast({
-        title: editingFund ? "Fund updated" : "Fund added 🎉",
+        title: editingFund ? "Fund updated" : "Fund added",
         description: `${fundName} settings saved successfully.`,
       });
       setOpen(false);
@@ -162,20 +162,20 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
   }
 
   return (
-    <Card className="border-border/60 rounded-[2rem] shadow-sm bg-card overflow-hidden">
-      <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 pt-6 pb-4">
+    <Card className="rounded-xl border-border bg-card shadow-none">
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 pt-4 pb-3 sm:px-5">
         <div>
-          <CardTitle className="text-lg font-extrabold">Fund Configurations</CardTitle>
-          <CardDescription className="text-xs mt-1 font-medium">
-            Manage your tracked mutual funds, fee percentages, and planned monthly SIP amounts.
+          <CardTitle className="text-sm font-semibold">Fund Configurations</CardTitle>
+          <CardDescription className="mt-0.5 text-xs">
+            Tracked mutual funds, fee percentages, and planned monthly SIP amounts.
           </CardDescription>
         </div>
-        <Button size="sm" onClick={openCreate} className="rounded-xl font-bold h-9 shrink-0">
-          <Plus className="mr-1.5 h-4 w-4 stroke-[3]" />
+        <Button size="sm" onClick={openCreate} className="shrink-0">
+          <Plus className="mr-1.5 h-4 w-4" />
           Add Fund
         </Button>
       </CardHeader>
-      <CardContent className="space-y-3 px-6 pb-6 pt-2">
+      <CardContent className="space-y-2 px-4 pb-4 pt-1 sm:px-5">
         {/* Search Bar for 4+ Funds */}
         {funds.length > 3 && (
           <div className="relative mb-3">
@@ -187,43 +187,43 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
                 setSearchQuery(e.target.value);
                 setCurrentPage(1);
               }}
-              className="pl-9 h-9 text-xs rounded-xl bg-secondary/30 border-border/50"
+              className="pl-9 h-9 text-sm rounded-lg"
             />
           </div>
         )}
 
         {paginatedFunds.length === 0 ? (
-          <div className="text-center py-6 text-xs text-muted-foreground bg-secondary/20 rounded-2xl border border-border/40">
+          <div className="text-center py-6 text-sm text-muted-foreground border border-dashed rounded-lg">
             No funds match your search query.
           </div>
         ) : (
           paginatedFunds.map((fund) => (
             <div
               key={fund.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-[1.5rem] border border-border/50 bg-secondary/30 hover:bg-secondary/60 transition-colors gap-3 sm:gap-0"
+              className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border border-border gap-2 sm:gap-0"
             >
-              <div className="space-y-1">
-                <h4 className="font-bold text-sm text-foreground">{fund.fund_name}</h4>
-                <p className="text-[11px] text-muted-foreground font-medium">
-                  Fee: <strong className="text-foreground">{fund.fee_rate_pct}%</strong> | Planned SIP:{" "}
-                  <strong className="text-foreground">{formatCurrencyWhole(Number(fund.monthly_sip))}</strong>
+              <div className="space-y-0.5">
+                <h4 className="font-medium text-sm text-foreground">{fund.fund_name}</h4>
+                <p className="text-xs text-muted-foreground">
+                  Fee: <strong className="text-foreground font-medium">{fund.fee_rate_pct}%</strong> | Planned SIP:{" "}
+                  <strong className="text-foreground font-medium">{formatCurrencyWhole(Number(fund.monthly_sip))}</strong>
                   {fund.latest_nav ? (
                     <>
                       {" "}
-                      | NAV: <strong className="text-emerald-600 dark:text-emerald-400">NPR {fund.latest_nav}</strong>
+                      | NAV: <strong className="font-medium">NPR {fund.latest_nav}</strong>
                     </>
                   ) : null}{" "}
                   | Started: {formatDate(fund.start_date)}
                 </p>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-background/50 hover:bg-background shadow-sm border border-border/30" onClick={() => openEdit(fund)}>
+              <div className="flex items-center gap-1 shrink-0 self-end sm:self-auto">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(fund)}>
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 rounded-full bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white shadow-sm border border-rose-500/20 transition-colors"
+                  className="h-8 w-8 text-destructive hover:text-destructive"
                   onClick={() => setDeletingId(fund.id)}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -235,8 +235,8 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
 
         {/* Pagination Controls */}
         {filteredFunds.length > ITEMS_PER_PAGE && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-border/40 text-xs">
-            <span className="text-muted-foreground font-medium">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t text-xs">
+            <span className="text-muted-foreground">
               Showing <strong>{startIndex + 1}</strong>–<strong>{Math.min(startIndex + ITEMS_PER_PAGE, filteredFunds.length)}</strong> of <strong>{filteredFunds.length}</strong> funds
             </span>
             <div className="flex items-center gap-1.5">
@@ -245,7 +245,7 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
                 size="sm"
                 disabled={validCurrentPage === 1}
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                className="h-8 px-2.5 rounded-xl font-bold text-xs"
+                className="h-8 px-2.5 text-xs"
               >
                 <ChevronLeft className="h-3.5 w-3.5 mr-0.5" /> Prev
               </Button>
@@ -257,10 +257,10 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
                     key={pageNum}
                     type="button"
                     onClick={() => setCurrentPage(pageNum)}
-                    className={`h-8 w-8 rounded-xl font-extrabold text-xs transition-all ${
+                    className={`h-8 w-8 rounded-md font-medium text-xs transition-colors ${
                       validCurrentPage === pageNum
-                        ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20 scale-105"
-                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary"
                     }`}
                   >
                     {pageNum}
@@ -273,7 +273,7 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
                 size="sm"
                 disabled={validCurrentPage >= totalPages}
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                className="h-8 px-2.5 rounded-xl font-bold text-xs"
+                className="h-8 px-2.5 text-xs"
               >
                 Next <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
               </Button>

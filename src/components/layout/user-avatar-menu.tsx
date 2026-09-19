@@ -8,13 +8,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
+import { Avatar } from "@/components/ui/avatar";
 import { LogOut, Settings, ChevronUp, Clock } from "lucide-react";
 import Link from "next/link";
 
 interface UserAvatarMenuProps {
   userEmail?: string;
   userName?: string;
+  userImage?: string;
   onSignOut?: () => void;
   variant?: "avatar-only" | "full-card";
 }
@@ -22,6 +23,7 @@ interface UserAvatarMenuProps {
 export function UserAvatarMenu({
   userEmail,
   userName,
+  userImage,
   onSignOut,
   variant = "avatar-only",
 }: UserAvatarMenuProps) {
@@ -31,7 +33,6 @@ export function UserAvatarMenu({
   // Format clean display name (e.g. samimrrza1@gmail.com -> Samimrrza1)
   const rawName = userName || (userEmail ? userEmail.split("@")[0] : "User");
   const displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
-  const initial = displayName.charAt(0).toUpperCase();
 
   useEffect(() => {
     // Format session login timestamp
@@ -51,23 +52,20 @@ export function UserAvatarMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         {variant === "avatar-only" ? (
-          <Button
-            variant="ghost"
-            className="h-9 w-9 p-0 rounded-full bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white font-black text-xs shadow-md shadow-emerald-500/20 border border-emerald-400/30 hover:scale-105 transition-transform shrink-0 flex items-center justify-center"
+          <button
+            className="h-9 w-9 rounded-full overflow-hidden shrink-0 border border-border hover:opacity-90 transition-opacity"
             title={`${displayName} (${displayEmail})`}
             id="user-avatar-trigger-mobile"
           >
-            {initial}
-          </Button>
+            <Avatar src={userImage} name={displayName} className="h-full w-full text-xs" />
+          </button>
         ) : (
           <button
             className="w-full flex items-center justify-between p-2.5 rounded-2xl border border-border/60 bg-secondary/30 hover:bg-secondary/60 transition-colors shadow-sm text-left group"
             id="user-avatar-trigger-sidebar"
           >
             <div className="flex items-center gap-2.5 overflow-hidden">
-              <div className="h-9 w-9 rounded-xl bg-emerald-600 dark:bg-emerald-500 text-white font-black text-xs flex items-center justify-center shadow-sm shrink-0">
-                {initial}
-              </div>
+              <Avatar src={userImage} name={displayName} className="h-9 w-9 rounded-xl text-xs shrink-0" />
               <div className="overflow-hidden">
                 <span className="text-xs font-extrabold text-foreground block truncate" title={displayName}>
                   {displayName}
@@ -89,9 +87,7 @@ export function UserAvatarMenu({
       >
         {/* User Details Header */}
         <div className="flex items-center gap-3 p-2.5 bg-secondary/40 rounded-xl border border-border/40 mb-1">
-          <div className="h-10 w-10 rounded-xl bg-emerald-600 dark:bg-emerald-500 text-white font-black text-sm flex items-center justify-center shadow-sm shrink-0">
-            {initial}
-          </div>
+          <Avatar src={userImage} name={displayName} className="h-10 w-10 rounded-xl text-sm shrink-0" />
           <div className="overflow-hidden">
             <span className="text-xs font-extrabold text-foreground block truncate">{displayName}</span>
             <span className="text-[11px] text-muted-foreground font-medium block truncate">

@@ -147,9 +147,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
       return true;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
+      // Client-side `useSession().update({ user: { image } })` after a
+      // profile upload lands here — persist it so the new avatar survives.
+      if (
+        trigger === "update" &&
+        (session as { user?: { image?: string | null } } | undefined)?.user?.image !== undefined
+      ) {
+        token.picture = (session as { user: { image: string | null } }).user.image;
+      }
       if (user) {
         token.id = user.id;
+        // Persist profile fields into the JWT so the session (and the
+        // settings avatar) can render them. `image` comes from the
+        // next_auth.users.image column (credentials) or Google (`picture`).
+        token.name = user.name ?? token.name;
+        token.email = user.email ?? token.email;
+        token.picture =
+          (user as any).image ?? (user as any).picture ?? token.picture;
       }
 
       // Enforce the per-user credential epoch: after a password reset
@@ -179,6 +194,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, token }) {
       if (token && session.user) {
         session.user.id = token.id as string;
+        // Expose the persisted profile fields (image lives in
+        // next_auth.users.image) to all `auth()` / `useSession()` callers.
+        if (token.name) session.user.name = token.name as string;
+        if (token.email) session.user.email = token.email as string;
+        session.user.image =
+          (token.picture as string | undefined) ??
+          (token.image as string | undefined) ??
+          null;
       }
       const signingSecret = process.env.SUPABASE_JWT_SECRET;
       if (signingSecret && token.sub) {

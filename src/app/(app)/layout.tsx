@@ -17,6 +17,7 @@ export default async function AppLayout({
     <AppShell
       userEmail={session.user.email ?? undefined}
       userName={session.user.name ?? undefined}
+      userImage={session.user.image ?? undefined}
     >
       {children}
     </AppShell>
