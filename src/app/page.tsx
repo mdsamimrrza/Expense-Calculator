@@ -43,18 +43,18 @@ export default async function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col selection:bg-primary/20">
+    <div className="min-h-screen bg-background flex flex-col selection:bg-primary/20 overflow-x-clip">
       {/* Top Navbar */}
       <header className="border-b border-border/50 sticky top-0 z-50 bg-background/80 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <Logo />
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2">
+          <Logo className="shrink-0 [&>span]:hidden min-[380px]:[&_span]:block" />
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             <ThemeToggle />
-            <Button variant="ghost" asChild>
+            <Button variant="ghost" className="hidden sm:inline-flex" asChild>
               <Link href="/login">Sign in</Link>
             </Button>
-            <Button asChild id="landing-hero-signup">
+            <Button className="h-9 px-4 text-sm sm:h-10 sm:px-4 sm:text-sm" asChild id="landing-hero-signup">
               <Link href="/signup">Get Started</Link>
             </Button>
           </div>
@@ -63,16 +63,16 @@ export default async function LandingPage() {
 
       {/* Main Hero Section */}
       <main className="flex-1">
-        <section className="py-20 lg:py-28 px-4 text-center max-w-5xl mx-auto space-y-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wider">
-            <span>Built for Nepali Mutual Fund SIP Investors</span>
+        <section className="py-12 sm:py-20 lg:py-28 px-4 text-center max-w-5xl mx-auto space-y-5 sm:space-y-6">
+          <div className="inline-flex max-w-full items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[11px] sm:text-xs font-semibold uppercase tracking-wider">
+            <span className="truncate">Built for Nepali Mutual Fund SIP Investors</span>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-foreground leading-[1.15]">
+          <h1 className="text-3xl sm:text-6xl font-extrabold tracking-tight text-foreground leading-[1.15] text-balance">
             Track Your Nepali Mutual Fund SIPs with <span className="text-primary">Precision &amp; Clarity</span>
           </h1>
 
-          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto font-normal">
+          <p className="text-base sm:text-xl text-muted-foreground max-w-2xl mx-auto font-normal text-pretty">
             &ldquo;{APP_TAGLINE}&rdquo; Real yearly returns, growth projections, and fee costs you can actually understand, in one clean dashboard.
           </p>
 
@@ -95,7 +95,7 @@ export default async function LandingPage() {
           </div>
 
           {/* Quick trust badges */}
-          <div className="pt-8 flex flex-wrap items-center justify-center gap-6 text-xs text-muted-foreground">
+          <div className="pt-6 sm:pt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[11px] sm:text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="h-4 w-4 text-emerald-500" />
               Supports NMB, NIBL, SSIS &amp; more
@@ -239,7 +239,7 @@ export default async function LandingPage() {
         {/* Android app download */}
         <section id="android-app" className="py-16 px-4">
           <div className="max-w-6xl mx-auto">
-            <div className="relative overflow-hidden rounded-3xl border border-primary/25 bg-gradient-to-br from-primary/10 via-background to-muted/60 p-8 sm:p-12">
+            <div className="relative overflow-hidden rounded-3xl border border-primary/25 bg-gradient-to-br from-primary/10 via-background to-muted/60 p-5 sm:p-12">
               <div aria-hidden className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-primary/15 blur-3xl" />
               <div aria-hidden className="pointer-events-none absolute -bottom-28 -left-20 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
 
@@ -272,8 +272,8 @@ export default async function LandingPage() {
                   </div>
 
                   <div className="space-y-2.5 pt-1">
-                    <div className="flex flex-wrap items-center gap-4">
-                      <Button size="lg" className="h-12 px-8 text-base shadow-lg shadow-primary/25" asChild>
+                    <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-4">
+                      <Button size="lg" className="w-full sm:w-auto h-12 px-8 text-base shadow-lg shadow-primary/25 justify-center" asChild>
                         <a href={APP_DOWNLOAD_URL} target="_blank" rel="noopener noreferrer">
                           <Download className="mr-1 h-5 w-5" />
                           Download APK (Free)
@@ -291,7 +291,7 @@ export default async function LandingPage() {
                 </div>
 
                 {/* Phone mockup: mirrors the APK dashboard (Parchment light theme) */}
-                <div className="relative mx-auto w-[280px] sm:w-[310px]">
+                <div className="relative mx-auto w-[260px] max-w-full sm:w-[310px]">
                   <div aria-hidden className="absolute -inset-8 rounded-full bg-primary/10 blur-2xl" />
                   <div className="relative rounded-[2.6rem] border border-border bg-card p-2.5 shadow-2xl">
                     <div className="relative overflow-hidden rounded-[2.1rem] bg-[#EDEAE0]">

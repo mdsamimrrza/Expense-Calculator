@@ -40,7 +40,7 @@ export default async function SettingsPage() {
   return (
     <>
       {/* ── Mobile: nested hub (like the APK) ─────────────────── */}
-      <div className="mx-auto w-full max-w-3xl animate-fade-in space-y-4 pb-20 lg:hidden">
+      <div className="mx-auto flex w-full max-w-3xl animate-fade-in flex-col justify-evenly gap-4 pb-20 min-h-[calc(100dvh-10rem)] lg:hidden">
         <h1 className="pt-1 text-center text-lg font-bold text-foreground">
           Settings
         </h1>
