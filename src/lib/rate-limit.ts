@@ -1,57 +1,135 @@
 // ============================================================
-// SahakariSIP — Email Rate Limiter (5 Emails / Hour per User)
+// SahakariSIP — Shared Rate Limiter (serverless-safe)
+//
+// Backed by the public.rate_limit_events table so limits hold
+// across serverless instances (the previous module-level Map was
+// per-process and wiped on cold start). Falls back to the
+// in-memory Map only if the database is unreachable, so a
+// Supabase outage degrades the limiter instead of blocking auth.
 // ============================================================
+
+import { createClient } from "@supabase/supabase-js";
 
 interface RateLimitTracker {
   timestamps: number[];
 }
 
-// In-memory store mapping identifier (email or IP) -> timestamps
-const rateLimitStore = new Map<string, RateLimitTracker>();
+// In-memory fallback store (per-instance, best-effort)
+const memoryStore = new Map<string, RateLimitTracker>();
 
-const MAX_REQUESTS_PER_HOUR = 5;
-const ONE_HOUR_MS = 60 * 60 * 1000; // 1 hour in milliseconds
+function getServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
-/**
- * Rate limiter utility to enforce a strict limit of 5 email requests per hour.
- *
- * @param identifier Email address or IP string to rate-limit
- * @returns { success: boolean; remaining: number; error?: string }
- */
-export function checkEmailRateLimit(identifier: string): {
+export interface RateLimitResult {
   success: boolean;
   remaining: number;
   error?: string;
-} {
+}
+
+function checkInMemory(
+  normalizedKey: string,
+  maxRequests: number,
+  windowMs: number
+): RateLimitResult {
+  const now = Date.now();
+  const tracker = memoryStore.get(normalizedKey) || { timestamps: [] };
+  const valid = tracker.timestamps.filter((t) => now - t < windowMs);
+
+  if (valid.length >= maxRequests) {
+    const minutesLeft = Math.ceil((windowMs - (now - valid[0])) / (60 * 1000));
+    return {
+      success: false,
+      remaining: 0,
+      error: `Rate limit reached. Please wait ${minutesLeft} minute(s) before trying again.`,
+    };
+  }
+
+  valid.push(now);
+  memoryStore.set(normalizedKey, { timestamps: valid });
+  return { success: true, remaining: maxRequests - valid.length };
+}
+
+/**
+ * Sliding-window rate limit backed by the shared rate_limit_events table.
+ *
+ * @param identifier Stable key, e.g. "otp_email:<address>" or "login:<address>"
+ * @param maxRequests Maximum events allowed inside the window
+ * @param windowMinutes Sliding window length in minutes
+ * @param label Human-readable name used in the error message
+ */
+export async function checkRateLimit(
+  identifier: string,
+  maxRequests: number,
+  windowMinutes: number,
+  label: string
+): Promise<RateLimitResult> {
   if (!identifier) {
     return { success: false, remaining: 0, error: "Invalid identifier provided for rate limiting." };
   }
 
   const normalizedKey = identifier.toLowerCase().trim();
-  const now = Date.now();
+  const supabase = getServiceClient();
+  const windowStart = new Date(Date.now() - windowMinutes * 60 * 1000).toISOString();
 
-  const tracker = rateLimitStore.get(normalizedKey) || { timestamps: [] };
+  try {
+    const { data: events, error: countErr } = await supabase
+      .from("rate_limit_events")
+      .select("id")
+      .eq("key", normalizedKey)
+      .gt("created_at", windowStart);
 
-  // Purge timestamps older than 1 hour (sliding window)
-  const validTimestamps = tracker.timestamps.filter((time) => now - time < ONE_HOUR_MS);
+    if (countErr) throw countErr;
+    const count = events?.length ?? 0;
 
-  if (validTimestamps.length >= MAX_REQUESTS_PER_HOUR) {
-    const oldestTimestamp = validTimestamps[0];
-    const minutesLeft = Math.ceil((ONE_HOUR_MS - (now - oldestTimestamp)) / (60 * 1000));
+    if (count >= maxRequests) {
+      const { data: oldest } = await supabase
+        .from("rate_limit_events")
+        .select("created_at")
+        .eq("key", normalizedKey)
+        .gt("created_at", windowStart)
+        .order("created_at", { ascending: true })
+        .limit(1);
 
-    return {
-      success: false,
-      remaining: 0,
-      error: `Rate limit reached. Maximum 5 emails allowed per hour. Please wait ${minutesLeft} minute(s) before requesting another email.`,
-    };
+      let minutesLeft = windowMinutes;
+      if (oldest && oldest.length > 0) {
+        minutesLeft = Math.max(
+          1,
+          Math.ceil(
+            (windowMinutes * 60 * 1000 - (Date.now() - new Date(oldest[0].created_at).getTime())) /
+              (60 * 1000)
+          )
+        );
+      }
+
+      return {
+        success: false,
+        remaining: 0,
+        error: `Rate limit reached. Maximum ${maxRequests} ${label} allowed per ${windowMinutes} hour(s). Please wait ${minutesLeft} minute(s) before trying again.`,
+      };
+    }
+
+    // Record this event. A rare insert race only lets one extra event
+    // through — acceptable for a limiter, unlike a dropped deny.
+    const { error: insertErr } = await supabase
+      .from("rate_limit_events")
+      .insert({ key: normalizedKey });
+    if (insertErr) throw insertErr;
+
+    return { success: true, remaining: maxRequests - count - 1 };
+  } catch {
+    // Database unreachable — degrade to per-instance limiting rather
+    // than locking everyone out of auth flows.
+    return checkInMemory(normalizedKey, maxRequests, windowMinutes * 60 * 1000);
   }
+}
 
-  // Record timestamp for current request
-  validTimestamps.push(now);
-  rateLimitStore.set(normalizedKey, { timestamps: validTimestamps });
-
-  return {
-    success: true,
-    remaining: MAX_REQUESTS_PER_HOUR - validTimestamps.length,
-  };
+/**
+ * Back-compat wrapper: OTP email cap (5 per hour per address).
+ */
+export async function checkEmailRateLimit(email: string): Promise<RateLimitResult> {
+  return checkRateLimit(`otp_email:${email}`, 5, 60, "verification codes");
 }

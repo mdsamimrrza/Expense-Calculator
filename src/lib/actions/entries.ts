@@ -137,13 +137,20 @@ export async function updateEntry(
   // Verify the target fund belongs to this user before referencing it
   const { data: fund } = await supabase
     .from("fund_config")
-    .select("latest_nav, latest_nav_date")
+    .select("start_date, latest_nav, latest_nav_date")
     .eq("id", parsed.data.fund_id)
     .eq("user_id", user.id)
     .single();
 
   if (!fund) {
     return { success: false, error: "Fund not found" };
+  }
+
+  if (purchaseDateStr < fund.start_date) {
+    return {
+      success: false,
+      error: `Purchase date cannot be before the fund's start date (${fund.start_date})`,
+    };
   }
 
   // CRITICAL: must scope by user_id — the server client uses the service
@@ -299,7 +306,7 @@ export async function importEntriesFromCsv(
   // Verify the fund belongs to this user before importing anything into it
   const { data: fund, error: fundLookupError } = await supabase
     .from("fund_config")
-    .select("latest_nav, latest_nav_date")
+    .select("start_date, latest_nav, latest_nav_date")
     .eq("id", fundId)
     .eq("user_id", user.id)
     .single();
@@ -335,10 +342,20 @@ export async function importEntriesFromCsv(
     const effectiveCash = Math.max(0, parsed.data.amount - DP_CHARGE);
     const units = parsed.data.units ?? Math.floor(effectiveCash / parsed.data.nav);
 
+    const purchaseDate = new Date(parsed.data.date).toISOString().split("T")[0];
+    if (purchaseDate < fund.start_date) {
+      skipped++;
+      errors.push({
+        row: i + 1,
+        message: `Date ${purchaseDate} is before the fund's start date (${fund.start_date})`,
+      });
+      continue;
+    }
+
     validRows.push({
       user_id: user.id!,
       fund_id: fundId,
-      purchase_date: new Date(parsed.data.date).toISOString().split("T")[0],
+      purchase_date: purchaseDate,
       amount: parsed.data.amount,
       nav: parsed.data.nav,
       units: Math.floor(units), // Always integer whole units

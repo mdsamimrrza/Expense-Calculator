@@ -2,6 +2,25 @@ import webpush from "web-push";
 
 let vapidConfigured = false;
 
+// Defense in depth: the endpoint stored in push_subscriptions is used
+// verbatim as the URL of an outbound POST by web-push, so re-validate
+// it at the sink as well as at the subscribe route. An untrusted
+// endpoint is reported as expired so the cron prunes it.
+const PUSH_SERVICE_HOSTS = new Set([
+  "fcm.googleapis.com",
+  "updates.push.services.mozilla.com",
+  "web.push.apple.com",
+]);
+
+function isTrustedEndpoint(endpoint: string): boolean {
+  try {
+    const url = new URL(endpoint);
+    return url.protocol === "https:" && PUSH_SERVICE_HOSTS.has(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 export function configureWebPush() {
   if (vapidConfigured) return true;
 
@@ -46,6 +65,10 @@ export async function sendWebPush(
   const ready = configureWebPush();
   if (!ready) {
     return { success: false, error: "VAPID credentials not configured" };
+  }
+
+  if (!isTrustedEndpoint(sub.endpoint)) {
+    return { success: false, shouldDelete: true, error: "Untrusted push endpoint" };
   }
 
   const pushSubscription = {

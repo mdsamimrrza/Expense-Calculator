@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { sendWebPush } from "@/lib/notifications/web-push";
 import { sendInstallmentReminderEmail } from "@/lib/notifications/email-reminder";
 import { nepalTodayAD, parseADString, scheduleAD } from "@/lib/calendar/bs";
+import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 
 export async function GET(req: Request) {
   return handleCronReminders(req);
@@ -14,11 +15,8 @@ export async function POST(req: Request) {
 
 async function handleCronReminders(req: Request) {
   try {
-    // 1. Verify Cron Secret
-    const authHeader = req.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    // 1. Verify Cron Secret — fails closed when CRON_SECRET is unset
+    if (!isAuthorizedCronRequest(req)) {
       return NextResponse.json({ error: "Unauthorized cron trigger" }, { status: 401 });
     }
 
@@ -107,7 +105,16 @@ async function handleCronReminders(req: Request) {
     let emailSentCount = 0;
     const expiredSubIds: string[] = [];
 
-    // 4. Iterate over funds and evaluate reminders
+    // 4. Evaluate funds first (no side effects), collecting the funds
+    //    that land inside their notify window today.
+    interface DueFund {
+      fund: (typeof funds)[number];
+      nextDue: string;
+      daysRemaining: number;
+      pref: { push_enabled: boolean; email_enabled: boolean };
+    }
+    const dueFunds: DueFund[] = [];
+
     for (const fund of funds) {
       // Installment falls on (start day − 2) of every month: e.g. a fund
       // started on the 10th is due on the 8th of each following month.
@@ -137,6 +144,47 @@ async function handleCronReminders(req: Request) {
         continue;
       }
 
+      dueFunds.push({
+        fund,
+        nextDue,
+        daysRemaining,
+        pref: {
+          push_enabled: Boolean(pref.push_enabled),
+          email_enabled: Boolean(pref.email_enabled),
+        },
+      });
+    }
+
+    // 5. Dedup: skip funds already notified for this due date. The
+    //    (user_id, fund_id, notify_date) unique index makes re-invoking
+    //    the cron idempotent — no duplicate emails/pushes/log rows.
+    let alreadyNotified = new Set<string>();
+    let skippedAlreadyNotified = 0;
+    if (dueFunds.length > 0) {
+      const { data: existingLogs } = await supabase
+        .from("notifications_log")
+        .select("user_id, fund_id, notify_date")
+        .in(
+          "fund_id",
+          dueFunds.map((d) => d.fund.id)
+        )
+        .not("notify_date", "is", null);
+
+      alreadyNotified = new Set(
+        (existingLogs ?? []).map(
+          (l) => `${l.user_id}_${l.fund_id}_${l.notify_date}`
+        )
+      );
+    }
+
+    for (const due of dueFunds) {
+      const { fund, nextDue, daysRemaining, pref } = due;
+      const notifyKey = `${fund.user_id}_${fund.id}_${nextDue}`;
+      if (alreadyNotified.has(notifyKey)) {
+        skippedAlreadyNotified++;
+        continue;
+      }
+
       const user = userMap.get(fund.user_id);
       const formattedDueDate = new Date(`${nextDue}T12:00:00`).toLocaleDateString("en-US", {
         month: "short",
@@ -157,6 +205,8 @@ async function handleCronReminders(req: Request) {
 
       await supabase.from("notifications_log").insert({
         user_id: fund.user_id,
+        fund_id: fund.id,
+        notify_date: nextDue,
         title: notifTitle,
         body: notifBody,
         type: daysRemaining === 0 ? "due_today" : "installment_reminder",
@@ -221,6 +271,8 @@ async function handleCronReminders(req: Request) {
     return NextResponse.json({
       success: true,
       processedFunds: funds.length,
+      dueFunds: dueFunds.length,
+      skippedAlreadyNotified,
       pushSent: pushSentCount,
       emailsSent: emailSentCount,
       timestamp: new Date().toISOString(),

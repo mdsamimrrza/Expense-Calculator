@@ -3,6 +3,7 @@
 // ============================================================
 
 import { z } from "zod";
+import { MIN_SIP_AMOUNT } from "../constants";
 
 export const fundConfigSchema = z.object({
   fund_name: z
@@ -19,7 +20,10 @@ export const fundConfigSchema = z.object({
   }),
   monthly_sip: z
     .number()
-    .positive("Monthly SIP amount must be greater than 0"),
+    .min(
+      MIN_SIP_AMOUNT,
+      `Monthly SIP amount must be at least NPR ${MIN_SIP_AMOUNT.toLocaleString("en-IN")}`
+    ),
   latest_nav: z
     .number({ required_error: "Current NAV is required" })
     .positive("Current NAV must be greater than 0"),

@@ -42,21 +42,8 @@ export async function getDashboardData(
     return { success: false, error: "Not authenticated" };
   }
 
-  // Fetch fund configs
-  const { data: fundsRaw, error: fundsError } = await supabase
-    .from("fund_config")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("is_active", true)
-    .order("created_at", { ascending: true });
-
-  if (fundsError) {
-    return { success: false, error: fundsError.message };
-  }
-
-  const funds = (fundsRaw ?? []) as FundConfig[];
-
-  // Fetch entries
+  // Funds, entries and nav_history are independent — fetch them in one
+  // parallel round trip instead of three sequential awaits.
   let entriesQuery = supabase
     .from("entries")
     .select("*")
@@ -67,7 +54,34 @@ export async function getDashboardData(
     entriesQuery = entriesQuery.eq("fund_id", fundId);
   }
 
-  const { data: entriesRaw, error: entriesError } = await entriesQuery;
+  let navHistoryQuery = supabase
+    .from("nav_history")
+    .select("fund_id, nav_date, nav_value")
+    .eq("user_id", user.id)
+    .order("nav_date", { ascending: true });
+
+  if (fundId && fundId !== "all") {
+    navHistoryQuery = navHistoryQuery.eq("fund_id", fundId);
+  }
+
+  const [fundsRes, entriesRes, navRes] = await Promise.all([
+    supabase
+      .from("fund_config")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .order("created_at", { ascending: true }),
+    entriesQuery,
+    navHistoryQuery,
+  ]);
+
+  if (fundsRes.error) {
+    return { success: false, error: fundsRes.error.message };
+  }
+  const funds = (fundsRes.data ?? []) as FundConfig[];
+
+  const entriesRaw = entriesRes.data;
+  const entriesError = entriesRes.error;
 
   if (entriesError) {
     return { success: false, error: entriesError.message };
@@ -239,18 +253,9 @@ export async function getDashboardData(
     }
   }
 
-  // 2. Overlay nav_history rows, each tagged to its own fund_id (never mixed)
-  let navHistoryQuery = supabase
-    .from("nav_history")
-    .select("fund_id, nav_date, nav_value")
-    .eq("user_id", user.id)
-    .order("nav_date", { ascending: true });
-
-  if (fundId && fundId !== "all") {
-    navHistoryQuery = navHistoryQuery.eq("fund_id", fundId);
-  }
-
-  const { data: navHistoryRows } = await navHistoryQuery;
+  // 2. Overlay nav_history rows (fetched in the parallel batch above),
+  //    each tagged to its own fund_id (never mixed)
+  const navHistoryRows = navRes.data;
   if (navHistoryRows) {
     for (const row of navHistoryRows) {
       ensureFundMap(row.fund_id).set(row.nav_date, Number(row.nav_value));

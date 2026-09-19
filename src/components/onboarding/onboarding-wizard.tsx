@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { FUND_PRESETS } from "@/lib/constants";
+import { FUND_PRESETS, MIN_SIP_AMOUNT } from "@/lib/constants";
 import { createFundConfig } from "@/lib/actions/fund-config";
 
 const STEPS = [
@@ -70,7 +70,7 @@ export function OnboardingWizard() {
       case 1:
         return parseFloat(feeRate) > 0;
       case 2:
-        return parseFloat(monthlySip) > 0;
+        return parseFloat(monthlySip) >= MIN_SIP_AMOUNT;
       case 3:
         return startDate.length > 0;
       case 4:
@@ -198,12 +198,15 @@ export function OnboardingWizard() {
                 <Input
                   id="monthly-sip"
                   type="number"
-                  min="0"
+                  min={String(MIN_SIP_AMOUNT)}
                   step="100"
                   value={monthlySip}
                   onChange={(e) => setMonthlySip(e.target.value)}
                   placeholder="e.g. 5000"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Minimum NPR {MIN_SIP_AMOUNT.toLocaleString("en-IN")}
+                </p>
               </div>
             )}
 

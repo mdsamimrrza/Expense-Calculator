@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { createFundConfig, updateFundConfig, deleteFundConfig } from "@/lib/actions/fund-config";
-import { FUND_PRESETS } from "@/lib/constants";
+import { FUND_PRESETS, MIN_SIP_AMOUNT } from "@/lib/constants";
 import type { FundConfig } from "@/lib/types";
 import { formatCurrencyWhole, formatDate } from "@/lib/format";
 
@@ -338,11 +338,14 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
                 <Input
                   id="sip-amount-input"
                   type="number"
-                  min="100"
+                  min={String(MIN_SIP_AMOUNT)}
                   value={monthlySip}
                   onChange={(e) => setMonthlySip(e.target.value)}
                   required
                 />
+                <p className="text-xs text-muted-foreground">
+                  Minimum NPR {MIN_SIP_AMOUNT.toLocaleString("en-IN")}
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="start-date-input">Start Date</Label>

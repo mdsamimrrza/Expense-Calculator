@@ -2,6 +2,26 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createClient } from "@/lib/supabase/server";
 
+// Push endpoints must point at a real Web Push service — the stored
+// URL is later used as the target of server-side POSTs (web-push
+// sendNotification), so an arbitrary string would turn the cron into
+// a request relay.
+const PUSH_SERVICE_HOSTS = new Set([
+  "fcm.googleapis.com",
+  "updates.push.services.mozilla.com",
+  "web.push.apple.com",
+]);
+
+function isValidPushEndpoint(raw: unknown): raw is string {
+  if (typeof raw !== "string") return false;
+  try {
+    const url = new URL(raw);
+    return url.protocol === "https:" && PUSH_SERVICE_HOSTS.has(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const session = await auth();
@@ -16,7 +36,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing required subscription keys" }, { status: 400 });
     }
 
+    if (!isValidPushEndpoint(endpoint)) {
+      return NextResponse.json(
+        { error: "Unsupported push service endpoint" },
+        { status: 400 }
+      );
+    }
+
     const supabase = await createClient();
+
+    // Refuse to re-bind an endpoint that already belongs to another
+    // user (the onConflict upsert would otherwise silently steal it).
+    const { data: existingRows } = await supabase
+      .from("push_subscriptions")
+      .select("user_id")
+      .eq("endpoint", endpoint)
+      .limit(1);
+
+    if (existingRows && existingRows.length > 0 && existingRows[0].user_id !== session.user.id) {
+      return NextResponse.json(
+        { error: "This subscription endpoint is already registered" },
+        { status: 409 }
+      );
+    }
 
     const { error } = await supabase
       .from("push_subscriptions")

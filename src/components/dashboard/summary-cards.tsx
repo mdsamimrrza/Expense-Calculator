@@ -54,17 +54,16 @@ interface SummaryCardsProps {
   latestNavSlot?: React.ReactNode;
 }
 
-/** Helper to shorten long fund names for small pills (e.g. NMB Saral Bachat Fund-E -> NMB Saral) */
+/** Codes/nicknames sometimes stored as fund names → full display names. */
+const FUND_NAME_ALIASES: Record<string, string> = {
+  NMBSBFE: "NMB Saral Bachat Fund-E",
+  NIBLSF: "NIBL Sahabhagita Fund",
+};
+
+/** Always show the full fund name — resolve stored codes to real names. */
 function formatFundShortName(name: string): string {
   if (!name) return "";
-  const lowerName = name.toLowerCase();
-  if (lowerName.includes("nibl sahabhagita") || lowerName.includes("nibl saha")) return "NIBLSF";
-  if (lowerName.includes("nmb saral")) return "NMB Saral";
-  const words = name.split(" ");
-  if (words.length >= 2 && name.length > 12) {
-    return `${words[0]} ${words[1]}`;
-  }
-  return name;
+  return FUND_NAME_ALIASES[name.trim().toUpperCase()] ?? name;
 }
 
 export function SummaryCards({
