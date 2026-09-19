@@ -120,13 +120,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     secret: supabaseSecret,
   }),
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ user, account, profile }) {
       if (account?.provider === "google" && user?.email) {
         const nextAuthClient = getNextAuthClient();
 
         const { data: rows } = await nextAuthClient
           .from("users")
-          .select("id, emailVerified")
+          .select("id, name, image, emailVerified")
           .eq("email", user.email.toLowerCase().trim())
           .limit(1);
 
@@ -144,10 +144,35 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             .update({ emailVerified: new Date().toISOString() })
             .eq("id", row.id);
         }
+
+        // Backfill the profile photo (and missing name) from Google.
+        // A row created earlier via email/password signup has image = null,
+        // and account linking never copies Google's picture into it — so a
+        // Google login on such an account would leave the avatar empty.
+        const googlePicture =
+          (profile as { picture?: string } | null)?.picture ??
+          (user as { image?: string | null }).image ??
+          null;
+        const googleName =
+          (profile as { name?: string } | null)?.name ??
+          (user as { name?: string | null }).name ??
+          null;
+        if (row && googlePicture && row.image !== googlePicture) {
+          await nextAuthClient
+            .from("users")
+            .update({ image: googlePicture })
+            .eq("id", row.id);
+        }
+        if (row && !row.name && googleName) {
+          await nextAuthClient
+            .from("users")
+            .update({ name: googleName })
+            .eq("id", row.id);
+        }
       }
       return true;
     },
-    async jwt({ token, user, trigger, session }) {
+    async jwt({ token, user, account, profile, trigger, session }) {
       // Client-side `useSession().update({ user: { image } })` after a
       // profile upload lands here — persist it so the new avatar survives.
       if (
@@ -161,10 +186,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // Persist profile fields into the JWT so the session (and the
         // settings avatar) can render them. `image` comes from the
         // next_auth.users.image column (credentials) or Google (`picture`).
+        // On a Google sign-in prefer the live profile picture: the linked
+        // DB row may still hold the old null from an earlier password signup.
         token.name = user.name ?? token.name;
         token.email = user.email ?? token.email;
         token.picture =
-          (user as any).image ?? (user as any).picture ?? token.picture;
+          (profile as { picture?: string } | null)?.picture ??
+          (user as any).image ??
+          (user as any).picture ??
+          token.picture;
       }
 
       // Enforce the per-user credential epoch: after a password reset
