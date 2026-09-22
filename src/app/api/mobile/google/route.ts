@@ -91,8 +91,9 @@ export async function GET(req: NextRequest) {
     })
   );
   const csrfCookies = csrfRes.headers.getSetCookie();
+  // @auth/core's /csrf responds { csrfToken } — not { token }.
   const csrfToken: string =
-    ((await csrfRes.json().catch(() => null)) as { token?: string } | null)?.token ?? "";
+    ((await csrfRes.json().catch(() => null)) as { csrfToken?: string } | null)?.csrfToken ?? "";
   if (!csrfToken) {
     return errorPage("Google sign-in could not start. Please try again.", 502);
   }
