@@ -1,4 +1,5 @@
 import NextAuth from "next-auth";
+import { cache } from "react";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { SupabaseAdapter } from "@auth/supabase-adapter";
@@ -6,7 +7,7 @@ import jwt from "jsonwebtoken";
 import type { Provider } from "next-auth/providers";
 import { authConfig } from "./auth.config";
 import { createClient } from "@supabase/supabase-js";
-import bcrypt from "bcryptjs";
+import { verifyCredentials } from "./lib/credentials-core";
 
 declare module "next-auth" {
   interface Session {
@@ -29,8 +30,6 @@ function getPublicClient() {
   return createClient(supabaseUrl, supabaseSecret);
 }
 
-const MAX_LOGIN_ATTEMPTS_PER_HOUR = 10;
-
 const providers: Provider[] = [
   // Google verifies mailbox ownership, so linking an OAuth sign-in to an
   // existing row for the same email is safe. The signIn callback below
@@ -48,71 +47,29 @@ const providers: Provider[] = [
     async authorize(credentials) {
       if (!credentials?.email || !credentials?.password) return null;
 
-      const email = (credentials.email as string).toLowerCase().trim();
-      const password = credentials.password as string;
-
-      // Shared (DB-backed) brute-force limiter: 10 failed attempts per
-      // address per hour. Failed attempts are only recorded on failure,
-      // so a legitimate user is never locked out by their own successes.
-      const { count: recentFailures, error: attemptErr } = await getPublicClient()
-        .from("rate_limit_events")
-        .select("*", { count: "exact", head: true })
-        .eq("key", `login:${email}`)
-        .gt("created_at", new Date(Date.now() - 60 * 60 * 1000).toISOString());
-
-      if (!attemptErr && (recentFailures ?? 0) >= MAX_LOGIN_ATTEMPTS_PER_HOUR) {
-        return null;
-      }
-
-      const nextAuthClient = getNextAuthClient();
-      const publicClient = getPublicClient();
-
-      // 1. Find user in next_auth.users by email
-      const { data: userRows, error: userErr } = await nextAuthClient
-        .from("users")
-        .select("id, email, name, image, emailVerified, credential_epoch")
-        .eq("email", email)
-        .limit(1);
-
-      const user = !userErr && userRows && userRows.length > 0 ? userRows[0] : null;
-
-      if (!user) return null;
-
-      // 2. Accounts created via signup are unusable until the emailed
-      //    confirmation code proves mailbox ownership.
-      if (!user.emailVerified) return null;
-
-      // 3. Check password hash in public.user_passwords
-      const { data: pwRows, error: pwErr } = await publicClient
-        .from("user_passwords")
-        .select("password_hash")
-        .eq("user_id", user.id)
-        .limit(1);
-
-      if (pwErr || !pwRows || pwRows.length === 0) {
-        // User exists but has no password (Google-only user)
-        return null;
-      }
-
-      const isValid = await bcrypt.compare(password, pwRows[0].password_hash);
-      if (!isValid) {
-        // Record the failure for the shared limiter (best-effort)
-        await publicClient.from("rate_limit_events").insert({ key: `login:${email}` });
-        return null;
-      }
+      // Shared core with the mobile API: brute-force limiter, emailVerified
+      // gate, bcrypt compare — one implementation, no drift.
+      const result = await verifyCredentials(
+        credentials.email as string,
+        credentials.password as string
+      );
+      if (!result.ok) return null;
 
       return {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        image: user.image,
-        credential_epoch: Number(user.credential_epoch ?? 0),
+        id: result.user.id,
+        email: result.user.email,
+        name: result.user.name,
+        image: result.user.image,
+        credential_epoch: result.credentialEpoch,
       } as any;
     },
   }),
 ];
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+// The jwt callback does a Supabase round trip (credential_epoch check) on
+// every auth() call — and layout + page both call auth() in the same render.
+// cache() dedupes them to one round trip per request without touching callers.
+const nextAuth = NextAuth({
   ...authConfig,
   providers,
   adapter: SupabaseAdapter({
@@ -252,3 +209,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     error: "/login",
   },
 });
+
+export const { handlers, signIn, signOut } = nextAuth;
+export const auth = cache(nextAuth.auth);

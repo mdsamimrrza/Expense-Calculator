@@ -298,7 +298,7 @@ async function consumeOtp(
   normalizedEmail: string,
   otpCode: string,
   purpose: "signup" | "password_reset"
-): Promise<ActionResult & { resetToken?: string }> {
+): Promise<ActionResult & { resetToken?: string; email?: string }> {
   const publicClient = getPublicClient();
 
   // Latest unused, non-expired OTP of this purpose for this email
@@ -355,7 +355,7 @@ async function consumeOtp(
     .update({ used: true, reset_token: resetToken })
     .eq("id", token.id);
 
-  return { success: true, resetToken: resetToken ?? undefined };
+  return { success: true, resetToken: resetToken ?? undefined, email: normalizedEmail };
 }
 
 // ────────────────────────────────────────────────
@@ -411,7 +411,7 @@ export async function forgotPassword(formData: FormData): Promise<ActionResult> 
 export async function verifyOtp(
   email: string,
   otpCode: string
-): Promise<ActionResult & { resetToken?: string }> {
+): Promise<ActionResult & { resetToken?: string; email?: string }> {
   if (!email || !otpCode || otpCode.length !== 6) {
     return { success: false, error: "Invalid OTP code." };
   }
