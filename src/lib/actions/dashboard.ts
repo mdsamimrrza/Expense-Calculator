@@ -28,7 +28,7 @@ interface DashboardData {
   monthlyContributions: MonthlyContribution[];
   navHistory: ChartDataPoint[];
   feeDragChart: FeeDragPoint[];
-  entries: Entry[];
+  entriesCount: number;
 }
 
 export async function getDashboardData(
@@ -289,19 +289,24 @@ export async function getDashboardData(
     runningUnitsByFund.set(f.id, 0);
   }
 
-  const processedEntryIds = new Set<string>();
+  // Entries pre-bucketed by purchase_date: every entry's date is in
+  // timelineDates, so each is applied exactly once on its own date.
+  // (Re-filtering all entries per timeline date was O(dates × entries).)
+  const entriesByDate = new Map<string, Entry[]>();
+  for (const e of entries) {
+    const bucket = entriesByDate.get(e.purchase_date);
+    if (bucket) bucket.push(e);
+    else entriesByDate.set(e.purchase_date, [e]);
+  }
+
   const portfolioChart: PortfolioChartPoint[] = [];
   const blendedNavPoints: ChartDataPoint[] = []; // used only for "All Funds" NAV chart
   let runningInvested = 0;
 
   for (const dt of timelineDates) {
-    const entriesOnDate = entries.filter(
-      (e) => e.purchase_date <= dt && !processedEntryIds.has(e.id)
-    );
-    for (const e of entriesOnDate) {
+    for (const e of entriesByDate.get(dt) ?? []) {
       runningUnitsByFund.set(e.fund_id, (runningUnitsByFund.get(e.fund_id) || 0) + Number(e.units));
       runningInvested += Number(e.amount);
-      processedEntryIds.add(e.id);
     }
 
     // Update each fund's own last-known NAV independently
@@ -392,7 +397,7 @@ export async function getDashboardData(
       monthlyContributions,
       navHistory,
       feeDragChart,
-      entries,
+      entriesCount: entries.length,
     },
   };
 }

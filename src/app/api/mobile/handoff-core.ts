@@ -47,7 +47,12 @@ function nextAuthClient() {
 /** Mint a Supabase RLS JWT for a next_auth user id (mirrors auth.ts session callback). */
 export function mintSupabaseAccessToken(sub: string, email: string | null): string {
   const secret = process.env.SUPABASE_JWT_SECRET;
-  if (!secret) throw new Error("SUPABASE_JWT_SECRET is not configured");
+  if (!secret) {
+    // Surface the real cause to the client instead of a generic 500.
+    throw new Error(
+      "Server is missing SUPABASE_JWT_SECRET — set it in Vercel to your Supabase project's current JWT signing key."
+    );
+  }
   return jwt.sign(
     {
       aud: "authenticated",

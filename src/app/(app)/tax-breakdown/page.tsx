@@ -27,14 +27,14 @@ export default async function TaxBreakdownPage({ searchParams }: TaxBreakdownPag
     redirect("/onboarding");
   }
 
-  const { summary, funds, entries, feeDragChart } = result.data;
+  const { summary, funds, entriesCount, feeDragChart } = result.data;
   const activeFund = funds.find((f: FundConfig) => f.id === selectedFundId) || funds[0];
 
   return (
     <TaxBreakdownView
       summary={summary}
       funds={funds}
-      entriesCount={entries.length}
+      entriesCount={entriesCount}
       selectedFundId={selectedFundId}
       activeFund={activeFund}
       feeDragChart={feeDragChart}
