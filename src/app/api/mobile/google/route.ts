@@ -8,24 +8,25 @@
 //    the browser URL to open: our own GET start route below.
 //
 //  GET  /api/mobile/google?nonce=...  (browser leg, 307)
-//    Runs NextAuth's OAuth kickoff SERVER-SIDE — GET /api/auth/csrf to
-//    mint the CSRF cookie, POST /api/auth/signin/google (form body,
-//    csrfToken + callbackUrl → the handoff relay with the nonce) — and
-//    forwards every Set-Cookie header on a 307 to Google. The phone's
-//    browser carries the CSRF/state/nonce cookies as first-party on
-//    this origin, so from here it's the exact same consent chain the
-//    web app uses: Google → /api/auth/callback/google → NextAuth
-//    session → relay → sahakarisip://auth/callback?token=<nonce>.
+//    Runs NextAuth's OAuth kickoff IN-PROCESS — GET /api/auth/csrf to
+//    mint the CSRF cookie, then the CSRF-validated POST to
+//    /api/auth/signin/google with callbackUrl = the handoff relay that
+//    carries the nonce — and forwards every Set-Cookie on a 307 to
+//    Google. From there it's the exact chain the web app uses:
+//    Google → /api/auth/callback/google → NextAuth session → relay →
+//    sahakarisip://auth/callback?token=<nonce>.
 //
 // Why not just GET /api/auth/signin/google? @auth/core only renders an
-// HTML page for GET; the OAuth redirect requires a CSRF-validated POST
-// that only its client-side signIn() sends. Doing the handshake here
-// removes that extra click and keeps Google's registered redirect URIs
-// untouched.
+// HTML page for GET; the OAuth redirect requires a CSRF-validated POST.
+// Why handlers instead of self-fetching our own URL? On Vercel,
+// server-side fetches to the app's own hostname can be intercepted by
+// deployment protection — calling the exported NextAuth handlers with a
+// crafted Request (browser's real Cookie header, host forwarded) keeps
+// everything in-process and deterministic.
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { handlers } from "@/auth";
 
 const APP_SCHEME = process.env.MOBILE_APP_SCHEME || "sahakarisip";
 
@@ -72,51 +73,54 @@ export async function GET(req: NextRequest) {
   }
 
   const origin = webOrigin();
-  // Prepare cookie string to forward
-  const cookieStore = await cookies();
-  const incomingCookie = cookieStore.toString();
+  // Preserve the real host so NextAuth's trustHost/url inference works
+  // exactly like a browser request to this origin.
+  const host = req.headers.get("host") || new URL(origin).host;
+  const incomingCookie = req.headers.get("cookie") ?? "";
 
-  // 1. Get CSRF token and cookie
-  const csrfRes = await fetch(`${origin}/api/auth/csrf`, {
-    method: "GET",
-    headers: {
-      cookie: incomingCookie,
-    },
-  });
-  if (!csrfRes.ok) {
-    return errorPage("Google sign-in could not start. Please try again.", 502);
-  }
-  const csrfResCookie = csrfRes.headers.get("set-cookie") ?? "";
-  const csrfJson = await csrfRes.json();
-  const csrfToken = (csrfJson as { token?: string }).token ?? "";
+  const forwardedHeaders: Record<string, string> = {
+    host,
+    "x-forwarded-host": host,
+    "x-forwarded-proto": req.headers.get("x-forwarded-proto") || "https",
+  };
+
+  // 1. Mint (or reuse) the CSRF cookie, exactly like the client lib does.
+  const csrfRes = await handlers.GET(
+    new NextRequest(`${origin}/api/auth/csrf`, {
+      headers: { ...forwardedHeaders, cookie: incomingCookie },
+    })
+  );
+  const csrfCookies = csrfRes.headers.getSetCookie();
+  const csrfToken: string =
+    ((await csrfRes.json().catch(() => null)) as { token?: string } | null)?.token ?? "";
   if (!csrfToken) {
     return errorPage("Google sign-in could not start. Please try again.", 502);
   }
 
-  // Cookie jar for the second hop: incoming cookies plus the newly issued CSRF cookie.
-  const cookieJar = [incomingCookie, csrfResCookie].filter(Boolean).join("; ");
+  // Cookie jar for the second hop: whatever the browser already had plus
+  // the freshly issued CSRF cookie.
+  const cookieJar = [incomingCookie, ...csrfCookies].filter(Boolean).join("; ");
 
   // 2. The actual OAuth kickoff: NextAuth's CSRF-validated POST.
   const relayUrl = `${origin}/api/mobile/handoff?nonce=${nonce}`;
   const form = new URLSearchParams({ csrfToken, callbackUrl: relayUrl });
-  const signinRes = await fetch(`${origin}/api/auth/signin/google`, {
-    method: "POST",
-    headers: {
-      cookie: cookieJar,
-      "content-type": "application/x-www-form-urlencoded",
-    },
-    body: form.toString(),
-  });
-
-  if (!signinRes.ok) {
-    // No redirect (bad config / error page) – surface a friendly page
-    // rather than a half-started flow.
-    console.error("[mobile google] signin did not redirect; status", signinRes.status);
-    return errorPage("Google sign-in could not start. Please try again.", 502);
-  }
+  const signinRes = await handlers.POST(
+    new NextRequest(`${origin}/api/auth/signin/google`, {
+      method: "POST",
+      headers: {
+        ...forwardedHeaders,
+        cookie: cookieJar,
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: form.toString(),
+    })
+  );
 
   const googleUrl = signinRes.headers.get("location");
   if (!googleUrl || !/^https:\/\//.test(googleUrl)) {
+    // No redirect (bad config / error page) — surface a friendly page
+    // rather than a half-started flow.
+    console.error("[mobile google] signin did not redirect; status", signinRes.status);
     return errorPage("Google sign-in could not start. Please try again.", 502);
   }
 
@@ -124,11 +128,10 @@ export async function GET(req: NextRequest) {
   //    both hops, so CSRF/state/nonce cookies are first-party on this
   //    origin and ride along to the callback.
   const response = NextResponse.redirect(googleUrl, 307);
-  // Append Set-Cookie from csrf response
-  if (csrfResCookie) response.headers.append("set-cookie", csrfResCookie);
-  // Append Set-Cookie from signin response
-  const signinResCookie = signinRes.headers.get("set-cookie");
-  if (signinResCookie) response.headers.append("set-cookie", signinResCookie);
+  for (const cookie of csrfCookies) response.headers.append("set-cookie", cookie);
+  for (const cookie of signinRes.headers.getSetCookie()) {
+    response.headers.append("set-cookie", cookie);
+  }
   return response;
 }
 
