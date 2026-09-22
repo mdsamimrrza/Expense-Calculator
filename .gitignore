@@ -16,6 +16,9 @@
 # production
 /build
 
+# local Supabase JWT signing key
+/supabase/signing_keys.json
+
 # misc
 .DS_Store
 *.pem

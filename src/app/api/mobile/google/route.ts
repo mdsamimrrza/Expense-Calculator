@@ -32,7 +32,9 @@ const APP_SCHEME = process.env.MOBILE_APP_SCHEME || "sahakarisip";
 
 function webOrigin(): string {
   const explicit = process.env.NEXTAUTH_URL || process.env.AUTH_URL;
-  if (explicit) return explicit.replace(/\/+$/, "");
+  if (explicit && /^https:\/\/(?!localhost(?:[:/]|$)|127\.0\.0\.1(?:[:/]|$))/i.test(explicit)) {
+    return explicit.replace(/\/+$/, "");
+  }
   return "https://sahakari-sip.vercel.app";
 }
 

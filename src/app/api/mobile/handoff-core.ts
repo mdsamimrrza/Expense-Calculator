@@ -20,7 +20,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import jwt from "jsonwebtoken";
-import { randomBytes, randomInt } from "crypto";
+import { createPrivateKey, createPublicKey, randomBytes, randomInt } from "crypto";
 import type { NextRequest } from "next/server";
 
 const HANDOFF_TTL_SECONDS = 60;
@@ -28,6 +28,19 @@ const HANDOFF_TTL_SECONDS = 60;
  *  When it expires the app falls back to the sign-in screen (Google
  *  handoff or password) exactly like a web session ending. */
 export const TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
+
+function readJwtPrivateKey(): ReturnType<typeof createPrivateKey> | null {
+  const raw = process.env.SUPABASE_JWT_PRIVATE_KEY?.trim();
+  if (!raw) return null;
+  try {
+    if (raw.startsWith("{")) {
+      return createPrivateKey({ key: JSON.parse(raw), format: "jwk" });
+    }
+    return createPrivateKey(raw.replace(/\\n/g, "\n"));
+  } catch {
+    return null;
+  }
+}
 
 function publicClient() {
   return createClient(
@@ -46,6 +59,31 @@ function nextAuthClient() {
 
 /** Mint a Supabase RLS JWT for a next_auth user id (mirrors auth.ts session callback). */
 export function mintSupabaseAccessToken(sub: string, email: string | null): string {
+  const privateKey = readJwtPrivateKey();
+  const keyId = process.env.SUPABASE_JWT_KEY_ID;
+  const payload = {
+    aud: "authenticated",
+    exp: Math.floor(Date.now() / 1000) + TOKEN_TTL_SECONDS,
+    sub,
+    email: email ?? undefined,
+    role: "authenticated",
+  };
+
+  if (process.env.SUPABASE_JWT_PRIVATE_KEY && !privateKey) {
+    throw new Error(
+      "SUPABASE_JWT_PRIVATE_KEY is invalid. Use the Supabase ES256 private JWK or PEM value."
+    );
+  }
+  if (privateKey && !keyId) {
+    throw new Error("SUPABASE_JWT_KEY_ID is required with SUPABASE_JWT_PRIVATE_KEY.");
+  }
+  if (privateKey && keyId) {
+    return jwt.sign(payload, privateKey, {
+      algorithm: "ES256",
+      keyid: keyId,
+    });
+  }
+
   const secret = process.env.SUPABASE_JWT_SECRET;
   if (!secret) {
     // Surface the real cause to the client instead of a generic 500.
@@ -53,20 +91,14 @@ export function mintSupabaseAccessToken(sub: string, email: string | null): stri
       "Server is missing SUPABASE_JWT_SECRET — set it in Vercel to your Supabase project's current JWT signing key."
     );
   }
-  return jwt.sign(
-    {
-      aud: "authenticated",
-      exp: Math.floor(Date.now() / 1000) + TOKEN_TTL_SECONDS,
-      sub,
-      email: email ?? undefined,
-      role: "authenticated",
-    },
-    secret
-  );
+  return jwt.sign(payload, secret);
 }
 
 /** Store a single-use handoff nonce for a user; returns the nonce. */
-export async function issueHandoffToken(userId: string): Promise<string> {
+export async function issueHandoffToken(
+  userId: string,
+  requestedNonce?: string
+): Promise<string> {
   const pub = publicClient();
   // Sweep stale unconsumed tokens (crashed browser mid-handoff).
   await pub
@@ -74,7 +106,7 @@ export async function issueHandoffToken(userId: string): Promise<string> {
     .delete()
     .lt("created_at", new Date(Date.now() - 10 * 60 * 1000).toISOString());
 
-  const nonce = randomBytes(16).toString("hex");
+  const nonce = requestedNonce ?? randomBytes(16).toString("hex");
   const { error } = await pub.from("mobile_handoff_tokens").insert({
     user_id: userId,
     nonce,
@@ -158,9 +190,16 @@ export async function authenticateMobileRequest(req: NextRequest): Promise<{ sub
   const token = header.startsWith("Bearer ") ? header.slice(7) : "";
   if (!token) return null;
   try {
-    const secret = process.env.SUPABASE_JWT_SECRET;
-    if (!secret) return null;
-    const payload = jwt.verify(token, secret, { complete: false }) as jwt.JwtPayload;
+      const privateKey = readJwtPrivateKey();
+      if (process.env.SUPABASE_JWT_PRIVATE_KEY && !privateKey) return null;
+      const key = privateKey
+        ? createPublicKey(privateKey)
+      : process.env.SUPABASE_JWT_SECRET;
+    if (!key) return null;
+    const payload = jwt.verify(token, key, {
+      complete: false,
+      algorithms: privateKey ? ["ES256"] : ["HS256"],
+    }) as jwt.JwtPayload;
     if (payload.role !== "authenticated" || typeof payload.sub !== "string") return null;
     return { sub: payload.sub, email: typeof payload.email === "string" ? payload.email : null };
   } catch {
