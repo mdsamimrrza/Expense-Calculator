@@ -115,49 +115,49 @@ export function SummaryCards({
               </span>
             </div>
 
-            {/* Fund Selector & Add SIP Button */}
-            <div className="flex items-center gap-2 sm:gap-1.5 shrink-0 mr-2 sm:mr-0">
-              {funds.length > 0 && (
-                <Select
-                  value={selectedFundId}
-                  onValueChange={(val) =>
-                    router.push(val === "all" ? "/dashboard?fund=all" : `/dashboard?fund=${val}`)
-                  }
-                >
-                  <SelectTrigger className="bg-secondary/80 sm:bg-secondary/60 text-foreground border-border/60 h-9 sm:h-7.5 text-xs sm:text-[11px] font-extrabold rounded-full px-3.5 sm:px-2.5 w-auto min-w-[85px] focus:ring-0 shadow-sm">
-                    <SelectValue>
-                      {selectedFundId === "all"
-                        ? "All Funds"
-                        : formatFundShortName(
-                          funds.find((f) => f.id === selectedFundId)?.fund_name || "All Funds"
-                        )}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="rounded-2xl">
-                    <SelectItem value="all">All Funds</SelectItem>
-                    {funds.map((f) => (
-                      <SelectItem key={f.id} value={f.id}>
-                        {formatFundShortName(f.fund_name)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+{/* Fund Selector & Add SIP Button */}
+              <div className="flex items-center gap-1.5 sm:gap-2 mr-2 sm:mr-0 min-w-0">
+                {funds.length > 0 && (
+                  <Select
+                    value={selectedFundId}
+                    onValueChange={(val) =>
+                      router.push(val === "all" ? "/dashboard?fund=all" : `/dashboard?fund=${val}`)
+                    }
+                  >
+                    <SelectTrigger className="bg-secondary/80 sm:bg-secondary/60 text-foreground border-border/60 h-8 sm:h-7.5 text-xs sm:text-[11px] font-extrabold rounded-full px-2.5 sm:px-2 min-w-[90px] max-w-[130px] sm:max-w-[150px] focus:ring-0 shadow-sm truncate">
+                      <SelectValue>
+                        {selectedFundId === "all"
+                          ? "All Funds"
+                          : formatFundShortName(
+                              funds.find((f) => f.id === selectedFundId)?.fund_name || "All Funds"
+                          )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="rounded-2xl max-w-[200px]">
+                      <SelectItem value="all" className="truncate">All Funds</SelectItem>
+                      {funds.map((f) => (
+                        <SelectItem key={f.id} value={f.id} className="truncate">
+                          {formatFundShortName(f.fund_name)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
 
-              {funds.length > 0 && (
-                <EntryForm
-                  funds={funds}
-                  defaultFundId={activeFund?.id}
-                  trigger={
-                    <Button
-                      size="sm"
-                      className="h-9 w-9 sm:h-8 sm:w-8 p-0 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-md shadow-blue-600/30 border-0 shrink-0 flex items-center justify-center transition-transform active:scale-95"
-                    >
-                      <Plus className="h-5 w-5 sm:h-4 sm:w-4 stroke-[2.5]" />
-                    </Button>
-                  }
-                />
-              )}
+                {funds.length > 0 && (
+                  <EntryForm
+                    funds={funds}
+                    defaultFundId={activeFund?.id}
+                    trigger={
+                      <Button
+                        size="sm"
+                        className="h-8 w-8 sm:h-7 sm:w-7 p-0 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-md shadow-blue-600/30 border-0 shrink-0 flex items-center justify-center transition-transform active:scale-95"
+                      >
+                        <Plus className="h-4 w-4 sm:h-3.5 sm:w-3.5 stroke-[2.5]" />
+                      </Button>
+                    }
+                  />
+                )}
             </div>
           </div>
 
