@@ -25,8 +25,19 @@ function htmlResponse(heading: string, message: string, status: number) {
 
 export async function GET(req: NextRequest) {
   const nonce = req.nextUrl.searchParams.get("nonce");
+  const cookieNonce = req.cookies.get("mobile_handoff_nonce")?.value;
 
   if (!nonce || !/^[0-9a-f]{32}$/i.test(nonce)) {
+    return htmlResponse(
+      "Sign-in link invalid",
+      "Please start Google sign-in again from the SahakariSIP app.",
+      400
+    );
+  }
+
+  // Require the nonce cookie to match the query nonce — this ensures
+  // the browser was the one that started the Google flow.
+  if (!cookieNonce || cookieNonce !== nonce) {
     return htmlResponse(
       "Sign-in link invalid",
       "Please start Google sign-in again from the SahakariSIP app.",
@@ -46,7 +57,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    await issueHandoffToken(session.user.id, nonce);
+    // Use server-issued nonce (no requestedNonce) to avoid client-chosen values.
+    await issueHandoffToken(session.user.id);
   } catch {
     return htmlResponse(
       "Something went wrong",
@@ -138,8 +150,17 @@ export async function GET(req: NextRequest) {
 </body>
 </html>`;
 
-  return new NextResponse(html, {
+  const response = new NextResponse(html, {
     status: 200,
     headers: { "content-type": "text/html; charset=utf-8" },
   });
+  // Clear the nonce binding cookie now that it's consumed.
+  response.cookies.set("mobile_handoff_nonce", "", {
+    path: "/api/mobile/handoff",
+    maxAge: 0,
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+  });
+  return response;
 }

@@ -58,7 +58,7 @@ function nextAuthClient() {
 }
 
 /** Mint a Supabase RLS JWT for a next_auth user id (mirrors auth.ts session callback). */
-export function mintSupabaseAccessToken(sub: string, email: string | null): string {
+export function mintSupabaseAccessToken(sub: string, email: string | null, credentialEpoch: number = 0): string {
   const privateKey = readJwtPrivateKey();
   const keyId = process.env.SUPABASE_JWT_KEY_ID;
   const payload = {
@@ -67,6 +67,7 @@ export function mintSupabaseAccessToken(sub: string, email: string | null): stri
     sub,
     email: email ?? undefined,
     role: "authenticated",
+    epoch: credentialEpoch,
   };
 
   if (process.env.SUPABASE_JWT_PRIVATE_KEY && !privateKey) {
@@ -136,29 +137,26 @@ export interface ExchangeResult {
 export async function consumeHandoffToken(nonce: string): Promise<ExchangeResult | null> {
   const pub = publicClient();
 
-  // Fetch-then-delete by id; the row's unique constraint makes a
-  // concurrent double-exchange impossible after the first delete.
-  const { data: rows } = await pub
+  // Atomic consume: delete the row if it exists and is within TTL,
+  // returning the consumed row. Exactly one caller gets the row.
+  const cutoff = new Date(Date.now() - HANDOFF_TTL_SECONDS * 1000).toISOString();
+  const { data: consumed, error } = await pub
     .from("mobile_handoff_tokens")
-    .select("id, user_id, created_at")
+    .delete()
     .eq("nonce", nonce)
+    .gte("created_at", cutoff)
+    .select("id, user_id")
     .limit(1);
 
-  const row = rows && rows.length > 0 ? rows[0] : null;
-  if (!row) return null;
-
-  const ageMs = Date.now() - new Date(row.created_at as string).getTime();
-  if (ageMs > HANDOFF_TTL_SECONDS * 1000) {
-    await pub.from("mobile_handoff_tokens").delete().eq("id", row.id);
+  if (error || !consumed || consumed.length === 0) {
     return null;
   }
 
-  // Consume first — even a later failure never leaves the token live.
-  await pub.from("mobile_handoff_tokens").delete().eq("id", row.id);
+  const row = consumed[0];
 
   const { data: userRows } = await nextAuthClient()
     .from("users")
-    .select("id, email, name, image")
+    .select("id, email, name, image, credential_epoch")
     .eq("id", row.user_id)
     .limit(1);
 
@@ -170,7 +168,7 @@ export async function consumeHandoffToken(nonce: string): Promise<ExchangeResult
     email: (user.email as string | null) ?? null,
     name: (user.name as string | null) ?? null,
     image: (user.image as string | null) ?? null,
-    accessToken: mintSupabaseAccessToken(user.id, user.email ?? null),
+    accessToken: mintSupabaseAccessToken(user.id, user.email ?? null, Number(user.credential_epoch ?? 0)),
     expiresIn: TOKEN_TTL_SECONDS,
   };
 }
@@ -201,6 +199,18 @@ export async function authenticateMobileRequest(req: NextRequest): Promise<{ sub
       algorithms: privateKey ? ["ES256"] : ["HS256"],
     }) as jwt.JwtPayload;
     if (payload.role !== "authenticated" || typeof payload.sub !== "string") return null;
+
+    // Verify credential epoch matches current stored epoch (revoked on password reset).
+    const { data: userRows } = await nextAuthClient()
+      .from("users")
+      .select("credential_epoch")
+      .eq("id", payload.sub)
+      .limit(1);
+    const currentEpoch = userRows && userRows.length > 0 ? Number(userRows[0].credential_epoch ?? 0) : -1;
+    if (currentEpoch === -1 || Number(payload.epoch ?? 0) !== currentEpoch) {
+      return null;
+    }
+
     return { sub: payload.sub, email: typeof payload.email === "string" ? payload.email : null };
   } catch {
     // Expired or forged — same null path.

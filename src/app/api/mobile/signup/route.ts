@@ -66,7 +66,7 @@ export async function PUT(req: NextRequest) {
   const normalized = email.toLowerCase().trim();
   const { data: rows } = await nextAuthClient()
     .from("users")
-    .select("id, email, name, image")
+    .select("id, email, name, image, credential_epoch")
     .eq("email", normalized)
     .limit(1);
   const row = rows?.[0];
@@ -84,7 +84,7 @@ export async function PUT(req: NextRequest) {
       name: (row.name as string | null) ?? null,
       image: (row.image as string | null) ?? null,
     },
-    access_token: mintSupabaseAccessToken(row.id as string, (row.email as string | null) ?? null),
+    access_token: mintSupabaseAccessToken(row.id as string, (row.email as string | null) ?? null, Number(row.credential_epoch ?? 0)),
     expires_in: TOKEN_TTL_SECONDS,
   });
 }

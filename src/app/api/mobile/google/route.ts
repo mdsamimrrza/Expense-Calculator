@@ -130,11 +130,20 @@ export async function GET(req: NextRequest) {
   // 3. Hand the browser the Google URL with all Set-Cookie headers from
   //    both hops, so CSRF/state/nonce cookies are first-party on this
   //    origin and ride along to the callback.
+  // Also bind the nonce to this browser with an httpOnly cookie so the
+  // handoff relay can verify the flow wasn't hijacked cross-site.
   const response = NextResponse.redirect(googleUrl, 307);
   for (const cookie of csrfCookies) response.headers.append("set-cookie", cookie);
   for (const cookie of signinRes.headers.getSetCookie()) {
     response.headers.append("set-cookie", cookie);
   }
+  response.cookies.set("mobile_handoff_nonce", nonce, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: true,
+    path: "/api/mobile/handoff",
+    maxAge: 600,
+  });
   return response;
 }
 

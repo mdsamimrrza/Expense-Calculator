@@ -198,6 +198,7 @@ const nextAuth = NextAuth({
           sub: token.sub,
           email: session.user.email,
           role: "authenticated",
+          epoch: token.epoch ?? 0,
         };
         session.supabaseAccessToken = jwt.sign(payload, signingSecret);
       }

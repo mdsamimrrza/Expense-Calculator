@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     user: result.user,
-    access_token: mintSupabaseAccessToken(result.user.id, result.user.email),
+    access_token: mintSupabaseAccessToken(result.user.id, result.user.email, result.credentialEpoch),
     expires_in: TOKEN_TTL_SECONDS,
   });
 }
