@@ -10,12 +10,12 @@ export default async function SettingsAppPage() {
   return (
     <div className="mx-auto w-full max-w-3xl animate-fade-in space-y-4 pb-20 sm:pb-10">
       <div className="lg:hidden">
-        <MobileDetailHeader title="Android App" subtitle="Free APK download" />
+        <MobileDetailHeader title="Android App" subtitle="Download and install on your phone" />
       </div>
       <div className="hidden lg:block">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Android App</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Take SahakariSIP with you — free offline Android app.
+          Download the free offline Android app and take SahakariSIP with you.
         </p>
       </div>
       <AppDownloadCard />

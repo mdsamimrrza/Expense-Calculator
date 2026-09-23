@@ -2,7 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, Loader2, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Pencil,
+  Loader2,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Building2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,13 +22,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -103,7 +105,6 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
     }
   }
 
-
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setIsLoading(true);
@@ -162,155 +163,214 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
   }
 
   return (
-    <Card className="rounded-xl border-border bg-card shadow-none">
-      <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 pt-4 pb-3 sm:px-5">
-        <div>
-          <CardTitle className="text-sm font-semibold">Fund Configurations</CardTitle>
-          <CardDescription className="mt-0.5 text-xs">
-            Tracked mutual funds, fee percentages, and planned monthly SIP amounts.
-          </CardDescription>
+    <div className="space-y-3">
+      {/* Toolbar: count + search + add */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">
+          <strong className="text-foreground tabular-nums">{funds.length}</strong>{" "}
+          {funds.length === 1 ? "fund" : "funds"} tracked
+        </p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          {funds.length > 3 && (
+            <div className="relative w-full sm:w-56">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search funds..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="h-10 rounded-full pl-9 text-sm sm:h-9"
+              />
+            </div>
+          )}
+          <Button
+            size="sm"
+            onClick={openCreate}
+            className="h-10 w-full rounded-full text-sm sm:h-9 sm:w-auto"
+          >
+            <Plus className="mr-1.5 h-4 w-4" />
+            Add Fund
+          </Button>
         </div>
-        <Button size="sm" onClick={openCreate} className="shrink-0">
-          <Plus className="mr-1.5 h-4 w-4" />
-          Add Fund
-        </Button>
-      </CardHeader>
-      <CardContent className="space-y-2 px-4 pb-4 pt-1 sm:px-5">
-        {/* Search Bar for 4+ Funds */}
-        {funds.length > 3 && (
-          <div className="relative mb-3">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search funds by name..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="pl-9 h-9 text-sm rounded-lg"
-            />
-          </div>
-        )}
+      </div>
 
-        {paginatedFunds.length === 0 ? (
-          <div className="text-center py-6 text-sm text-muted-foreground border border-dashed rounded-lg">
-            No funds match your search query.
+      {/* Fund list */}
+      {funds.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border bg-card/50 px-6 py-12 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-500/15 text-violet-500">
+            <Building2 className="h-6 w-6" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-foreground">No funds yet</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Add your first mutual fund to start tracking your SIP.
+            </p>
           </div>
-        ) : (
-          paginatedFunds.map((fund) => (
+          <Button size="sm" onClick={openCreate} className="rounded-full">
+            <Plus className="mr-1.5 h-4 w-4" />
+            Add your first fund
+          </Button>
+        </div>
+      ) : paginatedFunds.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border px-6 py-10 text-center text-sm text-muted-foreground">
+          No funds match "{searchQuery}".
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          {paginatedFunds.map((fund) => (
             <div
               key={fund.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border border-border gap-2 sm:gap-0"
+              className="rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/30"
             >
-              <div className="space-y-0.5">
-                <h4 className="font-medium text-sm text-foreground">{fund.fund_name}</h4>
-                <p className="text-xs text-muted-foreground">
-                  Fee: <strong className="text-foreground font-medium">{fund.fee_rate_pct}%</strong> | Planned SIP:{" "}
-                  <strong className="text-foreground font-medium">{formatCurrencyWhole(Number(fund.monthly_sip))}</strong>
-                  {fund.latest_nav ? (
-                    <>
-                      {" "}
-                      | NAV: <strong className="font-medium">NPR {fund.latest_nav}</strong>
-                    </>
-                  ) : null}{" "}
-                  | Started: {formatDate(fund.start_date)}
-                </p>
-              </div>
-              <div className="flex items-center gap-1 shrink-0 self-end sm:self-auto">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(fund)}>
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-destructive hover:text-destructive"
-                  onClick={() => setDeletingId(fund.id)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-          ))
-        )}
-
-        {/* Pagination Controls */}
-        {filteredFunds.length > ITEMS_PER_PAGE && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t text-xs">
-            <span className="text-muted-foreground">
-              Showing <strong>{startIndex + 1}</strong>–<strong>{Math.min(startIndex + ITEMS_PER_PAGE, filteredFunds.length)}</strong> of <strong>{filteredFunds.length}</strong> funds
-            </span>
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={validCurrentPage === 1}
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                className="h-8 px-2.5 text-xs"
-              >
-                <ChevronLeft className="h-3.5 w-3.5 mr-0.5" /> Prev
-              </Button>
-
-              {/* Numbered Page Buttons for Quick Jump */}
-              <div className="flex items-center gap-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                  <button
-                    key={pageNum}
-                    type="button"
-                    onClick={() => setCurrentPage(pageNum)}
-                    className={`h-8 w-8 rounded-md font-medium text-xs transition-colors ${
-                      validCurrentPage === pageNum
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-                    }`}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-violet-500/15 text-violet-600 dark:text-violet-400">
+                    <Building2 className="h-[18px] w-[18px]" strokeWidth={2} />
+                  </span>
+                  <h4 className="truncate text-sm font-semibold text-foreground">
+                    {fund.fund_name}
+                  </h4>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 rounded-full sm:h-8 sm:w-8"
+                    aria-label={`Edit ${fund.fund_name}`}
+                    onClick={() => openEdit(fund)}
                   >
-                    {pageNum}
-                  </button>
-                ))}
+                    <Pencil className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 rounded-full text-destructive hover:text-destructive sm:h-8 sm:w-8"
+                    aria-label={`Delete ${fund.fund_name}`}
+                    onClick={() => setDeletingId(fund.id)}
+                  >
+                    <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+                  </Button>
+                </div>
               </div>
 
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={validCurrentPage >= totalPages}
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                className="h-8 px-2.5 text-xs"
-              >
-                Next <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
-              </Button>
+              {/* Stat grid */}
+              <div className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-border/60 sm:grid-cols-4">
+                <div className="bg-secondary/30 px-3 py-2">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                    Annual Fee
+                  </p>
+                  <p className="text-sm font-bold tabular-nums text-foreground">
+                    {fund.fee_rate_pct}%
+                  </p>
+                </div>
+                <div className="bg-secondary/30 px-3 py-2">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                    Monthly SIP
+                  </p>
+                  <p className="text-sm font-bold tabular-nums text-foreground">
+                    {formatCurrencyWhole(Number(fund.monthly_sip))}
+                  </p>
+                </div>
+                <div className="bg-secondary/30 px-3 py-2">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                    Latest NAV
+                  </p>
+                  <p className="text-sm font-bold tabular-nums text-foreground">
+                    {fund.latest_nav ? `NPR ${fund.latest_nav}` : "N/A"}
+                  </p>
+                </div>
+                <div className="bg-secondary/30 px-3 py-2">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                    Started
+                  </p>
+                  <p className="text-sm font-bold tabular-nums text-foreground">
+                    {formatDate(fund.start_date)}
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          ))}
+        </div>
+      )}
 
-        {/* Add/Edit Modal */}
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>{editingFund ? "Edit Fund" : "Add Fund Config"}</DialogTitle>
-              <DialogDescription>
-                Configure annual fee %, planned monthly investment, and current market NAV.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-              <div className="space-y-2">
-                <Label htmlFor="preset-select">Preset Fund</Label>
-                <Select
-                  onValueChange={handlePresetChange}
-                  value={selectedPreset}
-                >
-                  <SelectTrigger id="preset-select">
-                    <SelectValue placeholder="Choose a preset or select Custom" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FUND_PRESETS.map((p) => (
-                      <SelectItem key={p.name} value={p.name}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="custom">Custom / Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
+      {/* Pagination Controls */}
+      {filteredFunds.length > ITEMS_PER_PAGE && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 text-xs">
+          <span className="text-muted-foreground">
+            Showing <strong>{startIndex + 1}</strong>–
+            <strong>{Math.min(startIndex + ITEMS_PER_PAGE, filteredFunds.length)}</strong> of{" "}
+            <strong>{filteredFunds.length}</strong> funds
+          </span>
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+              disabled={validCurrentPage === 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              aria-label="Previous page"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+              <button
+                key={pageNum}
+                type="button"
+                onClick={() => setCurrentPage(pageNum)}
+                className={`h-8 w-8 rounded-full font-medium text-xs transition-colors ${
+                  validCurrentPage === pageNum
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                }`}
+              >
+                {pageNum}
+              </button>
+            ))}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+              disabled={validCurrentPage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              aria-label="Next page"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Modal */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>{editingFund ? "Edit Fund" : "Add Fund"}</DialogTitle>
+            <DialogDescription>
+              Configure annual fee %, planned monthly investment, and current market NAV.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4 pt-1">
+            <div className="space-y-2">
+              <Label htmlFor="preset-select">Preset Fund</Label>
+              <Select onValueChange={handlePresetChange} value={selectedPreset}>
+                <SelectTrigger id="preset-select">
+                  <SelectValue placeholder="Choose a preset or select Custom" />
+                </SelectTrigger>
+                <SelectContent>
+                  {FUND_PRESETS.map((p) => (
+                    <SelectItem key={p.name} value={p.name}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="custom">Custom / Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="fund-name-input">Fund Name</Label>
                 <Input
                   id="fund-name-input"
@@ -334,7 +394,20 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="sip-amount-input">Planned Monthly SIP (NPR)</Label>
+                <Label htmlFor="latest-nav-input">Current NAV (NPR)</Label>
+                <Input
+                  id="latest-nav-input"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={latestNav}
+                  onChange={(e) => setLatestNav(e.target.value)}
+                  placeholder="e.g. 10.50"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sip-amount-input">Monthly SIP (NPR)</Label>
                 <Input
                   id="sip-amount-input"
                   type="number"
@@ -357,56 +430,43 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="latest-nav-input">Current NAV (NPR)</Label>
-                <Input
-                  id="latest-nav-input"
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  value={latestNav}
-                  onChange={(e) => setLatestNav(e.target.value)}
-                  placeholder="e.g. 10.50"
-                  required
-                />
-              </div>
+            </div>
 
-              <DialogFooter>
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {editingFund ? "Save Changes" : "Add Fund"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-
-        {/* Delete Confirmation */}
-        <Dialog open={!!deletingId} onOpenChange={(o) => !o && setDeletingId(null)}>
-          <DialogContent className="sm:max-w-[400px]">
-            <DialogHeader>
-              <DialogTitle>Delete Fund Configuration</DialogTitle>
-              <DialogDescription>
-                Are you sure? Note: A fund with existing SIP entries cannot be deleted until all entries are deleted first.
-              </DialogDescription>
-            </DialogHeader>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setDeletingId(null)}>
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => deletingId && handleDelete(deletingId)}
-                disabled={isLoading}
-              >
+              <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Delete Fund
+                {editingFund ? "Save Changes" : "Add Fund"}
               </Button>
             </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </CardContent>
-    </Card>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <Dialog open={!!deletingId} onOpenChange={(o) => !o && setDeletingId(null)}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Delete Fund Configuration</DialogTitle>
+            <DialogDescription>
+              Are you sure? A fund with existing SIP entries cannot be deleted until
+              all its entries are removed first.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingId(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deletingId && handleDelete(deletingId)}
+              disabled={isLoading}
+            >
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete Fund
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

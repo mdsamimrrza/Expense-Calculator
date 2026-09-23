@@ -1,13 +1,29 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Bell, Loader2, Mail } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
+import { cn } from "@/lib/utils";
 
 interface NotificationSettingsProps {
   userEmail: string;
+}
+
+function StatusPill({ state }: { state: "on" | "off" | "blocked" }) {
+  return (
+    <span
+      className={cn(
+        "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+        state === "on" && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+        state === "off" && "bg-secondary text-muted-foreground",
+        state === "blocked" && "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+      )}
+    >
+      {state}
+    </span>
+  );
 }
 
 export function NotificationSettings({ userEmail }: NotificationSettingsProps) {
@@ -93,47 +109,36 @@ export function NotificationSettings({ userEmail }: NotificationSettingsProps) {
     }
   }
 
-  return (
-    <Card className="rounded-xl border-border bg-card shadow-none">
-      {/* Header */}
-      <CardHeader className="px-4 pt-4 pb-3 sm:px-5">
-        <CardTitle className="text-sm font-semibold text-foreground">
-          Installment Reminders
-        </CardTitle>
-        <CardDescription className="mt-0.5 text-xs">
-          Automatic monthly SIP deposit alerts via mobile push and email.
-        </CardDescription>
-      </CardHeader>
+  const pushState = isSubscribed ? "on" : permission === "denied" ? "blocked" : "off";
 
-      <CardContent className="space-y-2 px-4 pb-4 sm:px-5">
-        {/* Channel 1: Mobile PWA Push Notification */}
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
-          <div className="min-w-0">
+  return (
+    <Card className="overflow-hidden rounded-2xl border-border bg-card shadow-none">
+      <CardContent className="p-0">
+        {/* Push channel */}
+        <div className="flex items-center gap-3 px-5 py-4">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400">
+            <Bell className="h-5 w-5" strokeWidth={2} />
+          </span>
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <h4 className="text-sm font-medium text-foreground">Mobile Push Notifications</h4>
-              {isSubscribed ? (
-                <span className="text-xs text-muted-foreground">On</span>
-              ) : permission === "denied" ? (
-                <span className="text-xs text-destructive">Blocked</span>
-              ) : (
-                <span className="text-xs text-muted-foreground">Off</span>
-              )}
+              <h4 className="text-sm font-semibold text-foreground">Push Notifications</h4>
+              <StatusPill state={pushState} />
             </div>
-            <p className="truncate text-xs text-muted-foreground">
-              Lock-screen alerts on your phone when installment is due.
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              Lock-screen alerts on your phone when an installment is due.
             </p>
           </div>
-
-          {/* Compact Switch */}
           <button
             type="button"
             role="switch"
             aria-checked={isSubscribed}
+            aria-label="Toggle push notifications"
             disabled={isPushLoading || !isSupported}
             onClick={handleTogglePush}
-            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 ${
+            className={cn(
+              "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50",
               isSubscribed ? "bg-primary" : "bg-secondary/80 border border-border/60"
-            }`}
+            )}
           >
             {isPushLoading ? (
               <span className="absolute inset-0 flex items-center justify-center">
@@ -141,54 +146,64 @@ export function NotificationSettings({ userEmail }: NotificationSettingsProps) {
               </span>
             ) : (
               <span
-                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                  isSubscribed ? "translate-x-5" : "translate-x-0.5 bg-muted-foreground/60"
-                }`}
+                className={cn(
+                  "pointer-events-none inline-block h-4 w-4 transform rounded-full shadow-sm ring-0 transition duration-200",
+                  isSubscribed
+                    ? "translate-x-5 bg-white"
+                    : "translate-x-0.5 bg-muted-foreground/60"
+                )}
               />
             )}
           </button>
         </div>
 
-        {/* Channel 2: Email Notifications */}
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
-          <div className="min-w-0">
+        <div className="mx-5 border-t border-border/60" />
+
+        {/* Email channel */}
+        <div className="flex items-center gap-3 px-5 py-4">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+            <Mail className="h-5 w-5" strokeWidth={2} />
+          </span>
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <h4 className="text-sm font-medium text-foreground">Email Notifications</h4>
-              <span className="text-xs text-muted-foreground">
-                {emailEnabled ? "On" : "Off"}
-              </span>
+              <h4 className="text-sm font-semibold text-foreground">Email Notifications</h4>
+              <StatusPill state={emailEnabled ? "on" : "off"} />
             </div>
-            <p className="truncate text-xs text-muted-foreground">
-              Statements sent to <strong className="font-medium">{userEmail}</strong>
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              Reminders sent to <strong className="font-medium">{userEmail}</strong>
             </p>
           </div>
-
-          {/* Compact Switch */}
           <button
             type="button"
             role="switch"
             aria-checked={emailEnabled}
+            aria-label="Toggle email notifications"
             disabled={isSaving || isInitialLoading}
             onClick={() => {
               const nextVal = !emailEnabled;
               setEmailEnabled(nextVal);
               handleSavePreferences(nextVal);
             }}
-            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 ${
+            className={cn(
+              "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50",
               emailEnabled ? "bg-primary" : "bg-secondary/80 border border-border/60"
-            }`}
+            )}
           >
             <span
-              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                emailEnabled ? "translate-x-5" : "translate-x-0.5 bg-muted-foreground/60"
-              }`}
+              className={cn(
+                "pointer-events-none inline-block h-4 w-4 transform rounded-full shadow-sm ring-0 transition duration-200",
+                emailEnabled
+                  ? "translate-x-5 bg-white"
+                  : "translate-x-0.5 bg-muted-foreground/60"
+              )}
             />
           </button>
         </div>
 
-        {/* Standard Schedule Note */}
-        <p className="text-xs text-muted-foreground">
-          Alerts are sent automatically 2 days before and on your installment date.
+        {/* Schedule footer strip */}
+        <p className="bg-secondary/40 px-5 py-2.5 text-xs text-muted-foreground">
+          Alerts go out automatically <strong className="text-foreground">2 days before</strong>{" "}
+          and <strong className="text-foreground">on</strong> each installment date.
         </p>
       </CardContent>
     </Card>

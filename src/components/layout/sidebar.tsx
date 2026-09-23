@@ -48,7 +48,7 @@ export function Sidebar({ onSignOut, userEmail, userName, userImage }: SidebarPr
 
 
       {/* Navigation */}
-      <nav className="flex-1 flex flex-col gap-1 px-3 py-4">
+      <nav className="flex-1 flex flex-col gap-1 px-3 py-4 overflow-y-auto">
         {navItems.map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(item.href + "/");
