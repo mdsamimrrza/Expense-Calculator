@@ -18,17 +18,28 @@ declare module "next-auth" {
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
 const supabaseSecret = process.env.SUPABASE_SERVICE_ROLE_KEY || "placeholder-key";
 
-// Client for next_auth schema (users, accounts)
-function getNextAuthClient() {
-  return createClient(supabaseUrl, supabaseSecret, {
-    db: { schema: "next_auth" },
-  });
+// One client per schema for the function instance's lifetime: supabase-js
+// keeps its HTTP connections warm, so repeat queries skip the TLS
+// handshake that a fresh createClient() pays every time.
+function once<T>(factory: () => T): () => T {
+  let value: T | null = null;
+  return () => (value ??= factory());
 }
 
+// Client for next_auth schema (users, accounts)
+const getNextAuthClient = once(() =>
+  createClient(supabaseUrl, supabaseSecret, {
+    db: { schema: "next_auth" },
+  })
+);
+
 // Client for public schema (user_passwords, otp_tokens, rate_limit_events)
-function getPublicClient() {
-  return createClient(supabaseUrl, supabaseSecret);
-}
+const getPublicClient = once(() => createClient(supabaseUrl, supabaseSecret));
+
+// How often the credential_epoch DB check may run per session. Between
+// checks the JWT's stored epoch is trusted. A reset/deleted account is
+// locked out within this window instead of on every request.
+const EPOCH_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
 const providers: Provider[] = [
   // Google verifies mailbox ownership, so linking an OAuth sign-in to an
@@ -157,22 +168,35 @@ const nextAuth = NextAuth({
       // Enforce the per-user credential epoch: after a password reset
       // (or account deletion) every previously issued JWT goes stale.
       // A missing row counts as maximally stale.
+      //
+      // Throttled: the DB check runs at most once per EPOCH_CHECK_INTERVAL_MS
+      // per session (timestamp persisted in the JWT cookie). Between checks
+      // the stored epoch is trusted. Always checked on fresh sign-ins
+      // (user present). This removes one cross-region round trip from every
+      // page load and server action.
       const userId = (user?.id as string | undefined) ?? (token.id as string | undefined);
       if (userId) {
-        const { data: rows } = await getNextAuthClient()
-          .from("users")
-          .select("credential_epoch")
-          .eq("id", userId)
-          .limit(1);
+        const now = Date.now();
+        const lastCheck = Number(token.epochCheckedAt ?? 0);
+        const needsCheck = Boolean(user) || now - lastCheck >= EPOCH_CHECK_INTERVAL_MS;
 
-        const currentEpoch =
-          rows && rows.length > 0 ? Number(rows[0].credential_epoch ?? 0) : -1;
+        if (needsCheck) {
+          const { data: rows } = await getNextAuthClient()
+            .from("users")
+            .select("credential_epoch")
+            .eq("id", userId)
+            .limit(1);
 
-        if (user) {
-          token.epoch = (user as any).credential_epoch ?? currentEpoch;
-        } else if (token.epoch !== undefined && Number(token.epoch) !== currentEpoch) {
-          // Force the session JWT to expire immediately.
-          token.exp = Math.floor(Date.now() / 1000) - 60;
+          const currentEpoch =
+            rows && rows.length > 0 ? Number(rows[0].credential_epoch ?? 0) : -1;
+
+          if (user) {
+            token.epoch = (user as any).credential_epoch ?? currentEpoch;
+          } else if (token.epoch !== undefined && Number(token.epoch) !== currentEpoch) {
+            // Force the session JWT to expire immediately.
+            token.exp = Math.floor(Date.now() / 1000) - 60;
+          }
+          token.epochCheckedAt = now;
         }
       }
 

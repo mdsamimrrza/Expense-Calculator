@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { getUpcomingInstallments } from "@/lib/actions/upcoming";
+import { getNotificationData } from "@/lib/actions/notifications";
 import type { UpcomingInstallment } from "@/lib/types";
 import { formatCurrencyWhole, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -205,7 +205,8 @@ export function DailyInstallmentsPopup() {
 
   async function loadItems() {
     setLoading(true);
-    setItems(await getUpcomingInstallments());
+    const res = await getNotificationData();
+    setItems(res.upcoming);
     setLoading(false);
   }
 

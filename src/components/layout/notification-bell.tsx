@@ -13,12 +13,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import {
-  getLatestNotifications,
+  getNotificationData,
   markNotificationAsRead,
   markAllNotificationsAsRead,
   type AppNotification,
 } from "@/lib/actions/notifications";
-import { getUpcomingInstallments } from "@/lib/actions/upcoming";
 import { formatCurrencyWhole, formatDate } from "@/lib/format";
 import type { UpcomingInstallment } from "@/lib/types";
 import { formatDistanceToNow } from "date-fns";
@@ -53,17 +52,14 @@ export function NotificationBell() {
   const router = useRouter();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
-  // Fetch on mount / open
+  // Fetch on mount / open — one action returns notifications + upcoming
   const fetchNotifications = async () => {
-    const [res, upcomingRes] = await Promise.all([
-      getLatestNotifications(),
-      getUpcomingInstallments(),
-    ]);
+    const res = await getNotificationData();
     if (res.success) {
       setNotifications(res.notifications);
       setUnreadCount(res.unreadCount);
+      setUpcoming(res.upcoming);
     }
-    setUpcoming(upcomingRes);
   };
 
   useEffect(() => {

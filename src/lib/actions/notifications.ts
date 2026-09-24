@@ -2,6 +2,9 @@
 
 import { auth } from "@/auth";
 import { createClient } from "@/lib/supabase/server";
+import { computeSchedule, nepalTodayAD, formatBSDate } from "@/lib/calendar/bs";
+import { resolveSchedule } from "@/lib/sip-schedule";
+import type { FundConfig, UpcomingInstallment } from "@/lib/types";
 
 export interface AppNotification {
   id: string;
@@ -15,50 +18,85 @@ export interface AppNotification {
   created_at: string;
 }
 
-export async function getLatestNotifications(): Promise<{
+export interface NotificationData {
   success: boolean;
   notifications: AppNotification[];
   unreadCount: number;
+  upcoming: UpcomingInstallment[];
   error?: string;
-}> {
+}
+
+/**
+ * One round trip for the whole bell dropdown and the daily popup:
+ * notifications + unread count + upcoming installments. Previously each
+ * consumer fired its own action, each passing middleware and each calling
+ * auth() separately. Upcoming installments are derived through the same
+ * central engine as everything else (resolveSchedule -> computeSchedule).
+ */
+export async function getNotificationData(): Promise<NotificationData> {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return { success: false, notifications: [], unreadCount: 0, error: "Unauthorized" };
+      return { success: false, notifications: [], unreadCount: 0, upcoming: [], error: "Unauthorized" };
     }
 
     const supabase = await createClient();
 
-    // Fetch latest 4 notifications
-    const { data: notifications, error } = await supabase
-      .from("notifications_log")
-      .select("*")
-      .eq("user_id", session.user.id)
-      .order("created_at", { ascending: false })
-      .limit(4);
+    const [notifRes, countRes, fundsRes] = await Promise.all([
+      supabase
+        .from("notifications_log")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .order("created_at", { ascending: false })
+        .limit(4),
+      supabase
+        .from("notifications_log")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", session.user.id)
+        .eq("is_read", false),
+      supabase
+        .from("fund_config")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .eq("is_active", true),
+    ]);
 
-    if (error) {
-      console.error("[getLatestNotifications] DB error:", error);
-      return { success: false, notifications: [], unreadCount: 0, error: error.message };
+    if (notifRes.error) {
+      console.error("[getNotificationData] DB error:", notifRes.error);
+      return {
+        success: false,
+        notifications: [],
+        unreadCount: 0,
+        upcoming: [],
+        error: notifRes.error.message,
+      };
     }
 
-    // Count unread
-    const { count, error: countErr } = await supabase
-      .from("notifications_log")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", session.user.id)
-      .eq("is_read", false);
-
-    const unreadCount = countErr ? 0 : count || 0;
+    const todayStr = nepalTodayAD();
+    const upcoming: UpcomingInstallment[] = [];
+    for (const f of ((fundsRes.data ?? []) as FundConfig[])) {
+      const { sip } = resolveSchedule(f);
+      const { nextDue, daysRemaining } = computeSchedule(sip, todayStr);
+      upcoming.push({
+        fundId: f.id,
+        fundName: f.fund_name,
+        nextDue,
+        nextDueBS: sip.calendarSystem === "BS" ? formatBSDate(nextDue) : null,
+        daysRemaining,
+        amount: Number(f.monthly_sip),
+      });
+    }
+    upcoming.sort((a, b) => a.daysRemaining - b.daysRemaining);
 
     return {
       success: true,
-      notifications: (notifications as AppNotification[]) || [],
-      unreadCount,
+      notifications: (notifRes.data as AppNotification[]) || [],
+      unreadCount: countRes.error ? 0 : countRes.count || 0,
+      upcoming,
     };
   } catch (err: any) {
-    console.error("[getLatestNotifications] error:", err);
-    return { success: false, notifications: [], unreadCount: 0, error: err?.message };
+    console.error("[getNotificationData] error:", err);
+    return { success: false, notifications: [], unreadCount: 0, upcoming: [], error: err?.message };
   }
 }
 
