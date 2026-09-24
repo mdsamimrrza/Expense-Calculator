@@ -81,19 +81,19 @@ export const CGT_NP_REDEMPTION: CgtRateInfo = {
   scope: "All Nepal mutual funds — resident individuals redeeming units (applied to every tracked fund, regardless of fund manager)",
   effectiveFrom: "2026-07-17",
   basis:
-    "Nepal-wide capital gains rule for mutual-fund redemptions, confirmed via bank contact (Siddhartha Capital, 2026-09-24): tax depends on unit holding period — 5% within 1 year, 3.75% over 1 year — and is auto-deducted at redemption. Not fund-specific: the same schedule is applied to every fund tracked in the app, per lot-aged holding period.",
+    "Capital gains on mutual-fund unit redemptions depend on the lot's holding period and are auto-deducted at redemption. Applies to every fund tracked in the app.",
   officialSources: [
     {
-      label: "Bank confirmation via user (Siddhartha Capital) — SIP/open-ended mutual-fund units: 5% / 3.75%",
+      label: "Bank confirmation (Siddhartha Capital, 2026-09-24)",
       url: "https://www.siddharthacapital.com/ssis-faq/",
     },
     {
-      label: "Fiscal Nepal — listed share-market CGT 10% / 7.5% (different asset class, NOT applied here)",
+      label: "Fiscal Nepal — listed share-market schedule (reference only)",
       url: "https://www.fiscalnepal.com/2026-07-16/26974/new-cgt-rates-on-shares-real-estate-take-effect-friday",
     },
   ],
   pendingNote:
-    "The 7.5%/10% Finance Act schedule applies to the LISTED SHARE MARKET; open-ended SIP mutual-fund units follow the fund-manager/bank schedule (5% under 1 year, 3.75% over 1 year, auto-deducted at redemption) — user confirmed with the bank 2026-09-24. SahakariSIP tracks only open-ended SIP funds, so the bank schedule is applied.",
+    "The 7.5%/10% Finance Act schedule applies to the listed share market only — not to the open-ended SIP funds this app tracks.",
 };
 
 /** Keep the historic export name working - now the short-term (flat) leg. */
