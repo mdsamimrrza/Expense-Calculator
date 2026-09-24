@@ -1,5 +1,5 @@
 // ============================================================
-// SahakariSIP — Type Definitions
+// SahakariSIP - Type Definitions
 // ============================================================
 
 // ---------- Database row types ----------
@@ -14,6 +14,14 @@ export interface FundConfig {
   latest_nav: number | null;
   latest_nav_date: string | null;
   is_active: boolean;
+  // ---- Registered SIP schedule (source of truth for due dates) ----
+  sip_type: "UNLIMITED";
+  frequency: import("./calendar/bs").SIPFrequency | null;
+  calendar_system: import("./calendar/bs").CalendarSystem | null;
+  /** User's registered first SIP due date (AD ISO string), null until confirmed. */
+  anchor_date: string | null;
+  /** True once the user confirmed the registered schedule. */
+  schedule_verified: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -46,6 +54,17 @@ export interface EntryBreakdown {
 
 // ---------- Computed / dashboard types ----------
 
+export interface UpcomingInstallment {
+  fundId: string;
+  fundName: string;
+  /** Next due date (AD "YYYY-MM-DD") derived from the registered schedule. */
+  nextDue: string;
+  /** BS label of the due date when the schedule is BS-based, else null. */
+  nextDueBS: string | null;
+  daysRemaining: number;
+  amount: number;
+}
+
 export interface DashboardSummary {
   totalInvested: number;
   totalUnits: number;
@@ -53,8 +72,15 @@ export interface DashboardSummary {
   unallottedCash: number; // Leftover cash from whole unit allotments + DP fee
   gainLoss: number | null;
   gainLossPct: number | null;
-  estimatedCgtLongTerm: number | null; // 7.5% tax for > 1 year
-  estimatedCgtShortTerm: number | null; // 10.0% tax for < 1 year
+  /** CGT verification status (see src/lib/tax.ts). */
+  cgtStatus: import("./tax").TaxStatus;
+  cgtMessage: string | null;
+  /** Lot-aged CGT estimates (FY 2083/84 verified slab applied per bucket). */
+  estimatedCgtLongTerm: number;
+  estimatedCgtShortTerm: number;
+  /** Taxable gain bases behind the estimates (loss lots excluded). */
+  cgtTaxableLongTerm: number;
+  cgtTaxableShortTerm: number;
   xirr: number | null; // null if < 3 entries or solver fails
   sipStreak: number;
   latestNav: number | null;

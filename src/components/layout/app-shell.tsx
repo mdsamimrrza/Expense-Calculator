@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { BottomTabBar } from "./bottom-tab-bar";
 import { Header } from "./header";
+import { DailyInstallmentsPopup } from "./daily-installments-popup";
 import { signOut } from "next-auth/react";
 
 export function AppShell({
@@ -25,6 +26,9 @@ export function AppShell({
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Daily installments popup — appears once per day */}
+      <DailyInstallmentsPopup />
+
       {/* Desktop sidebar */}
       <Sidebar onSignOut={handleSignOut} userEmail={userEmail} userName={userName} userImage={userImage} />
 

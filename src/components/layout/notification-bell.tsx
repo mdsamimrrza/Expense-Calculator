@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { Bell, Check, CheckCheck, Clock, ExternalLink, Sparkles, Inbox } from "lucide-react";
+import { Bell, Check, CheckCheck, Clock, ExternalLink, X, Sparkles, Inbox } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,27 +18,57 @@ import {
   markAllNotificationsAsRead,
   type AppNotification,
 } from "@/lib/actions/notifications";
+import { getUpcomingInstallments } from "@/lib/actions/upcoming";
+import { formatCurrencyWhole, formatDate } from "@/lib/format";
+import type { UpcomingInstallment } from "@/lib/types";
 import { formatDistanceToNow } from "date-fns";
+
+const DISMISSED_KEY = "sahakari-dismissed-upcoming";
+
+function getDismissed(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(DISMISSED_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function dismissInstallment(fundId: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const current = getDismissed();
+    current.add(fundId);
+    localStorage.setItem(DISMISSED_KEY, JSON.stringify([...current]));
+  } catch {}
+}
 
 export function NotificationBell() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [upcoming, setUpcoming] = useState<UpcomingInstallment[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
-  // Fetch notifications on mount and when dropdown opens
+  // Fetch on mount / open
   const fetchNotifications = async () => {
-    const res = await getLatestNotifications();
+    const [res, upcomingRes] = await Promise.all([
+      getLatestNotifications(),
+      getUpcomingInstallments(),
+    ]);
     if (res.success) {
       setNotifications(res.notifications);
       setUnreadCount(res.unreadCount);
     }
+    setUpcoming(upcomingRes);
   };
 
   useEffect(() => {
+    setDismissed(getDismissed());
     fetchNotifications();
-    // Poll every 60 seconds
     const interval = setInterval(fetchNotifications, 60000);
     return () => clearInterval(interval);
   }, []);
@@ -46,40 +76,64 @@ export function NotificationBell() {
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (open) {
+      setDismissed(getDismissed());
       fetchNotifications();
     }
   };
 
   const handleItemClick = async (notif: AppNotification) => {
     if (!notif.is_read) {
-      // Optimistic update
       setNotifications((prev) =>
         prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n))
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
-
-      // Server update
       startTransition(async () => {
         await markNotificationAsRead(notif.id);
       });
     }
-
     setIsOpen(false);
-    if (notif.url) {
-      router.push(notif.url);
-    }
+    if (notif.url) router.push(notif.url);
+  };
+
+  const handleDismissUpcoming = (fundId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    dismissInstallment(fundId);
+    setDismissed((prev) => new Set([...prev, fundId]));
   };
 
   const handleMarkAllRead = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Optimistic update
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
     setUnreadCount(0);
-
     startTransition(async () => {
       await markAllNotificationsAsRead();
     });
   };
+
+  // Build merged list: upcoming first (undismissed), then real notifications
+  const merged = [
+    ...upcoming
+      .filter((u) => !dismissed.has(u.fundId))
+      .map((u) => ({
+        type: "upcoming" as const,
+        id: `upcoming-${u.fundId}`,
+        fundId: u.fundId,
+        title: u.fundName,
+        body: `${formatDate(u.nextDue)}${u.nextDueBS ? ` · ${u.nextDueBS} BS` : ""} · ${formatCurrencyWhole(u.amount)}`,
+        daysRemaining: u.daysRemaining,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      })),
+    ...notifications.map((n) => ({
+      type: "notification" as const,
+      id: n.id,
+      title: n.title,
+      body: n.body,
+      isRead: n.is_read,
+      createdAt: n.created_at,
+      url: n.url,
+    })),
+  ];
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
@@ -124,9 +178,9 @@ export function NotificationBell() {
           )}
         </div>
 
-        {/* Notifications List (Max 4 items) */}
+        {/* Merged List */}
         <div className="max-h-[360px] divide-y divide-border/30 overflow-y-auto">
-          {notifications.length === 0 ? (
+          {merged.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
               <div className="h-10 w-10 rounded-2xl bg-secondary/60 text-muted-foreground flex items-center justify-center mb-2.5">
                 <Inbox className="h-5 w-5" />
@@ -137,23 +191,54 @@ export function NotificationBell() {
               </p>
             </div>
           ) : (
-            notifications.map((notif) => {
+            merged.map((item) => {
               let relativeTime = "recently";
               try {
-                relativeTime = formatDistanceToNow(new Date(notif.created_at), { addSuffix: true });
+                relativeTime = formatDistanceToNow(new Date(item.createdAt), { addSuffix: true });
               } catch (e) {}
+
+              const isUpcoming = item.type === "upcoming";
 
               return (
                 <DropdownMenuItem
-                  key={notif.id}
-                  onClick={() => handleItemClick(notif)}
+                  key={item.id}
+                  onClick={isUpcoming ? undefined : () => handleItemClick(item as any)}
                   className={`flex items-start gap-3 p-3.5 cursor-pointer transition-colors focus:bg-secondary/60 ${
-                    notif.is_read ? "opacity-75 hover:opacity-100" : "bg-primary/5 hover:bg-primary/10"
+                    isUpcoming
+                      ? "bg-primary/5 hover:bg-primary/10"
+                      : item.isRead
+                        ? "opacity-75 hover:opacity-100"
+                        : "bg-primary/5 hover:bg-primary/10"
                   }`}
                 >
-                  {/* Unread indicator / Icon */}
-                  <div className="shrink-0 mt-0.5">
-                    {notif.is_read ? (
+                  {/* Leading icon / status */}
+                  <div className="shrink-0 mt-0.5 flex items-center gap-1">
+                    {isUpcoming ? (
+                      <>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                            item.daysRemaining === 0
+                              ? "bg-red-500/15 text-red-500"
+                              : item.daysRemaining <= 2
+                                ? "bg-amber-500/15 text-amber-500"
+                                : "bg-emerald-500/15 text-emerald-500"
+                          }`}
+                        >
+                          {item.daysRemaining === 0
+                            ? "Today"
+                            : item.daysRemaining === 1
+                              ? "Tomorrow"
+                              : `${item.daysRemaining}d`}
+                        </span>
+                        <button
+                          onClick={(e) => handleDismissUpcoming(item.fundId, e)}
+                          className="p-0.5 text-muted-foreground hover:text-rose-500 transition-colors"
+                          aria-label="Dismiss this installment reminder"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </>
+                    ) : item.isRead ? (
                       <div className="h-7 w-7 rounded-xl bg-secondary text-muted-foreground flex items-center justify-center text-xs">
                         <Check className="h-3.5 w-3.5" />
                       </div>
@@ -169,17 +254,17 @@ export function NotificationBell() {
                     <div className="flex items-center justify-between gap-1">
                       <h5
                         className={`text-xs truncate ${
-                          notif.is_read ? "font-semibold text-foreground" : "font-extrabold text-foreground"
-                        }`}
+                          isUpcoming || !item.isRead ? "font-extrabold" : "font-semibold"
+                        } text-foreground`}
                       >
-                        {notif.title}
+                        {item.title}
                       </h5>
-                      {!notif.is_read && (
+                      {!isUpcoming && !item.isRead && (
                         <span className="h-2 w-2 rounded-full bg-rose-500 shrink-0" />
                       )}
                     </div>
                     <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
-                      {notif.body}
+                      {item.body}
                     </p>
                     <div className="flex items-center gap-1 text-[10px] text-muted-foreground/80 pt-0.5">
                       <Clock className="h-3 w-3" />

@@ -1,4 +1,9 @@
-import NepaliDate from "nepali-date-converter";
+import NepaliDatePkg from "nepali-date-converter";
+
+// The package is CJS; under plain Node ESM the default import is the
+// module.exports object, so resolve the class from `.default` when present.
+// Bundlers (Next) interop this automatically and take the first branch.
+const NepaliDate = ((NepaliDatePkg as any).default ?? NepaliDatePkg) as typeof NepaliDatePkg;
 
 /**
  * Bikram Sambat (BS) calendar helpers.
@@ -6,7 +11,7 @@ import NepaliDate from "nepali-date-converter";
  * All dates are stored in the database as Gregorian (AD) "YYYY-MM-DD" strings;
  * conversion to/from BS happens only at the scheduling and display boundary.
  * The cron runs on UTC servers, so AD date components are always extracted in
- * Asia/Kathmandu time — never from the server's local timezone.
+ * Asia/Kathmandu time - never from the server's local timezone.
  */
 
 export const BS_MONTH_NAMES = [
@@ -134,31 +139,113 @@ export interface DueSchedule {
   daysRemaining: number;
 }
 
-// BS-calendar scheduling. Not used by the reminder cron (the product
-// schedules on a fixed AD day-of-month via scheduleAD); kept for future BS
-// features and verified by tests.
-export function scheduleBS(targetDay: number, todayStr: string): DueSchedule {
-  const todayBS = adToBS(todayStr);
-  const nextMonth = todayBS.month === 11 ? { y: todayBS.year + 1, m: 0 } : { y: todayBS.year, m: todayBS.month + 1 };
-  const prevMonth = todayBS.month === 0 ? { y: todayBS.year - 1, m: 11 } : { y: todayBS.year, m: todayBS.month - 1 };
-  const thisMonthDue = bsDueDateToAD(todayBS.year, todayBS.month, targetDay);
-  const nextMonthDue = bsDueDateToAD(nextMonth.y, nextMonth.m, targetDay);
-  const nextDue = thisMonthDue >= todayStr ? thisMonthDue : nextMonthDue;
-  const prevDue = bsDueDateToAD(prevMonth.y, prevMonth.m, targetDay);
-  return { nextDue, prevDue, daysRemaining: adDayDifference(todayStr, nextDue) };
+export type CalendarSystem = "AD" | "BS";
+export type SIPFrequency = "MONTHLY" | "QUARTERLY" | "SEMI_ANNUALLY" | "ANNUALLY";
+
+/** Calendar-month step per frequency. Never a fixed day count. */
+export const FREQUENCY_MONTHS: Record<SIPFrequency, number> = {
+  MONTHLY: 1,
+  QUARTERLY: 3,
+  SEMI_ANNUALLY: 6,
+  ANNUALLY: 12,
+};
+
+export interface SIPScheduleInput {
+  frequency: SIPFrequency;
+  calendarSystem: CalendarSystem;
+  /** The user's registered first due date, AD "YYYY-MM-DD". */
+  anchorDate: string;
 }
 
-// Monthly scheduling on a fixed AD day-of-month. The reminder cron uses this
-// with the installment day set to (start day − 2) — e.g. a fund started on the
-// 10th is due on the 8th of every following month. Day is clamped to 28 so
-// every month has it.
-export function scheduleAD(targetDay: number, todayStr: string): DueSchedule {
-  const { year, month } = parseADString(todayStr);
-  const day = Math.min(Math.max(1, targetDay), 28);
-  const fmt = (y: number, m: number) => `${y}-${String(m + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-  const thisMonthDue = fmt(year, month);
-  const nextMonth = month === 11 ? { y: year + 1, m: 0 } : { y: year, m: month + 1 };
-  const prevMonth = month === 0 ? { y: year - 1, m: 11 } : { y: year, m: month - 1 };
-  const nextDue = thisMonthDue >= todayStr ? thisMonthDue : fmt(nextMonth.y, nextMonth.m);
-  return { nextDue, prevDue: fmt(prevMonth.y, prevMonth.m), daysRemaining: adDayDifference(todayStr, nextDue) };
+/** Add (signed) calendar months to an AD date, clamping to the real month length (Jan 31 + 1m = Feb 28/29). */
+function addADMonths(dateStr: string, months: number): string {
+  const { year, month, day } = parseADString(dateStr);
+  const total = month + months;
+  const y = year + Math.floor(total / 12);
+  const m = ((total % 12) + 12) % 12;
+  const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  return adToString({ year: y, month: m, day: Math.min(day, lastDay) });
+}
+
+/** Add (signed) calendar months to a BS date, clamping to the verified BS month length. */
+function addBSMonths(bs: BSDate, months: number): BSDate {
+  const total = bs.month + months;
+  const year = bs.year + Math.floor(total / 12);
+  const month = ((total % 12) + 12) % 12;
+  return { year, month, day: bs.day };
+}
+
+/**
+ * The k-th installment due date (k may be negative) computed FROM THE ANCHOR,
+ * never chained from the previous occurrence. Recurrence happens in the SIP's
+ * own calendar system; BS occurrences are converted to AD with the verified
+ * calendar. Weekend/holiday never shifts a due date.
+ */
+export function installmentDueDate(sip: SIPScheduleInput, k: number): string {
+  const step = FREQUENCY_MONTHS[sip.frequency] * k;
+  if (sip.calendarSystem === "AD") {
+    return k === 0 ? sip.anchorDate : addADMonths(sip.anchorDate, step);
+  }
+  const anchorBS = adToBS(sip.anchorDate);
+  const occ = addBSMonths(anchorBS, step);
+  return bsDueDateToAD(occ.year, occ.month, anchorBS.day);
+}
+
+/**
+ * The next `count` installment due dates on/after today, derived from the
+ * registered schedule. Used for previews (e.g. the fund edit dialog's
+ * "Next SIP Installments") - the cron and dashboard read single
+ * next/prev values via computeSchedule.
+ *
+ * Pass `startFromAnchor: true` to preview the schedule itself (installments
+ * #1, #2, #3 from the registered first due date) instead of skipping to
+ * the next upcoming one.
+ */
+export function upcomingDueDates(
+  sip: SIPScheduleInput,
+  todayStr: string,
+  count: number,
+  startFromAnchor = false
+): string[] {
+  const step = FREQUENCY_MONTHS[sip.frequency];
+  let k = 0;
+  if (!startFromAnchor) {
+    const { year: ty, month: tm } = parseADString(todayStr);
+    const { year: ay, month: am } = parseADString(sip.anchorDate);
+    k = Math.max(0, Math.floor(((ty - ay) * 12 + (tm - am)) / step));
+    let due = installmentDueDate(sip, k);
+    let guard = 0;
+    while (due < todayStr && guard++ < 5000) {
+      k += 1;
+      due = installmentDueDate(sip, k);
+    }
+  }
+  const out: string[] = [];
+  for (let i = 0; i < count; i++) {
+    out.push(installmentDueDate(sip, k + i));
+  }
+  return out;
+}
+
+/**
+ * The ONE scheduling entry point: next/previous installment due dates derived
+ * from the user's REGISTERED schedule. Dashboard, calendar, history and
+ * notifications must all read through this - no screen-specific date math.
+ */
+export function computeSchedule(sip: SIPScheduleInput, todayStr: string): DueSchedule {
+  const step = FREQUENCY_MONTHS[sip.frequency];
+  // Jump close to today, then walk forward - occurrences are monotonic in k.
+  const { year: ty, month: tm } = parseADString(todayStr);
+  const { year: ay, month: am } = parseADString(sip.anchorDate);
+  let k = Math.max(0, Math.floor(((ty - ay) * 12 + (tm - am)) / step));
+  let nextDue = installmentDueDate(sip, k);
+  while (nextDue < todayStr) {
+    k += 1;
+    nextDue = installmentDueDate(sip, k);
+  }
+  return {
+    nextDue,
+    prevDue: installmentDueDate(sip, k - 1),
+    daysRemaining: adDayDifference(todayStr, nextDue),
+  };
 }

@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendWebPush } from "@/lib/notifications/web-push";
 import { sendInstallmentReminderEmail } from "@/lib/notifications/email-reminder";
-import { nepalTodayAD, parseADString, scheduleAD } from "@/lib/calendar/bs";
+import { nepalTodayAD, computeSchedule, formatBSDate } from "@/lib/calendar/bs";
+import { resolveSchedule } from "@/lib/sip-schedule";
 import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 
 export async function GET(req: Request) {
@@ -15,7 +16,7 @@ export async function POST(req: Request) {
 
 async function handleCronReminders(req: Request) {
   try {
-    // 1. Verify Cron Secret — fails closed when CRON_SECRET is unset
+    // 1. Verify Cron Secret - fails closed when CRON_SECRET is unset
     if (!isAuthorizedCronRequest(req)) {
       return NextResponse.json({ error: "Unauthorized cron trigger" }, { status: 401 });
     }
@@ -31,10 +32,12 @@ async function handleCronReminders(req: Request) {
       { db: { schema: "next_auth" } }
     );
 
-    // 2. Fetch all active funds
+    // 2. Fetch all active funds with their registered SIP schedules
     const { data: funds, error: fundsErr } = await supabase
       .from("fund_config")
-      .select("id, user_id, fund_name, monthly_sip, start_date")
+      .select(
+        "id, user_id, fund_name, monthly_sip, frequency, calendar_system, anchor_date, start_date, schedule_verified"
+      )
       .eq("is_active", true);
 
     if (fundsErr || !funds || funds.length === 0) {
@@ -79,21 +82,16 @@ async function handleCronReminders(req: Request) {
     // "Today" in Nepal time so the cron behaves identically on UTC servers.
     const todayStr = nepalTodayAD();
 
-    // A payment cycle runs from one installment due date to the next, so the
-    // previous due date is at most ~2 BS months before today. 70 days safely
-    // covers that span for the "already deposited" lookup below.
-    const { year: todayY, month: todayM, day: todayD } = parseADString(todayStr);
-    const cutoff = new Date(Date.UTC(todayY, todayM, todayD) - 70 * 24 * 60 * 60 * 1000);
-    const cutoffStr = `${cutoff.getUTCFullYear()}-${String(cutoff.getUTCMonth() + 1).padStart(2, "0")}-${String(cutoff.getUTCDate()).padStart(2, "0")}`;
-
-    const { data: recentEntries } = await supabase
+    // Actual purchase dates per fund, used only to suppress reminders for a
+    // cycle already paid. Cycles can span up to a year (ANNUALLY), so no
+    // date cutoff - the entries table is small and this runs daily.
+    const { data: allEntries } = await supabase
       .from("entries")
-      .select("user_id, fund_id, purchase_date")
-      .gt("purchase_date", cutoffStr);
+      .select("user_id, fund_id, purchase_date");
 
     const entryDates = new Map<string, string[]>();
-    if (recentEntries) {
-      recentEntries.forEach((e) => {
+    if (allEntries) {
+      allEntries.forEach((e) => {
         const key = `${e.user_id}_${e.fund_id}`;
         const list = entryDates.get(key) || [];
         list.push(e.purchase_date);
@@ -110,16 +108,18 @@ async function handleCronReminders(req: Request) {
     interface DueFund {
       fund: (typeof funds)[number];
       nextDue: string;
+      nextDueBS: string | null;
       daysRemaining: number;
       pref: { push_enabled: boolean; email_enabled: boolean };
     }
     const dueFunds: DueFund[] = [];
 
     for (const fund of funds) {
-      // Installment falls on (start day − 2) of every month: e.g. a fund
-      // started on the 10th is due on the 8th of each following month.
-      const dueDay = Math.max(1, parseADString(fund.start_date).day - 2);
-      const { nextDue, prevDue, daysRemaining } = scheduleAD(dueDay, todayStr);
+      // Due dates come from the effective schedule: the user's confirmed
+      // registration, else their own SIP start/registration date treated as a
+      // monthly anchor. The app never invents dates from payment history.
+      const { sip } = resolveSchedule(fund);
+      const { nextDue, prevDue, daysRemaining } = computeSchedule(sip, todayStr);
 
       // Skip if the current cycle is already paid (any entry recorded after the
       // previous due date; an entry ON the previous due date belongs to that
@@ -147,6 +147,7 @@ async function handleCronReminders(req: Request) {
       dueFunds.push({
         fund,
         nextDue,
+        nextDueBS: sip.calendarSystem === "BS" ? formatBSDate(nextDue) : null,
         daysRemaining,
         pref: {
           push_enabled: Boolean(pref.push_enabled),
@@ -157,7 +158,7 @@ async function handleCronReminders(req: Request) {
 
     // 5. Dedup: skip funds already notified for this due date. The
     //    (user_id, fund_id, notify_date) unique index makes re-invoking
-    //    the cron idempotent — no duplicate emails/pushes/log rows.
+    //    the cron idempotent - no duplicate emails/pushes/log rows.
     let alreadyNotified = new Set<string>();
     let skippedAlreadyNotified = 0;
     if (dueFunds.length > 0) {
@@ -178,7 +179,7 @@ async function handleCronReminders(req: Request) {
     }
 
     for (const due of dueFunds) {
-      const { fund, nextDue, daysRemaining, pref } = due;
+      const { fund, nextDue, nextDueBS, daysRemaining, pref } = due;
       const notifyKey = `${fund.user_id}_${fund.id}_${nextDue}`;
       if (alreadyNotified.has(notifyKey)) {
         skippedAlreadyNotified++;
@@ -191,17 +192,20 @@ async function handleCronReminders(req: Request) {
         day: "numeric",
         year: "numeric",
       });
+      const dueDateLabel = nextDueBS ? `${formattedDueDate} (${nextDueBS} BS)` : formattedDueDate;
 
       // Log notification to notifications_log table for in-app history
       const notifTitle =
         daysRemaining === 0
           ? `SIP Installment Due Today: ${fund.fund_name}`
-          : `SIP Reminder: Due in ${daysRemaining} Days (${fund.fund_name})`;
+          : daysRemaining === 1
+            ? `SIP Installment Due Tomorrow: ${fund.fund_name}`
+            : `SIP Reminder: Due in ${daysRemaining} Days (${fund.fund_name})`;
 
       const notifBody =
         daysRemaining === 0
-          ? `Your planned monthly deposit of NPR ${Number(fund.monthly_sip).toLocaleString()} is due today.`
-          : `Your planned monthly installment of NPR ${Number(fund.monthly_sip).toLocaleString()} is due on ${formattedDueDate}.`;
+          ? `Your SIP installment of NPR ${Number(fund.monthly_sip).toLocaleString()} is due today.`
+          : `Your SIP installment of NPR ${Number(fund.monthly_sip).toLocaleString()} is due on ${dueDateLabel}.`;
 
       await supabase.from("notifications_log").insert({
         user_id: fund.user_id,
@@ -222,12 +226,14 @@ async function handleCronReminders(req: Request) {
           const pushTitle =
             daysRemaining === 0
               ? `🔔 SIP Installment Due Today: ${fund.fund_name}`
-              : `📅 SIP Reminder: Due in ${daysRemaining} Days (${fund.fund_name})`;
+              : daysRemaining === 1
+                ? `📅 SIP Installment Due Tomorrow: ${fund.fund_name}`
+                : `📅 SIP Reminder: Due in ${daysRemaining} Days (${fund.fund_name})`;
 
           const pushBody =
             daysRemaining === 0
-              ? `Your planned monthly deposit of NPR ${Number(fund.monthly_sip).toLocaleString()} is due today. Tap to record your entry.`
-              : `Your planned monthly installment for ${fund.fund_name} is due on ${formattedDueDate}.`;
+              ? `Your SIP installment of NPR ${Number(fund.monthly_sip).toLocaleString()} is due today. Tap to record your entry.`
+              : `Your SIP installment for ${fund.fund_name} is due on ${dueDateLabel}.`;
 
           const pushRes = await sendWebPush(
             { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
@@ -253,7 +259,7 @@ async function handleCronReminders(req: Request) {
           userName: user.name,
           fundName: fund.fund_name,
           monthlySip: Number(fund.monthly_sip),
-          dueDate: formattedDueDate,
+          dueDate: dueDateLabel,
           daysRemaining,
         });
 

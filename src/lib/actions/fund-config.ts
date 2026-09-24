@@ -8,18 +8,32 @@ import {
 } from "@/lib/schemas/fund-config";
 import type { ActionResult, FundConfig } from "@/lib/types";
 
+function parseRawFundForm(formData: FormData) {
+  const num = (key: string) => {
+    const v = formData.get(key);
+    return typeof v === "string" && v.trim() !== "" ? parseFloat(v) : NaN;
+  };
+  const str = (key: string) => {
+    const v = formData.get(key);
+    return typeof v === "string" && v.trim() !== "" ? v : null;
+  };
+  return {
+    fund_name: (formData.get("fund_name") as string) ?? "",
+    fee_rate_pct: num("fee_rate_pct"),
+    start_date: formData.get("start_date") as string,
+    monthly_sip: num("monthly_sip"),
+    latest_nav: num("latest_nav"),
+    frequency: str("frequency"),
+    calendar_system: str("calendar_system"),
+    anchor_date: str("anchor_date"),
+    schedule_verified: formData.get("schedule_verified") === "true",
+  };
+}
+
 export async function createFundConfig(
   formData: FormData
 ): Promise<ActionResult<FundConfig>> {
-  const rawData = {
-    fund_name: formData.get("fund_name") as string,
-    fee_rate_pct: parseFloat(formData.get("fee_rate_pct") as string),
-    start_date: formData.get("start_date") as string,
-    monthly_sip: parseFloat(formData.get("monthly_sip") as string),
-    latest_nav: parseFloat(formData.get("latest_nav") as string),
-  };
-
-  const parsed = fundConfigSchema.safeParse(rawData);
+  const parsed = fundConfigSchema.safeParse(parseRawFundForm(formData));
   if (!parsed.success) {
     return { success: false, error: parsed.error.errors[0].message };
   }
@@ -44,6 +58,10 @@ export async function createFundConfig(
       monthly_sip: parsed.data.monthly_sip,
       latest_nav: parsed.data.latest_nav,
       latest_nav_date: startDateStr,
+      frequency: parsed.data.frequency,
+      calendar_system: parsed.data.calendar_system,
+      anchor_date: parsed.data.anchor_date,
+      schedule_verified: parsed.data.schedule_verified,
     })
     .select()
     .single();
@@ -72,15 +90,7 @@ export async function updateFundConfig(
   id: string,
   formData: FormData
 ): Promise<ActionResult<FundConfig>> {
-  const rawData = {
-    fund_name: formData.get("fund_name") as string,
-    fee_rate_pct: parseFloat(formData.get("fee_rate_pct") as string),
-    start_date: formData.get("start_date") as string,
-    monthly_sip: parseFloat(formData.get("monthly_sip") as string),
-    latest_nav: parseFloat(formData.get("latest_nav") as string),
-  };
-
-  const parsed = fundConfigSchema.safeParse(rawData);
+  const parsed = fundConfigSchema.safeParse(parseRawFundForm(formData));
   if (!parsed.success) {
     return { success: false, error: parsed.error.errors[0].message };
   }
@@ -96,7 +106,7 @@ export async function updateFundConfig(
   const startDateStr = parsed.data.start_date.toISOString().split("T")[0];
   const todayStr = new Date().toISOString().split("T")[0];
 
-  // Fetch existing fund to check if latest_nav changed — scoped to this
+  // Fetch existing fund to check if latest_nav changed - scoped to this
   // user so a non-owned fund_id returns null rather than someone else's data
   const { data: existingFund } = await supabase
     .from("fund_config")
@@ -112,7 +122,7 @@ export async function updateFundConfig(
   const navChanged = existingFund?.latest_nav !== parsed.data.latest_nav;
   const newNavDate = navChanged ? todayStr : existingFund?.latest_nav_date;
 
-  // CRITICAL: must scope by user_id — the server client uses the service
+  // CRITICAL: must scope by user_id - the server client uses the service
   // role key (bypasses RLS entirely), so this is the only thing preventing
   // one user from updating another user's fund configuration.
   const { data, error } = await supabase
@@ -123,6 +133,10 @@ export async function updateFundConfig(
       start_date: startDateStr,
       monthly_sip: parsed.data.monthly_sip,
       latest_nav: parsed.data.latest_nav,
+      frequency: parsed.data.frequency,
+      calendar_system: parsed.data.calendar_system,
+      anchor_date: parsed.data.anchor_date,
+      schedule_verified: parsed.data.schedule_verified,
       ...(navChanged && { latest_nav_date: newNavDate }),
     })
     .eq("id", id)
@@ -161,7 +175,7 @@ export async function deleteFundConfig(id: string): Promise<ActionResult> {
 
   const supabase = await createClient();
 
-  // Check if entries exist — block deletion if they do. Scoped to this
+  // Check if entries exist - block deletion if they do. Scoped to this
   // user's own fund; also acts as an implicit ownership check below.
   const { count, error: countError } = await supabase
     .from("entries")
@@ -180,7 +194,7 @@ export async function deleteFundConfig(id: string): Promise<ActionResult> {
     };
   }
 
-  // CRITICAL: must scope by user_id — the server client uses the service
+  // CRITICAL: must scope by user_id - the server client uses the service
   // role key (bypasses RLS entirely), so this application-level filter is
   // the only thing preventing one user from deleting another user's fund.
   const { error, count: deletedCount } = await supabase
@@ -225,10 +239,10 @@ export async function updateLatestNav(
 
   const navDate = parsed.data.latest_nav_date.toISOString().split("T")[0];
 
-  // CRITICAL: must scope by user_id — the server client uses the service
+  // CRITICAL: must scope by user_id - the server client uses the service
   // role key (bypasses RLS entirely), so this application-level filter is
   // the only thing preventing one user from overwriting another user's
-  // fund NAV. Being logged in is necessary but not sufficient — being the
+  // fund NAV. Being logged in is necessary but not sufficient - being the
   // owner of this specific fund_id is what's actually required here.
   const { error, count } = await supabase
     .from("fund_config")

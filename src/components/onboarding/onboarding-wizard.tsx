@@ -22,15 +22,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { FUND_PRESETS, MIN_SIP_AMOUNT } from "@/lib/constants";
+import { FUND_PRESETS } from "@/lib/constants";
+import { getFundMeta } from "@/lib/fund-meta";
+import {
+  SIPScheduleFields,
+  scheduleToFormFields,
+  EMPTY_SCHEDULE,
+  type SIPScheduleValue,
+} from "@/components/settings/sip-schedule-fields";
 import { createFundConfig } from "@/lib/actions/fund-config";
 
 const STEPS = [
   { title: "Choose Fund", description: "Which fund are you tracking?" },
   { title: "Fee Rate", description: "Annual fee percentage" },
-  { title: "Monthly SIP", description: "Your planned monthly investment" },
+  { title: "SIP Amount", description: "Your planned SIP installment" },
   { title: "Start Date", description: "When did you start?" },
   { title: "Current NAV", description: "Current market NAV of the fund" },
+  { title: "SIP Schedule", description: "Your registered due date and frequency" },
 ];
 
 export function OnboardingWizard() {
@@ -44,6 +52,7 @@ export function OnboardingWizard() {
     new Date().toISOString().split("T")[0]
   );
   const [latestNav, setLatestNav] = useState("10.00");
+  const [schedule, setSchedule] = useState<SIPScheduleValue>(EMPTY_SCHEDULE);
 
   const router = useRouter();
   const { toast } = useToast();
@@ -69,12 +78,18 @@ export function OnboardingWizard() {
         return isCustomFund ? customFundName.trim().length > 0 : fundName.length > 0;
       case 1:
         return parseFloat(feeRate) > 0;
-      case 2:
-        return parseFloat(monthlySip) >= MIN_SIP_AMOUNT;
+      case 2: {
+        const min = getFundMeta(actualFundName)?.minimumSipAmount ?? 0;
+        return parseFloat(monthlySip) >= (min || 1);
+      }
       case 3:
         return startDate.length > 0;
       case 4:
         return parseFloat(latestNav) > 0;
+      case 5:
+        // Skippable: an unconfirmed schedule simply gets no reminders.
+        // The component only allows checking "confirmed" when complete.
+        return true;
       default:
         return false;
     }
@@ -89,6 +104,9 @@ export function OnboardingWizard() {
     formData.set("start_date", startDate);
     formData.set("monthly_sip", monthlySip);
     formData.set("latest_nav", latestNav);
+    for (const [key, val] of Object.entries(scheduleToFormFields(schedule))) {
+      formData.set(key, val);
+    }
 
     const result = await createFundConfig(formData);
 
@@ -150,7 +168,7 @@ export function OnboardingWizard() {
                         </SelectItem>
                       ))}
                       <SelectItem value="other">
-                        Other — enter manually
+                        Other - enter manually
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -185,27 +203,29 @@ export function OnboardingWizard() {
                 />
                 {fundName && !isCustomFund && (
                   <p className="text-xs text-muted-foreground">
-                    Pre-filled from {fundName} — you can edit this if needed
+                    Pre-filled from {fundName} - you can edit this if needed
                   </p>
                 )}
               </div>
             )}
 
-            {/* Step 2: Monthly SIP */}
+            {/* Step 2: SIP amount */}
             {step === 2 && (
               <div className="space-y-2">
-                <Label htmlFor="monthly-sip">Monthly SIP Amount (NPR)</Label>
+                <Label htmlFor="monthly-sip">SIP Installment Amount (NPR)</Label>
                 <Input
                   id="monthly-sip"
                   type="number"
-                  min={String(MIN_SIP_AMOUNT)}
+                  min={String(getFundMeta(actualFundName)?.minimumSipAmount ?? 0)}
                   step="100"
                   value={monthlySip}
                   onChange={(e) => setMonthlySip(e.target.value)}
                   placeholder="e.g. 5000"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Minimum NPR {MIN_SIP_AMOUNT.toLocaleString("en-IN")}
+                  {getFundMeta(actualFundName)
+                    ? `Minimum NPR ${getFundMeta(actualFundName)!.minimumSipAmount.toLocaleString("en-IN")} for ${actualFundName}`
+                    : "Set by your fund registration"}
                 </p>
               </div>
             )}
@@ -242,6 +262,15 @@ export function OnboardingWizard() {
                   Current market NAV for tracking portfolio valuation and returns.
                 </p>
               </div>
+            )}
+
+            {/* Step 5: Registered SIP schedule */}
+            {step === 5 && (
+              <SIPScheduleFields
+                fundName={actualFundName}
+                value={schedule}
+                onChange={setSchedule}
+              />
             )}
 
           </CardContent>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Building2,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +33,17 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { createFundConfig, updateFundConfig, deleteFundConfig } from "@/lib/actions/fund-config";
-import { FUND_PRESETS, MIN_SIP_AMOUNT } from "@/lib/constants";
+import { FUND_PRESETS } from "@/lib/constants";
+import { getFundMeta } from "@/lib/fund-meta";
+import { computeSchedule, nepalTodayAD, formatBSDate, upcomingDueDates } from "@/lib/calendar/bs";
+import { resolveSchedule } from "@/lib/sip-schedule";
+import {
+  SIPScheduleFields,
+  scheduleToFormFields,
+  EMPTY_SCHEDULE,
+  FREQUENCY_LABELS,
+  type SIPScheduleValue,
+} from "@/components/settings/sip-schedule-fields";
 import type { FundConfig } from "@/lib/types";
 import { formatCurrencyWhole, formatDate } from "@/lib/format";
 
@@ -52,6 +63,11 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
   const [monthlySip, setMonthlySip] = useState("");
   const [latestNav, setLatestNav] = useState("");
   const [selectedPreset, setSelectedPreset] = useState<string>("");
+  const [schedule, setSchedule] = useState<SIPScheduleValue>(EMPTY_SCHEDULE);
+  // Dialog section stepper - one stage at a time on every screen.
+  const [step, setStep] = useState(0);
+  const [maxReached, setMaxReached] = useState(0);
+  const SECTIONS = ["Fund", "SIP Schedule", "Current NAV"] as const;
 
   // Pagination & Search filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -77,9 +93,17 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
     setStartDate(fund.start_date);
     setMonthlySip(fund.monthly_sip.toString());
     setLatestNav(fund.latest_nav ? fund.latest_nav.toString() : "");
+    setSchedule({
+      frequency: fund.frequency,
+      calendarSystem: fund.calendar_system,
+      anchorDate: fund.anchor_date,
+      verified: fund.schedule_verified,
+    });
     // If fund matches a preset, pre-select it
     const preset = FUND_PRESETS.find((p) => p.name === fund.fund_name);
     setSelectedPreset(preset ? preset.name : "custom");
+    setStep(0);
+    setMaxReached(0);
     setOpen(true);
   }
 
@@ -91,6 +115,9 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
     setMonthlySip("5000");
     setLatestNav("10.00");
     setSelectedPreset("");
+    setSchedule(EMPTY_SCHEDULE);
+    setStep(0);
+    setMaxReached(0);
     setOpen(true);
   }
 
@@ -101,19 +128,64 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
     if (preset) {
       setFundName(preset.name);
       setFeeRate(preset.feeRate.toString());
-      // Do not override monthly SIP or latest NAV — user may want custom values
+      // Do not override monthly SIP or latest NAV - user may want custom values
     }
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setIsLoading(true);
+  /** Validate the visible step. Returns an error message, or null when OK. */
+  function validateStep(s: number): string | null {
+    if (s === 0) {
+      if (fundName.trim().length === 0) return "Enter the fund name first.";
+      if (!(parseFloat(feeRate) > 0)) return "Enter a valid annual fee.";
+      if (!startDate) return "Pick the SIP registration date.";
+      return null;
+    }
+    if (s === 1) {
+      const minSip = getFundMeta(fundName)?.minimumSipAmount ?? 1000;
+      if (!(parseFloat(monthlySip) >= minSip)) {
+        return `SIP installment must be at least NPR ${minSip.toLocaleString("en-IN")}.`;
+      }
+      const { frequency, calendarSystem, anchorDate } = schedule;
+      const partial = Boolean(frequency || calendarSystem || anchorDate);
+      if (partial && !(frequency && calendarSystem && anchorDate)) {
+        return "Finish the registered schedule (frequency, calendar and first due date) or clear it.";
+      }
+      return null;
+    }
+    return null;
+  }
 
-    const formData = new FormData();
+  function handleNext() {
+    const err = validateStep(step);
+    if (err) {
+      toast({ title: "Incomplete step", description: err, variant: "destructive" });
+      return;
+    }
+    const next = Math.min(step + 1, SECTIONS.length - 1);
+    setStep(next);
+    setMaxReached((m) => Math.max(m, next));
+  }
+
+  function goToStep(i: number) {
+    // Only revisit reached steps - forward movement goes through Next
+    // so partial data can never be skipped over.
+    if (i <= maxReached) setStep(i);
+  }
+
+  /** The ONLY save path - called solely by the step-3 button's onClick.
+      The form itself never submits (see onSubmit below), so no Enter key,
+      implicit submission, or stray click can ever trigger a save. */
+  async function submitAll() {
+    setIsLoading(true);
+    try {
+      const formData = new FormData();
     formData.set("fund_name", fundName);
     formData.set("fee_rate_pct", feeRate);
     formData.set("start_date", startDate);
     formData.set("monthly_sip", monthlySip);
+    for (const [key, val] of Object.entries(scheduleToFormFields(schedule))) {
+      formData.set(key, val);
+    }
     if (latestNav && parseFloat(latestNav) > 0) {
       formData.set("latest_nav", latestNav);
     }
@@ -136,8 +208,37 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
         variant: "destructive",
       });
     }
+    } catch {
+      toast({
+        title: "Action failed",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
-    setIsLoading(false);
+  /** Step-3 Save button handler: re-validates every step (jumping back to
+      the offending one) and only then submits. */
+  async function handleSaveClick() {
+    for (const s of [0, 1]) {
+      const err = validateStep(s);
+      if (err) {
+        toast({ title: "Incomplete details", description: err, variant: "destructive" });
+        setStep(s);
+        return;
+      }
+    }
+    if (!(parseFloat(latestNav) > 0)) {
+      toast({
+        title: "Incomplete details",
+        description: "Enter a valid current NAV.",
+        variant: "destructive",
+      });
+      return;
+    }
+    await submitAll();
   }
 
   async function handleDelete(id: string) {
@@ -219,7 +320,10 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
         </div>
       ) : (
         <div className="space-y-2.5">
-          {paginatedFunds.map((fund) => (
+          {paginatedFunds.map((fund) => {
+              const { sip, source } = resolveSchedule(fund);
+              const sched = computeSchedule(sip, nepalTodayAD());
+              return (
             <div
               key={fund.id}
               className="rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/30"
@@ -267,7 +371,7 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
                 </div>
                 <div className="bg-secondary/30 px-3 py-2">
                   <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                    Monthly SIP
+                    {FREQUENCY_LABELS[sip.frequency]} SIP
                   </p>
                   <p className="text-sm font-bold tabular-nums text-foreground">
                     {formatCurrencyWhole(Number(fund.monthly_sip))}
@@ -290,8 +394,26 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
                   </p>
                 </div>
               </div>
+
+              {/* Next due - derived by the central engine from the effective
+                  schedule (confirmed registration, else the start date). */}
+              <p className="mt-2 text-xs text-muted-foreground">
+                {FREQUENCY_LABELS[sip.frequency]} · Next due{" "}
+                <span className="font-semibold text-foreground">
+                  {formatDate(sched.nextDue)}
+                </span>
+                {sip.calendarSystem === "BS" && (
+                  <>{" · " + formatBSDate(sched.nextDue) + " BS"}</>
+                )}
+                {source === "registration" && (
+                  <span className="text-amber-500">
+                    {" "}· from your start date - confirm the exact schedule to edit
+                  </span>
+                )}
+              </p>
             </div>
-          ))}
+              );
+            })}
         </div>
       )}
 
@@ -342,101 +464,214 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
         </div>
       )}
 
-      {/* Add/Edit Modal */}
+      {/* Add/Edit Modal - 3 sections: stepped on mobile, bordered on desktop */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[480px]">
-          <DialogHeader>
-            <DialogTitle>{editingFund ? "Edit Fund" : "Add Fund"}</DialogTitle>
-            <DialogDescription>
-              Configure annual fee %, planned monthly investment, and current market NAV.
+        <DialogContent className="max-h-[92dvh] gap-3 overflow-y-auto p-4 sm:max-w-[720px] sm:p-5">
+          <DialogHeader className="space-y-1">
+            <DialogTitle className="text-center text-base font-extrabold uppercase tracking-wide">
+              {editingFund ? "Edit Fund" : "Add Fund"}
+            </DialogTitle>
+            <DialogDescription className="text-center text-xs">
+              Enter your actual fund registration details. You can change them later
+              any time from Settings → My Funds.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4 pt-1">
-            <div className="space-y-2">
-              <Label htmlFor="preset-select">Preset Fund</Label>
-              <Select onValueChange={handlePresetChange} value={selectedPreset}>
-                <SelectTrigger id="preset-select">
-                  <SelectValue placeholder="Choose a preset or select Custom" />
-                </SelectTrigger>
-                <SelectContent>
-                  {FUND_PRESETS.map((p) => (
-                    <SelectItem key={p.name} value={p.name}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="custom">Custom / Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-2 sm:col-span-2">
+          {/* Numbered progress stepper - one stage at a time on all screens */}
+          <div className="flex items-start">
+            {SECTIONS.map((title, i) => (
+              <Fragment key={title}>
+                {i > 0 && (
+                  <div className={`mt-3.5 h-0.5 flex-1 rounded ${i <= step ? "bg-primary" : "bg-border"}`} />
+                )}
+                <button
+                  type="button"
+                  onClick={() => goToStep(i)}
+                  className="flex w-16 shrink-0 flex-col items-center gap-1"
+                >
+                  <span
+                    className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-colors ${
+                      i < step
+                        ? "bg-primary text-primary-foreground"
+                        : i === step
+                          ? "border-2 border-primary bg-background text-primary"
+                          : "border border-border bg-background text-muted-foreground"
+                    }`}
+                  >
+                    {i < step ? <Check className="h-3.5 w-3.5" /> : i + 1}
+                  </span>
+                  <span
+                    className={`text-[10px] leading-tight ${
+                      i === step ? "font-semibold text-foreground" : "text-muted-foreground"
+                    }`}
+                  >
+                    {title}
+                  </span>
+                </button>
+              </Fragment>
+            ))}
+          </div>
+
+          <form
+            onSubmit={(e) => {
+              // Belt-and-suspenders: this form NEVER submits by itself.
+              // Saving happens only via the step-3 button's onClick.
+              e.preventDefault();
+            }}
+            className="space-y-3 pt-1 sm:pt-0"
+          >
+            {/* Section 1 - Fund details */}
+            <section className={step === 0 ? "space-y-3" : "hidden"}>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                1 · Fund details
+              </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="preset-select">Preset Fund</Label>
+                <Select onValueChange={handlePresetChange} value={selectedPreset}>
+                  <SelectTrigger id="preset-select" className="h-9">
+                    <SelectValue placeholder="Choose a preset or select Custom" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FUND_PRESETS.map((p) => (
+                      <SelectItem key={p.name} value={p.name}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="custom">Custom / Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
                 <Label htmlFor="fund-name-input">Fund Name</Label>
                 <Input
                   id="fund-name-input"
+                  className="h-9"
                   value={fundName}
                   onChange={(e) => setFundName(e.target.value)}
                   placeholder="e.g. NMB Saral Bachat Fund-E"
-                  required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="fee-rate-input">Annual Fee (%)</Label>
-                <Input
-                  id="fee-rate-input"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="10"
-                  value={feeRate}
-                  onChange={(e) => setFeeRate(e.target.value)}
-                  required
-                />
+                <div className="space-y-1.5">
+                  <Label htmlFor="fee-rate-input">Annual Fee (%)</Label>
+                  <Input
+                    id="fee-rate-input"
+                    className="h-9"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="10"
+                    value={feeRate}
+                    onChange={(e) => setFeeRate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="start-date-input">SIP Registration Date</Label>
+                  <Input
+                    id="start-date-input"
+                    className="h-9"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                  <p className="text-[11px] leading-snug text-muted-foreground">
+                    From your SIP registration form. Until a schedule is confirmed
+                    below, installments repeat this date on the BS calendar each
+                    month (bank-confirmed rule).
+                  </p>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="latest-nav-input">Current NAV (NPR)</Label>
-                <Input
-                  id="latest-nav-input"
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  value={latestNav}
-                  onChange={(e) => setLatestNav(e.target.value)}
-                  placeholder="e.g. 10.50"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="sip-amount-input">Monthly SIP (NPR)</Label>
+            </section>
+
+            {/* Section 2 - SIP schedule */}
+            <section className={step === 1 ? "space-y-3" : "hidden"}>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                2 · SIP schedule
+              </p>
+              <div className="space-y-1.5">
+                <Label htmlFor="sip-amount-input">SIP Installment (NPR)</Label>
                 <Input
                   id="sip-amount-input"
+                  className="h-9"
                   type="number"
-                  min={String(MIN_SIP_AMOUNT)}
+                  min={String(getFundMeta(fundName)?.minimumSipAmount ?? 0)}
                   value={monthlySip}
                   onChange={(e) => setMonthlySip(e.target.value)}
-                  required
                 />
                 <p className="text-xs text-muted-foreground">
-                  Minimum NPR {MIN_SIP_AMOUNT.toLocaleString("en-IN")}
+                  {getFundMeta(fundName)
+                    ? `Min NPR ${getFundMeta(fundName)!.minimumSipAmount.toLocaleString("en-IN")} for ${fundName}`
+                    : "Minimum set by your fund registration"}
                 </p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="start-date-input">Start Date</Label>
-                <Input
-                  id="start-date-input"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
+              <SIPScheduleFields fundName={fundName} value={schedule} onChange={setSchedule} />
+              <DraftInstallmentsPreview
+                frequency={schedule.frequency}
+                calendarSystem={schedule.calendarSystem}
+                anchorDate={schedule.anchorDate}
+              />
+            </section>
 
-            <DialogFooter>
-              <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {editingFund ? "Save Changes" : "Add Fund"}
-              </Button>
+            {/* Section 3 - Current NAV */}
+            <section className={step === 2 ? "space-y-3" : "hidden"}>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                3 · Current NAV
+              </p>
+              <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="latest-nav-input">Current NAV (NPR)</Label>
+                  <Input
+                    id="latest-nav-input"
+                    className="h-9"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={latestNav}
+                    onChange={(e) => setLatestNav(e.target.value)}
+                    placeholder="e.g. 10.50"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Today's market NAV, used to value your units. Update it any time from
+                  the dashboard.
+                </p>
+              </div>
+            </section>
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              {/* Step navigation - all screens */}
+              <div className="flex w-full items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  disabled={step === 0}
+                  onClick={() => setStep(step - 1)}
+                >
+                  <ChevronLeft className="mr-1 h-4 w-4" />
+                  Back
+                </Button>
+                {step < SECTIONS.length - 1 ? (
+                  <Button
+                    type="button"
+                    className="flex-1"
+                    onClick={handleNext}
+                  >
+                    Next
+                    <ChevronRight className="ml-1 h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={handleSaveClick}
+                    disabled={isLoading}
+                    className="flex-1"
+                  >
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {editingFund ? "Save Changes" : "Add Fund"}
+                  </Button>
+                )}
+              </div>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -467,6 +702,57 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/** Live preview of the next installments from the DRAFT schedule fields, so
+    the user verifies due dates before confirming. Rendered only once
+    frequency + calendar + anchor are all chosen; conversion failures
+    (e.g. out-of-range BS dates) simply hide the preview. */
+function DraftInstallmentsPreview({
+  frequency,
+  calendarSystem,
+  anchorDate,
+}: {
+  frequency: SIPScheduleValue["frequency"];
+  calendarSystem: SIPScheduleValue["calendarSystem"];
+  anchorDate: SIPScheduleValue["anchorDate"];
+}) {
+  if (!frequency || !calendarSystem || !anchorDate) return null;
+  let dates: string[] = [];
+  try {
+    // Preview the schedule itself from the registered first due date
+    // (#1 = anchor), so the user verifies the actual registration.
+    dates = upcomingDueDates(
+      { frequency, calendarSystem, anchorDate },
+      nepalTodayAD(),
+      3,
+      true
+    );
+  } catch {
+    return null;
+  }
+  if (dates.length === 0) return null;
+  return (
+    <div>
+      <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        Preview - next installments from this schedule
+      </p>
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
+        {dates.map((d, i) => (
+          <span
+            key={`${d}-${i}`}
+            className="rounded-lg border border-border bg-secondary/40 px-2.5 py-1.5 text-xs"
+          >
+            <span className="font-bold text-primary">#{i + 1}</span>{" "}
+            <span className="font-semibold tabular-nums text-foreground">{formatDate(d)}</span>
+            <span className="block text-[11px] font-normal tabular-nums text-muted-foreground">
+              {formatBSDate(d)} BS
+            </span>
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

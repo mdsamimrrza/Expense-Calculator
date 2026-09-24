@@ -52,7 +52,7 @@ export const APP_TAGLINE =
 // Direct-download URL for the Android APK asset on GitHub Releases.
 // "releases/latest/download/<asset>" is a permalink: the CI build always
 // attaches the asset as "SahakariSIP.apk", so this URL automatically
-// serves every future version — never pin a tag or versioned filename.
+// serves every future version - never pin a tag or versioned filename.
 export const APP_DOWNLOAD_URL =
   "https://github.com/mdsamimrrza/sahakari-sip-mobile/releases/latest/download/SahakariSIP.apk";
 
@@ -61,9 +61,8 @@ export const APP_DOWNLOAD_URL =
 export const CURRENCY_CODE = "NPR";
 export const CURRENCY_LOCALE = "en-IN"; // International grouping: 1,234,567
 
-// ---------- SIP rules ----------
-
-export const MIN_SIP_AMOUNT = 1000; // Minimum monthly SIP amount (NPR)
+// SIP rules (minimums, frequencies, calendars) live in src/lib/fund-meta.ts -
+// the single source of truth, verified against official fund-manager sources.
 
 // ---------- Projection defaults ----------
 
