@@ -455,13 +455,13 @@ export function TaxBreakdownView({
                 <TableBody className="text-xs">
                   <TableRow className="border-border/30">
                     <TableCell className="font-medium text-foreground">Long-Term CGT</TableCell>
-                    <TableCell className="text-muted-foreground">Held over 365 days @ 7.5% (FY 2083/84)</TableCell>
+                    <TableCell className="text-muted-foreground">{`Held over 365 days @ ${CGT_NP_REDEMPTION.longTermRatePct}% (FY 2083/84)`}</TableCell>
                     <TableCell className="font-mono text-muted-foreground">{formatCurrencyWhole(summary.cgtTaxableLongTerm)} gain</TableCell>
                     <TableCell className="text-right font-mono font-bold text-amber-400">-{formatCurrencyWhole(summary.estimatedCgtLongTerm)}</TableCell>
                   </TableRow>
                   <TableRow className="border-border/30">
                     <TableCell className="font-medium text-foreground">Short-Term CGT</TableCell>
-                    <TableCell className="text-muted-foreground">Held 365 days or less @ 10.0% (FY 2083/84)</TableCell>
+                    <TableCell className="text-muted-foreground">{`Held 365 days or less @ ${CGT_NP_REDEMPTION.shortTermRatePct}% (FY 2083/84)`}</TableCell>
                     <TableCell className="font-mono text-muted-foreground">{formatCurrencyWhole(summary.cgtTaxableShortTerm)} gain</TableCell>
                     <TableCell className="text-right font-mono font-bold text-amber-400">-{formatCurrencyWhole(summary.estimatedCgtShortTerm)}</TableCell>
                   </TableRow>
@@ -489,7 +489,7 @@ export function TaxBreakdownView({
             {/* Mobile Card List View */}
             <div className="p-4 space-y-3 block sm:hidden">
               <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
-                <span className="text-xs font-bold text-amber-400 block">Capital Gains Tax: Long 7.5% / Short 10% (Verified)</span>
+                <span className="text-xs font-bold text-amber-400 block">{`Capital Gains Tax: Long ${CGT_NP_REDEMPTION.longTermRatePct}% / Short ${CGT_NP_REDEMPTION.shortTermRatePct}% (Verified)`}</span>
                 <span className="text-xs text-muted-foreground mt-1 block">
                   Lot-aged gains - FY 2083/84. Estimated: {formatCurrencyWhole(estimatedCgt)}.
                 </span>
@@ -541,7 +541,7 @@ export function TaxBreakdownView({
                   </TableRow>
                   <TableRow className="border-border/30">
                     <TableCell className="font-medium text-amber-400">3. (-) Capital Gains Tax (CGT)</TableCell>
-                    <TableCell className="text-muted-foreground">Long 7.5% / Short 10% of lot-aged gains (FY 2083/84)</TableCell>
+                    <TableCell className="text-muted-foreground">{`Long ${CGT_NP_REDEMPTION.longTermRatePct}% / Short ${CGT_NP_REDEMPTION.shortTermRatePct}% of lot-aged gains (FY 2083/84)`}</TableCell>
                     <TableCell className="text-right font-mono text-amber-400 font-bold">-{formatCurrencyWhole(estimatedCgt)}</TableCell>
                   </TableRow>
                   <TableRow className="bg-emerald-500/10 font-bold text-xs">
@@ -716,13 +716,13 @@ export function TaxBreakdownView({
                 <TableBody className="text-xs">
                   <TableRow className="border-border/30">
                     <TableCell className="font-medium text-foreground">Long-Term CGT</TableCell>
-                    <TableCell className="text-muted-foreground">Held over 365 days @ 7.5% (FY 2083/84)</TableCell>
+                    <TableCell className="text-muted-foreground">{`Held over 365 days @ ${CGT_NP_REDEMPTION.longTermRatePct}% (FY 2083/84)`}</TableCell>
                     <TableCell className="font-mono text-muted-foreground">{formatCurrencyWhole(summary.cgtTaxableLongTerm)} gain</TableCell>
                     <TableCell className="text-right font-mono font-bold text-amber-400">-{formatCurrencyWhole(summary.estimatedCgtLongTerm)}</TableCell>
                   </TableRow>
                   <TableRow className="border-border/30">
                     <TableCell className="font-medium text-foreground">Short-Term CGT</TableCell>
-                    <TableCell className="text-muted-foreground">Held 365 days or less @ 10.0% (FY 2083/84)</TableCell>
+                    <TableCell className="text-muted-foreground">{`Held 365 days or less @ ${CGT_NP_REDEMPTION.shortTermRatePct}% (FY 2083/84)`}</TableCell>
                     <TableCell className="font-mono text-muted-foreground">{formatCurrencyWhole(summary.cgtTaxableShortTerm)} gain</TableCell>
                     <TableCell className="text-right font-mono font-bold text-amber-400">-{formatCurrencyWhole(summary.estimatedCgtShortTerm)}</TableCell>
                   </TableRow>
@@ -748,7 +748,7 @@ export function TaxBreakdownView({
             </CardContent>
             <div className="p-4 space-y-3 block sm:hidden">
               <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
-                <span className="text-xs font-bold text-amber-400 block">Capital Gains Tax: Long 7.5% / Short 10% (Verified)</span>
+                <span className="text-xs font-bold text-amber-400 block">{`Capital Gains Tax: Long ${CGT_NP_REDEMPTION.longTermRatePct}% / Short ${CGT_NP_REDEMPTION.shortTermRatePct}% (Verified)`}</span>
                 <span className="text-xs text-muted-foreground mt-1 block">
                   Lot-aged gains - FY 2083/84. Estimated: {formatCurrencyWhole(estimatedCgt)}.
                 </span>
@@ -789,7 +789,7 @@ export function TaxBreakdownView({
                   </TableRow>
                   <TableRow className="border-border/30">
                     <TableCell className="font-medium text-amber-400">3. (-) Capital Gains Tax (CGT)</TableCell>
-                    <TableCell className="text-muted-foreground">Long 7.5% / Short 10% of lot-aged gains (FY 2083/84)</TableCell>
+                    <TableCell className="text-muted-foreground">{`Long ${CGT_NP_REDEMPTION.longTermRatePct}% / Short ${CGT_NP_REDEMPTION.shortTermRatePct}% of lot-aged gains (FY 2083/84)`}</TableCell>
                     <TableCell className="text-right font-mono text-amber-400 font-bold">-{formatCurrencyWhole(estimatedCgt)}</TableCell>
                   </TableRow>
                   <TableRow className="bg-emerald-500/10 font-bold text-xs">
