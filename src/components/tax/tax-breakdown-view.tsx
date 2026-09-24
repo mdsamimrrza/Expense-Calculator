@@ -486,16 +486,52 @@ export function TaxBreakdownView({
               </Table>
             </CardContent>
 
-            {/* Mobile Card List View */}
-            <div className="p-4 space-y-3 block sm:hidden">
-              <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
-                <span className="text-xs font-bold text-amber-400 block">{`Capital Gains Tax: Long ${CGT_NP_REDEMPTION.longTermRatePct}% / Short ${CGT_NP_REDEMPTION.shortTermRatePct}% (Verified)`}</span>
-                <span className="text-xs text-muted-foreground mt-1 block">
-                  Lot-aged gains - FY 2083/84. Estimated: {formatCurrencyWhole(estimatedCgt)}.
+            {/* Mobile: same schedule details as the desktop table */}
+            <div className="p-4 space-y-2.5 block sm:hidden">
+              <div className="rounded-xl border border-border/60 bg-secondary/20 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-foreground">Long-Term CGT</span>
+                  <span className="text-right font-mono text-sm font-bold text-amber-400">
+                    -{formatCurrencyWhole(summary.estimatedCgtLongTerm)}
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center justify-between gap-2 text-[11px]">
+                  <span className="text-muted-foreground">
+                    Held over 365 days @ {CGT_NP_REDEMPTION.longTermRatePct}% (FY 2083/84)
+                  </span>
+                  <span className="font-mono text-muted-foreground shrink-0">
+                    {formatCurrencyWhole(summary.cgtTaxableLongTerm)} gain
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-border/60 bg-secondary/20 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-foreground">Short-Term CGT</span>
+                  <span className="text-right font-mono text-sm font-bold text-amber-400">
+                    -{formatCurrencyWhole(summary.estimatedCgtShortTerm)}
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center justify-between gap-2 text-[11px]">
+                  <span className="text-muted-foreground">
+                    Held 365 days or less @ {CGT_NP_REDEMPTION.shortTermRatePct}% (FY 2083/84)
+                  </span>
+                  <span className="font-mono text-muted-foreground shrink-0">
+                    {formatCurrencyWhole(summary.cgtTaxableShortTerm)} gain
+                  </span>
+                </div>
+              </div>
+
+              <div className="pt-1 text-[11px] leading-relaxed">
+                <span className="text-muted-foreground block">Basis: {CGT_OPEN_ENDED_INDIVIDUAL.basis}</span>
+                <span className="mt-1.5 flex flex-col gap-1">
+                  {CGT_OPEN_ENDED_INDIVIDUAL.officialSources.map((s) => (
+                    <a key={s.url} href={s.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline underline-offset-2">
+                      {s.label}
+                    </a>
+                  ))}
                 </span>
-                <a href={CGT_OPEN_ENDED_INDIVIDUAL.officialSources[0].url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 underline underline-offset-2 mt-1 block">
-                  {CGT_OPEN_ENDED_INDIVIDUAL.officialSources[0].label}
-                </a>
+                <span className="text-muted-foreground mt-1.5 block">Note: {CGT_OPEN_ENDED_INDIVIDUAL.pendingNote}</span>
               </div>
             </div>
           </Card>
