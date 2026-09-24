@@ -98,7 +98,7 @@ export default async function SettingsPage() {
               href={s.href}
               icon={<s.icon className="h-[18px] w-[18px]" strokeWidth={2} />}
               label={s.label}
-              subtitle={s.description}
+              subtitle={stateFor(s) ?? s.description}
               badge={s.href === "/settings/funds" ? `${funds.length}` : undefined}
               tint={s.tint}
               last={i === settingsRows.length - 1}

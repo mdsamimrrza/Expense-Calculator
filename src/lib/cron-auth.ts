@@ -1,5 +1,5 @@
 // ============================================================
-// SahakariSIP — Cron route authorization helper
+// SahakariSIP - Cron route authorization helper
 //
 // FAIL CLOSED: if CRON_SECRET is not configured the request is
 // rejected (previously the check was skipped when the env var was

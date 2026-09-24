@@ -1,5 +1,5 @@
 // ============================================================
-// SahakariSIP — Mobile Google sign-in kickoff
+// SahakariSIP - Mobile Google sign-in kickoff
 // ============================================================
 // Two legs:
 //
@@ -8,10 +8,10 @@
 //    the browser URL to open: our own GET start route below.
 //
 //  GET  /api/mobile/google?nonce=...  (browser leg, 307)
-//    Runs NextAuth's OAuth kickoff IN-PROCESS — GET /api/auth/csrf to
+//    Runs NextAuth's OAuth kickoff IN-PROCESS - GET /api/auth/csrf to
 //    mint the CSRF cookie, then the CSRF-validated POST to
 //    /api/auth/signin/google with callbackUrl = the handoff relay that
-//    carries the nonce — and forwards every Set-Cookie on a 307 to
+//    carries the nonce - and forwards every Set-Cookie on a 307 to
 //    Google. From there it's the exact chain the web app uses:
 //    Google → /api/auth/callback/google → NextAuth session → relay →
 //    sahakarisip://auth/callback?token=<nonce>.
@@ -20,7 +20,7 @@
 // HTML page for GET; the OAuth redirect requires a CSRF-validated POST.
 // Why handlers instead of self-fetching our own URL? On Vercel,
 // server-side fetches to the app's own hostname can be intercepted by
-// deployment protection — calling the exported NextAuth handlers with a
+// deployment protection - calling the exported NextAuth handlers with a
 // crafted Request (browser's real Cookie header, host forwarded) keeps
 // everything in-process and deterministic.
 // ============================================================
@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
     })
   );
   const csrfCookies = csrfRes.headers.getSetCookie();
-  // @auth/core's /csrf responds { csrfToken } — not { token }.
+  // @auth/core's /csrf responds { csrfToken } - not { token }.
   const csrfToken: string =
     ((await csrfRes.json().catch(() => null)) as { csrfToken?: string } | null)?.csrfToken ?? "";
   if (!csrfToken) {
@@ -121,7 +121,7 @@ export async function GET(req: NextRequest) {
 
   const googleUrl = signinRes.headers.get("location");
   if (!googleUrl || !/^https:\/\//.test(googleUrl)) {
-    // No redirect (bad config / error page) — surface a friendly page
+    // No redirect (bad config / error page) - surface a friendly page
     // rather than a half-started flow.
     console.error("[mobile google] signin did not redirect; status", signinRes.status);
     return errorPage("Google sign-in could not start. Please try again.", 502);

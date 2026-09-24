@@ -1,5 +1,5 @@
 // ============================================================
-// SahakariSIP — Mobile handoff core (server-only)
+// SahakariSIP - Mobile handoff core (server-only)
 // ============================================================
 // A mobile (APK) sign-in runs entirely on THIS server: Google consent
 // happens here (the only place the Google redirect URI is registered),
@@ -89,7 +89,7 @@ export function mintSupabaseAccessToken(sub: string, email: string | null, crede
   if (!secret) {
     // Surface the real cause to the client instead of a generic 500.
     throw new Error(
-      "Server is missing SUPABASE_JWT_SECRET — set it in Vercel to your Supabase project's current JWT signing key."
+      "Server is missing SUPABASE_JWT_SECRET - set it in Vercel to your Supabase project's current JWT signing key."
     );
   }
   return jwt.sign(payload, secret);
@@ -213,7 +213,7 @@ export async function authenticateMobileRequest(req: NextRequest): Promise<{ sub
 
     return { sub: payload.sub, email: typeof payload.email === "string" ? payload.email : null };
   } catch {
-    // Expired or forged — same null path.
+    // Expired or forged - same null path.
     return null;
   }
 }

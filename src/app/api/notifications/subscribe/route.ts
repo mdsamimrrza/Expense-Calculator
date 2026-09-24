@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createClient } from "@/lib/supabase/server";
 
-// Push endpoints must point at a real Web Push service — the stored
+// Push endpoints must point at a real Web Push service - the stored
 // URL is later used as the target of server-side POSTs (web-push
 // sendNotification), so an arbitrary string would turn the cron into
 // a request relay.

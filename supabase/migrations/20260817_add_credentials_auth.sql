@@ -1,5 +1,5 @@
 -- ============================================================
--- SahakariSIP — Credentials Auth Migration
+-- SahakariSIP - Credentials Auth Migration
 -- Run this in Supabase SQL Editor
 -- Existing tables (users, accounts, sessions, verification_tokens) are UNTOUCHED
 -- ============================================================
@@ -27,9 +27,9 @@ CREATE TABLE IF NOT EXISTS public.otp_tokens (
 
 CREATE INDEX IF NOT EXISTS idx_otp_tokens_email ON public.otp_tokens(email);
 
--- Enable RLS (Row Level Security) — service role bypasses it automatically
+-- Enable RLS (Row Level Security) - service role bypasses it automatically
 ALTER TABLE public.user_passwords ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.otp_tokens ENABLE ROW LEVEL SECURITY;
 
--- Auto-cleanup old/used OTP tokens (optional — run manually to keep table clean)
+-- Auto-cleanup old/used OTP tokens (optional - run manually to keep table clean)
 -- DELETE FROM public.otp_tokens WHERE expires_at < now() OR (used = true AND created_at < now() - interval '1 day');

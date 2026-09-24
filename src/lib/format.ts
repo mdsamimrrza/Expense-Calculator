@@ -1,5 +1,5 @@
 // ============================================================
-// SahakariSIP — Formatting Utilities
+// SahakariSIP - Formatting Utilities
 // ============================================================
 
 import { format, formatDistanceToNow } from "date-fns";
@@ -38,7 +38,7 @@ export function formatCurrencyWhole(value: number, showSign = false): string {
  * e.g. 12.345 → "+12.35%" or "-3.20%"
  */
 export function formatPercentage(value: number | null | undefined, showSign = true): string {
-  if (value === null || value === undefined || isNaN(value)) return "—";
+  if (value === null || value === undefined || isNaN(value)) return "-";
   const sign = showSign && value > 0 ? "+" : "";
   return `${sign}${value.toFixed(2)}%`;
 }

@@ -1,5 +1,5 @@
 // ============================================================
-// GET /api/mobile/handoff?nonce=... — relay page (browser leg)
+// GET /api/mobile/handoff?nonce=... - relay page (browser leg)
 // ============================================================
 // Landing target of the Google OAuth chain for mobile sign-ins. At
 // this point NextAuth has created a session in the phone's browser
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Require the nonce cookie to match the query nonce — this ensures
+  // Require the nonce cookie to match the query nonce - this ensures
   // the browser was the one that started the Google flow.
   if (!cookieNonce || cookieNonce !== nonce) {
     return htmlResponse(
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
 
   const session = await auth();
   if (!session?.user?.id) {
-    // OAuth completed but no session (e.g. provider error) — do not
+    // OAuth completed but no session (e.g. provider error) - do not
     // mint anything. The app's wait loop times out honestly.
     return htmlResponse(
       "Google sign-in did not complete",

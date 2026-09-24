@@ -257,7 +257,7 @@ export function CsvImportDialog({ funds, selectedFundId }: CsvImportDialogProps)
                       <TableCell className="text-xs font-mono">{row.amount}</TableCell>
                       <TableCell className="text-xs font-mono">{row.nav}</TableCell>
                       <TableCell className="text-xs truncate max-w-[120px]">
-                        {row.notes || "—"}
+                        {row.notes || "-"}
                       </TableCell>
                     </TableRow>
                   ))}

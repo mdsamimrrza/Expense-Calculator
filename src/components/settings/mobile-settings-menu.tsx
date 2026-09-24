@@ -18,7 +18,7 @@ export function MobileSettingsGroup({
 }) {
   return (
     <section className="overflow-hidden rounded-xl border border-border bg-card">
-      <h2 className="border-b border-border px-4 pt-3 pb-2 text-sm font-semibold text-foreground">
+      <h2 className="border-b border-border px-4 pt-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
         {title}
       </h2>
       <div>{children}</div>
@@ -36,7 +36,7 @@ interface MobileSettingsRowProps {
   badge?: string;
   destructive?: boolean;
   last?: boolean;
-  /** Accent color for the icon tile — kept subtle in light mode, glowing in dark mode. */
+  /** Accent color for the icon tile - kept subtle in light mode, glowing in dark mode. */
   tint?: SettingsTint;
 }
 
@@ -54,7 +54,7 @@ export function MobileSettingsRow({
     <Link
       href={href}
       className={cn(
-        "flex items-center gap-3 px-4 py-3 active:bg-secondary/60",
+        "flex items-center gap-3 px-4 py-3 transition-colors hover:bg-secondary/40 focus-visible:bg-secondary/50 focus-visible:outline-none active:bg-secondary/60",
         !last && "border-b border-border"
       )}
     >
@@ -116,13 +116,16 @@ export function MobileProfileHero({
         className="h-12 w-12 shrink-0 rounded-full text-sm"
       />
       <span className="min-w-0 flex-1">
+        <span className="mb-0.5 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          Profile
+        </span>
         <span className="block truncate text-sm font-semibold text-foreground">
           {userName}
         </span>
         <span className="block truncate text-xs text-muted-foreground">
           {userEmail}
         </span>
-        <span className="mt-1 inline-block rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+        <span className="mt-1 inline-block text-[11px] font-semibold text-muted-foreground">
           {fundCount} {fundCount === 1 ? "fund" : "funds"}
         </span>
       </span>

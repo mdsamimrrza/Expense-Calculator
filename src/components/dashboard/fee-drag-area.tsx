@@ -37,7 +37,7 @@ export function FeeDragArea({ data, feeRatePct = 1.8, fundName }: FeeDragAreaPro
         <CardHeader>
           <CardTitle className="text-base font-extrabold">Cumulative Fee Drag</CardTitle>
           <CardDescription className="text-xs">
-            Estimated — fees are already reflected in NAV
+            Estimated - fees are already reflected in NAV
           </CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-center h-[260px] text-muted-foreground text-xs">
@@ -112,7 +112,7 @@ export function FeeDragArea({ data, feeRatePct = 1.8, fundName }: FeeDragAreaPro
           <div>
             <CardTitle className="text-base font-extrabold tracking-tight">Cumulative Fee Drag</CardTitle>
             <CardDescription className="text-xs">
-              Estimated — fees are already reflected in NAV, this shows their approximate cost
+              Estimated - fees are already reflected in NAV, this shows their approximate cost
             </CardDescription>
           </div>
           

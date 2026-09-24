@@ -262,7 +262,7 @@ export function EntryTable({ entries, funds, selectedFundId }: EntryTableProps) 
                   </TableCell>
                   {funds.length > 1 && (
                     <TableCell className="text-muted-foreground text-xs font-medium">
-                      {fundMap.get(entry.fund_id) || "—"}
+                      {fundMap.get(entry.fund_id) || "-"}
                     </TableCell>
                   )}
                   <TableCell className="text-right font-mono tabular-nums">
@@ -275,10 +275,10 @@ export function EntryTable({ entries, funds, selectedFundId }: EntryTableProps) 
                     {formatUnits(Number(entry.units))}
                   </TableCell>
                   <TableCell className="text-right font-mono tabular-nums text-emerald-600 dark:text-emerald-400 font-semibold">
-                    {b ? formatCurrency(b.remainingRollover) : "—"}
+                    {b ? formatCurrency(b.remainingRollover) : "-"}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs max-w-[180px] truncate">
-                    {entry.notes || "—"}
+                    {entry.notes || "-"}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
@@ -325,7 +325,7 @@ export function EntryTable({ entries, funds, selectedFundId }: EntryTableProps) 
                   <div>
                     <p className="font-semibold text-sm">{formatDate(entry.purchase_date)}</p>
                     {funds.length > 1 && (
-                      <p className="text-xs text-muted-foreground font-medium">{fundMap.get(entry.fund_id) || "—"}</p>
+                      <p className="text-xs text-muted-foreground font-medium">{fundMap.get(entry.fund_id) || "-"}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>

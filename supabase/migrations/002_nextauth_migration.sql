@@ -1,5 +1,5 @@
 -- ============================================================
--- SahakariSIP — NextAuth + Supabase Migration
+-- SahakariSIP - NextAuth + Supabase Migration
 -- Run this in the Supabase SQL Editor
 -- ============================================================
 

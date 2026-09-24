@@ -49,7 +49,7 @@ export default function SignupPage() {
     const result = await signUp(formData);
 
     if (result.success) {
-      // Account created unverified — confirm the emailed code next.
+      // Account created unverified - confirm the emailed code next.
       setPendingEmail(email);
       toast({
         title: "Check your email",

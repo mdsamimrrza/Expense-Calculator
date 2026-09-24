@@ -1,12 +1,12 @@
 // ============================================================
-// SahakariSIP — Shared credential verification core
+// SahakariSIP - Shared credential verification core
 // ============================================================
 // One implementation of the email+password check (brute-force limiter,
 // emailVerified gate, bcrypt compare) used by BOTH:
 //   • the NextAuth Credentials provider (src/auth.ts authorize)
 //   • the mobile (APK) handoff API (src/app/api/mobile/*)
 // so a phone and a browser can never disagree on whether a login is
-// valid. Server-side only — uses the service-role client.
+// valid. Server-side only - uses the service-role client.
 // ============================================================
 
 import { createClient } from "@supabase/supabase-js";
@@ -81,7 +81,7 @@ export async function verifyCredentials(
     .limit(1);
 
   if (!pwRows || pwRows.length === 0) {
-    // Google-only account — no password exists.
+    // Google-only account - no password exists.
     return { ok: false, reason: "invalid" };
   }
 

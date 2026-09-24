@@ -1,5 +1,5 @@
 // ============================================================
-// SahakariSIP — Server Supabase Client (Server Actions)
+// SahakariSIP - Server Supabase Client (Server Actions)
 // ============================================================
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";

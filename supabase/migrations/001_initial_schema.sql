@@ -1,9 +1,9 @@
 -- ============================================================
--- SahakariSIP — Initial Database Schema
+-- SahakariSIP - Initial Database Schema
 -- Run this in the Supabase SQL Editor
 -- ============================================================
 
--- Supabase Auth provides `auth.users` automatically — do not create
+-- Supabase Auth provides `auth.users` automatically - do not create
 -- a custom users table for auth. Use `auth.users.id` as FK everywhere.
 -- Admin flag lives in auth.users raw_user_meta_data->>'role'
 
@@ -46,7 +46,7 @@ CREATE TABLE entries (
 CREATE INDEX idx_entries_user_fund_date ON entries(user_id, fund_id, purchase_date);
 
 -- ============================================================
--- ROW LEVEL SECURITY — MANDATORY
+-- ROW LEVEL SECURITY - MANDATORY
 -- A table without RLS is a data leak, not a feature.
 -- ============================================================
 

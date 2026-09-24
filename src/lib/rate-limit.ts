@@ -1,5 +1,5 @@
 // ============================================================
-// SahakariSIP — Shared Rate Limiter (serverless-safe)
+// SahakariSIP - Shared Rate Limiter (serverless-safe)
 //
 // Backed by the public.rate_limit_events table so limits hold
 // across serverless instances (the previous module-level Map was
@@ -113,7 +113,7 @@ export async function checkRateLimit(
     }
 
     // Record this event. A rare insert race only lets one extra event
-    // through — acceptable for a limiter, unlike a dropped deny.
+    // through - acceptable for a limiter, unlike a dropped deny.
     const { error: insertErr } = await supabase
       .from("rate_limit_events")
       .insert({ key: normalizedKey });
@@ -121,7 +121,7 @@ export async function checkRateLimit(
 
     return { success: true, remaining: maxRequests - count - 1 };
   } catch {
-    // Database unreachable — degrade to per-instance limiting rather
+    // Database unreachable - degrade to per-instance limiting rather
     // than locking everyone out of auth flows.
     return checkInMemory(normalizedKey, maxRequests, windowMinutes * 60 * 1000);
   }

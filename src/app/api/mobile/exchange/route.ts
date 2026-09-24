@@ -1,5 +1,5 @@
 // ============================================================
-// POST /api/mobile/exchange { nonce } — app leg
+// POST /api/mobile/exchange { nonce } - app leg
 // ============================================================
 // The APK calls this once it has captured the handoff token from the
 // sahakarisip:// redirect. Consumes the single-use 60-second nonce and

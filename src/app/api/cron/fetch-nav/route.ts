@@ -1,9 +1,9 @@
 // ============================================================
-// SahakariSIP — Nightly NAV auto-fetch cron.
+// SahakariSIP - Nightly NAV auto-fetch cron.
 //
 // Fetches the latest published NAV for EXACTLY the funds each
 // user has configured (a fund whose name doesn't match a known
-// source is skipped — sources are never guessed), and writes
+// source is skipped - sources are never guessed), and writes
 // them to the shared Supabase tables so the web app and the
 // APK both see the same data.
 //
@@ -162,7 +162,7 @@ async function handleCronFetchNav(req: Request) {
           .from("nav_history")
           .upsert(rows, { onConflict: "fund_id,nav_date" });
         if (error) {
-          // Surface the failure instead of swallowing it — a CHECK
+          // Surface the failure instead of swallowing it - a CHECK
           // violation here means the data written for this fund is bad.
           console.error("[fetch-nav] nav_history upsert error:", error.message);
           if (upsertErrors.length < 20) {

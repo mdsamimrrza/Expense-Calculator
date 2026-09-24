@@ -1,5 +1,5 @@
 -- ============================================================
--- SahakariSIP — Security Hardening Migration (audit run sahakari-sip-run-1)
+-- SahakariSIP - Security Hardening Migration (audit run sahakari-sip-run-1)
 -- Run this in the Supabase SQL Editor.
 -- Safe to re-run: every statement is idempotent.
 -- ============================================================
@@ -53,7 +53,7 @@ ALTER TABLE public.rate_limit_events ENABLE ROW LEVEL SECURITY;
 -- ────────────────────────────────────────────────
 -- 5. fund_config: plausibility bound on the NAV users actually see
 --    (nav_history already has CHECK (nav_value > 0)).
---    NOT VALID so existing rows don't block the migration —
+--    NOT VALID so existing rows don't block the migration -
 --    optionally validate later after cleaning anomalies:
 --    ALTER TABLE public.fund_config VALIDATE CONSTRAINT fund_config_latest_nav_positive;
 -- ────────────────────────────────────────────────

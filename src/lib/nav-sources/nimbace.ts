@@ -7,7 +7,7 @@
 //   1. GET the fund page and extract `nonce` + `mutual_fund`
 //   2. POST /wp-admin/admin-ajax.php with
 //      action=load_mutual_fund_table&type=daily&page=N
-// The response is `data.html` — an HTML fragment of <tr> rows:
+// The response is `data.html` - an HTML fragment of <tr> rows:
 //   <td>17/September/2026</td><td>1/Ashwin/2083</td><td>10.14</td>
 // ============================================================
 

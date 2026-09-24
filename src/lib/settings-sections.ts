@@ -31,7 +31,7 @@ export interface SettingsSection {
   destructive?: boolean;
 }
 
-/** Single source of truth for settings navigation — hub rows, desktop nav, and overview cards all read this. */
+/** Single source of truth for settings navigation - hub rows, desktop nav, and overview cards all read this. */
 export const SETTINGS_SECTIONS: SettingsSection[] = [
   {
     href: "/settings",

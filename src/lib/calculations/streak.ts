@@ -1,5 +1,5 @@
 // ============================================================
-// SahakariSIP — SIP Streak Calculator
+// SahakariSIP - SIP Streak Calculator
 // ============================================================
 //
 // Count of consecutive calendar months (most recent backwards from today)
@@ -10,7 +10,7 @@
 import { format, subMonths } from "date-fns";
 
 /**
- * Calculate the SIP streak — consecutive months with at least one entry,
+ * Calculate the SIP streak - consecutive months with at least one entry,
  * counting backwards from the current month.
  *
  * @param entryDates Array of purchase date strings (ISO format)

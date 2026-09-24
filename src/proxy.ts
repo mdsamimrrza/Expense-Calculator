@@ -1,5 +1,5 @@
 // ============================================================
-// SahakariSIP — Next.js Middleware (Auth Guard)
+// SahakariSIP - Next.js Middleware (Auth Guard)
 // ============================================================
 
 import { NextResponse } from "next/server";

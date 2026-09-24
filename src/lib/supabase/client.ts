@@ -1,5 +1,5 @@
 // ============================================================
-// SahakariSIP — Browser Supabase Client
+// SahakariSIP - Browser Supabase Client
 // ============================================================
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";

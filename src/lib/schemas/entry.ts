@@ -1,5 +1,5 @@
 // ============================================================
-// SahakariSIP — Entry Zod Schema
+// SahakariSIP - Entry Zod Schema
 // ============================================================
 
 import { z } from "zod";
@@ -43,7 +43,7 @@ export const entrySchema = z.object({
 
 export type EntryFormData = z.infer<typeof entrySchema>;
 
-// CSV import row schema — units and notes are optional
+// CSV import row schema - units and notes are optional
 export const csvRowSchema = z.object({
   date: z.string().refine(
     (val) => {

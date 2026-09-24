@@ -1,5 +1,5 @@
 // ============================================================
-// SahakariSIP — Projection Calculator
+// SahakariSIP - Projection Calculator
 // ============================================================
 //
 // Projects future SIP growth from the current corpus.
@@ -17,7 +17,7 @@ import { PROJECTION_YEARS, DP_CHARGE } from "../constants";
 /**
  * Calculate future value projections for a SIP portfolio.
  *
- * Seeded with the current corpus (not zero) — projections continue from
+ * Seeded with the current corpus (not zero) - projections continue from
  * where the real data currently stands.
  *
  * @param params Projection parameters

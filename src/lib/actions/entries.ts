@@ -32,7 +32,7 @@ export async function createEntry(
     return { success: false, error: "Not authenticated" };
   }
 
-  // Verify the fund belongs to this user before doing anything with it —
+  // Verify the fund belongs to this user before doing anything with it -
   // without this check, a user could submit someone else's fund_id and
   // corrupt that fund's latest_nav/nav_history via the update below.
   const { data: fund } = await supabase
@@ -153,7 +153,7 @@ export async function updateEntry(
     };
   }
 
-  // CRITICAL: must scope by user_id — the server client uses the service
+  // CRITICAL: must scope by user_id - the server client uses the service
   // role key (bypasses RLS entirely), so this application-level filter is
   // the only thing preventing one user from editing another user's entry.
   const { data, error } = await supabase
@@ -212,7 +212,7 @@ export async function deleteEntry(id: string): Promise<ActionResult> {
 
   const supabase = await createClient();
 
-  // CRITICAL: must scope by user_id — the server client uses the service
+  // CRITICAL: must scope by user_id - the server client uses the service
   // role key (bypasses RLS entirely), so this application-level filter is
   // the ONLY thing preventing one user from deleting another user's entry.
   const { error, count } = await supabase
@@ -226,7 +226,7 @@ export async function deleteEntry(id: string): Promise<ActionResult> {
   }
 
   if (count === 0) {
-    // Either the entry doesn't exist, or it belongs to someone else —
+    // Either the entry doesn't exist, or it belongs to someone else -
     // don't distinguish the two in the response (avoid leaking existence).
     return { success: false, error: "Entry not found" };
   }

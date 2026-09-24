@@ -22,7 +22,7 @@ function getNextAuthClient() {
 }
 
 // Public schema client (otp_tokens + user_passwords live here)
-// public schema is always exposed via PostgREST — no config needed
+// public schema is always exposed via PostgREST - no config needed
 function getPublicClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -155,7 +155,7 @@ async function issueOtp(
 }
 
 // ────────────────────────────────────────────────
-// SIGN UP — Step 1: create unverified account + email OTP
+// SIGN UP - Step 1: create unverified account + email OTP
 // The account cannot sign in (credentials or Google claim) until
 // the emailed code is confirmed via verifySignupOtp.
 // ────────────────────────────────────────────────
@@ -186,7 +186,7 @@ export async function signUp(formData: FormData): Promise<ActionResult> {
 
   // Existing verified accounts are rejected; existing UNVERIFIED rows
   // (e.g. the email failed to arrive on a previous attempt) are treated
-  // as a resend — refresh the password claim and issue a new code.
+  // as a resend - refresh the password claim and issue a new code.
   const { data: existingRows } = await nextAuthClient
     .from("users")
     .select("id, emailVerified")
@@ -215,7 +215,7 @@ export async function signUp(formData: FormData): Promise<ActionResult> {
       return { success: false, error: "Failed to create account. Please try again." };
     }
   } else {
-    // Create user in next_auth.users — UNVERIFIED until the emailed
+    // Create user in next_auth.users - UNVERIFIED until the emailed
     // code is confirmed. emailVerified gates both credentials login
     // (authorize) and Google account linking (signIn callback).
     const { data: newUser, error: createErr } = await nextAuthClient
@@ -253,7 +253,7 @@ export async function signUp(formData: FormData): Promise<ActionResult> {
 }
 
 // ────────────────────────────────────────────────
-// SIGN UP — Step 2: confirm the emailed code
+// SIGN UP - Step 2: confirm the emailed code
 // Marks the account verified; credentials login and Google
 // linking only work from this point on.
 // ────────────────────────────────────────────────
@@ -366,7 +366,7 @@ export async function signOut(): Promise<void> {
 }
 
 // ────────────────────────────────────────────────
-// FORGOT PASSWORD — Step 1: Send OTP
+// FORGOT PASSWORD - Step 1: Send OTP
 // ────────────────────────────────────────────────
 export async function forgotPassword(formData: FormData): Promise<ActionResult> {
   const email = (formData.get("email") as string)?.toLowerCase().trim();
@@ -383,7 +383,7 @@ export async function forgotPassword(formData: FormData): Promise<ActionResult> 
 
   const nextAuthClient = getNextAuthClient();
 
-  // Check if user exists (don't reveal if they don't — security best practice)
+  // Check if user exists (don't reveal if they don't - security best practice)
   const { data: userRows } = await nextAuthClient
     .from("users")
     .select("id")
@@ -406,7 +406,7 @@ export async function forgotPassword(formData: FormData): Promise<ActionResult> 
 }
 
 // ────────────────────────────────────────────────
-// VERIFY OTP — Step 2: Validate OTP code
+// VERIFY OTP - Step 2: Validate OTP code
 // ────────────────────────────────────────────────
 export async function verifyOtp(
   email: string,
@@ -420,7 +420,7 @@ export async function verifyOtp(
 }
 
 // ────────────────────────────────────────────────
-// RESET PASSWORD — Step 3: Set new password
+// RESET PASSWORD - Step 3: Set new password
 // ────────────────────────────────────────────────
 export async function resetPassword(
   email: string,
@@ -517,7 +517,7 @@ export async function deleteAccount(): Promise<ActionResult> {
   const publicClient = getPublicClient();
 
   // Fetch the email first so orphan-prone rows keyed by email
-  // (otp_tokens) can be cleaned explicitly — they have no FK cascade.
+  // (otp_tokens) can be cleaned explicitly - they have no FK cascade.
   const { data: userRows } = await nextAuthClient
     .from("users")
     .select("email")

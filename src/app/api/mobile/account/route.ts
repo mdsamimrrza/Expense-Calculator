@@ -1,5 +1,5 @@
 // ============================================================
-// DELETE /api/mobile/account — delete the signed-in account
+// DELETE /api/mobile/account - delete the signed-in account
 // ============================================================
 // Bearer-authenticated with the mobile RLS JWT (this module's own
 // mint). Mirrors the web deleteAccount action: app data rows are gone

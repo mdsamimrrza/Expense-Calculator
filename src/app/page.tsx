@@ -22,6 +22,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import QRCode from "react-qr-code";
 import { APP_NAME, APP_TAGLINE, APP_DOWNLOAD_URL } from "@/lib/constants";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Logo } from "@/components/ui/logo";
@@ -279,9 +280,14 @@ export default async function LandingPage() {
                           Download APK (Free)
                         </a>
                       </Button>
-                      <div className="text-xs text-muted-foreground leading-relaxed">
-                        <p className="font-semibold text-foreground">Android 7.0+</p>
-                        <p>Direct download from GitHub Releases.</p>
+                      <div className="flex items-center gap-3">
+                        <div className="shrink-0 rounded-xl bg-white p-2 shadow-sm">
+                          <QRCode value={APP_DOWNLOAD_URL} size={64} level="M" />
+                        </div>
+                        <div className="text-xs text-muted-foreground leading-relaxed">
+                          <p className="font-semibold text-foreground">Scan to install</p>
+                          <p>Android 7.0+. Direct from GitHub Releases.</p>
+                        </div>
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground">

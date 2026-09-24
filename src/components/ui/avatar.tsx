@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 interface AvatarProps {
@@ -11,22 +11,27 @@ interface AvatarProps {
 
 /**
  * Shared avatar: remote photo wins, initial letter fallback.
- * Mirrors the APK's `useProfilePhotoUri` resolution — if the photo URL
+ * Mirrors the APK's `useProfilePhotoUri` resolution - if the photo URL
  * fails to load (expired provider URL, deleted upload), it falls back
  * to the initial instead of showing a broken image.
  */
 export function Avatar({ src, name, className }: AvatarProps) {
   const [failed, setFailed] = useState(false);
+  const imageSrc = src?.trim() || null;
+
+  useEffect(() => {
+    setFailed(false);
+  }, [imageSrc]);
 
   const initial = ((name || "S").trim().charAt(0) || "S").toUpperCase();
 
-  if (src && !failed) {
+  if (imageSrc && !failed) {
     return (
       <img
-        src={src}
+        src={imageSrc}
         alt={name || "Profile photo"}
         onError={() => setFailed(true)}
-        className={cn("object-cover", className)}
+        className={cn("block object-cover", className)}
       />
     );
   }

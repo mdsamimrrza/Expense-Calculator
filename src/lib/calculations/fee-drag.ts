@@ -1,8 +1,8 @@
 // ============================================================
-// SahakariSIP — Fee Drag Calculator
+// SahakariSIP - Fee Drag Calculator
 // ============================================================
 //
-// The fee is NOT charged separately — it's embedded in the published NAV.
+// The fee is NOT charged separately - it's embedded in the published NAV.
 // This calculation is ILLUSTRATIVE: it shows what the fee "would look like"
 // as a standalone deduction.
 //

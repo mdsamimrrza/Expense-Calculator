@@ -1,6 +1,6 @@
-# 📈 SahakariSIP — Nepali Mutual Fund & Open-Ended SIP Tracker
+# 📈 SahakariSIP - Nepali Mutual Fund & Open-Ended SIP Tracker
 
-**SahakariSIP** is a production-grade, mobile-first web application engineered for tracking open-ended Mutual Fund Systematic Investment Plans (SIP) in Nepal. It implements Nepal-specific SEBON accounting rules — whole-unit allotment, NPR 5 DP charge deduction, SIP Rollover Wallet — and provides financial-grade analytics including Newton-Raphson XIRR, Capital Gains Tax estimation, and fee-drag modelling.
+**SahakariSIP** is a production-grade, mobile-first web application engineered for tracking open-ended Mutual Fund Systematic Investment Plans (SIP) in Nepal. It implements Nepal-specific SEBON accounting rules - whole-unit allotment, NPR 5 DP charge deduction, SIP Rollover Wallet - and provides financial-grade analytics including Newton-Raphson XIRR, Capital Gains Tax estimation, and fee-drag modelling.
 
 Built with **Next.js 16 (App Router / Turbopack)**, **TypeScript**, **NextAuth v5 (Auth.js)**, **Supabase (PostgreSQL + Row Level Security)**, **Nodemailer**, **Recharts**, and **Shadcn UI**.
 
@@ -33,7 +33,7 @@ Built with **Next.js 16 (App Router / Turbopack)**, **TypeScript**, **NextAuth v
 ## 🌟 Key Features
 
 ### 🇳🇵 Nepal-Specific SIP Accounting
-- **Whole-Unit Allotment**: `Math.floor(effectiveCash / NAV)` — fractional units are not allotted per SEBON rules.
+- **Whole-Unit Allotment**: `Math.floor(effectiveCash / NAV)` - fractional units are not allotted per SEBON rules.
 - **NPR 5 DP Charge**: Flat Depository Participant fee deducted from each deposit before unit calculation.
 - **SIP Rollover Wallet Balance**: Uninvested leftover cash (deposit − units cost − DP fee) is tracked and carried forward.
 
@@ -87,7 +87,7 @@ Available Cash = New Deposit + Previous Rollover Balance
 |:---|:---|:---|
 | Entry Load | 0% | Free |
 | Exit Load | 0% | Free (typically) |
-| Management Fee | ~1.5% p.a. | Embedded in daily NAV — not charged separately |
+| Management Fee | ~1.5% p.a. | Embedded in daily NAV - not charged separately |
 | DP Charge | NPR 5 | Deducted per transaction |
 
 ---

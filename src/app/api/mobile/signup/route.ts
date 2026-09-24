@@ -71,7 +71,7 @@ export async function PUT(req: NextRequest) {
     .limit(1);
   const row = rows?.[0];
   if (!row) {
-    // Verification succeeded but the row vanished — the user can sign
+    // Verification succeeded but the row vanished - the user can sign
     // in normally now, so report success without a session.
     return NextResponse.json({ success: true });
   }

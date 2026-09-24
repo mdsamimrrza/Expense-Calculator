@@ -48,7 +48,7 @@ const providers: Provider[] = [
       if (!credentials?.email || !credentials?.password) return null;
 
       // Shared core with the mobile API: brute-force limiter, emailVerified
-      // gate, bcrypt compare — one implementation, no drift.
+      // gate, bcrypt compare - one implementation, no drift.
       const result = await verifyCredentials(
         credentials.email as string,
         credentials.password as string
@@ -67,7 +67,7 @@ const providers: Provider[] = [
 ];
 
 // The jwt callback does a Supabase round trip (credential_epoch check) on
-// every auth() call — and layout + page both call auth() in the same render.
+// every auth() call - and layout + page both call auth() in the same render.
 // cache() dedupes them to one round trip per request without touching callers.
 const nextAuth = NextAuth({
   ...authConfig,
@@ -90,7 +90,7 @@ const nextAuth = NextAuth({
         const row = rows && rows.length > 0 ? rows[0] : null;
 
         if (row && !row.emailVerified) {
-          // The row was created via password signup but never verified —
+          // The row was created via password signup but never verified -
           // the only password that can be on it belongs to whoever claimed
           // the email without proving ownership. Google's verification is
           // stronger proof, so evict the password, mark the email verified,
@@ -104,7 +104,7 @@ const nextAuth = NextAuth({
 
         // Backfill the profile photo (and missing name) from Google.
         // A row created earlier via email/password signup has image = null,
-        // and account linking never copies Google's picture into it — so a
+        // and account linking never copies Google's picture into it - so a
         // Google login on such an account would leave the avatar empty.
         const googlePicture =
           (profile as { picture?: string } | null)?.picture ??
@@ -131,7 +131,7 @@ const nextAuth = NextAuth({
     },
     async jwt({ token, user, account, profile, trigger, session }) {
       // Client-side `useSession().update({ user: { image } })` after a
-      // profile upload lands here — persist it so the new avatar survives.
+      // profile upload lands here - persist it so the new avatar survives.
       if (
         trigger === "update" &&
         (session as { user?: { image?: string | null } } | undefined)?.user?.image !== undefined

@@ -54,7 +54,7 @@ const KNOWN_FUNDS: KnownFund[] = [
 /**
  * Normalize a fund name so spelling variants match:
  * lowercase, hyphens/slashes collapsed, and spaces removed
- * entirely — "NMB Saral Bachat Fund - E", "…Fund -E" and
+ * entirely - "NMB Saral Bachat Fund - E", "…Fund -E" and
  * "…Fund-E" all become "nmbsaralbachatfund-e".
  */
 export function normalizeFundName(name: string): string {
@@ -74,7 +74,7 @@ export interface ResolvedFundSource {
 
 /**
  * Resolve a user's configured fund name to its NAV source.
- * Returns null for funds we have no source for — the caller
+ * Returns null for funds we have no source for - the caller
  * must skip those (never guess a source).
  */
 export function resolveFundSource(fundName: string): ResolvedFundSource | null {

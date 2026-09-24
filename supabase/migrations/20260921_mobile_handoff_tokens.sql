@@ -1,5 +1,5 @@
 -- ============================================================
--- Mobile (APK) Google sign-in handoff — 2026-09-21
+-- Mobile (APK) Google sign-in handoff - 2026-09-21
 -- ============================================================
 -- The APK starts Google OAuth on this web app (the only place NextAuth
 -- and the Google redirect URI live), then picks up a session via a

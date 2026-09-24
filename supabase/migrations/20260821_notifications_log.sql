@@ -1,5 +1,5 @@
 -- ============================================================
--- SahakariSIP — Notifications History Log
+-- SahakariSIP - Notifications History Log
 -- Run this in the Supabase SQL Editor
 -- ============================================================
 

@@ -1,11 +1,11 @@
 // ============================================================
-// SahakariSIP — XIRR Calculator (Newton-Raphson)
+// SahakariSIP - XIRR Calculator (Newton-Raphson)
 // ============================================================
 //
 // XIRR solves for r in: Σ [ CFᵢ / (1 + r)^(dᵢ / 365) ] = 0
 // where each SIP purchase is a negative CF and current value is a positive CF.
 //
-// DO NOT simplify to CAGR — XIRR accounts for irregular cash flow timing.
+// DO NOT simplify to CAGR - XIRR accounts for irregular cash flow timing.
 // ============================================================
 import type { CashFlow } from "../types";
 
@@ -16,7 +16,7 @@ const DAYS_IN_YEAR = 365;
 /**
  * Calculate the XIRR (annualized internal rate of return) for a series of cash flows.
  *
- * @param cashFlows Array of { amount, date } — negative = investment, positive = redemption
+ * @param cashFlows Array of { amount, date } - negative = investment, positive = redemption
  * @returns The annualized return as a decimal (e.g. 0.12 for 12%), or null if solver fails.
  */
 export function calculateXirr(cashFlows: CashFlow[]): number | null {
@@ -88,7 +88,7 @@ export function calculateXirr(cashFlows: CashFlow[]): number | null {
     const fPrime = npvDerivative(rate);
 
     if (Math.abs(fPrime) < 1e-12) {
-      // Derivative too small — try a different starting point
+      // Derivative too small - try a different starting point
       rate = rate + 0.1;
       continue;
     }
@@ -111,7 +111,7 @@ export function calculateXirr(cashFlows: CashFlow[]): number | null {
     }
   }
 
-  // Did not converge — fallback to simple ROI rate
+  // Did not converge - fallback to simple ROI rate
   const totalInvested = sorted
     .filter((cf) => cf.amount < 0)
     .reduce((sum, cf) => sum - cf.amount, 0);

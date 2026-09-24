@@ -18,7 +18,7 @@ export function AppDownloadCard() {
       {/* App + download */}
       <Card className="rounded-2xl border-border bg-card shadow-none">
         <CardContent className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:p-6">
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-sky-500/15 text-sky-600 dark:text-sky-400">
+          <span className="flex h-14 w-14 shrink-0 items-center justify-center self-center rounded-2xl bg-sky-500/15 text-sky-600 dark:text-sky-400 sm:self-auto">
             <Smartphone className="h-7 w-7" strokeWidth={1.75} />
           </span>
 
