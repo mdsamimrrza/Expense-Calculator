@@ -19,6 +19,7 @@ import {
   calculateFeeDrag,
 } from "@/lib/calculations/fee-drag";
 import { XIRR_MIN_ENTRIES, DP_CHARGE } from "@/lib/constants";
+import { getCapitalGainsStatus, CGT_NP_REDEMPTION } from "@/lib/tax";
 import { format } from "date-fns";
 
 interface DashboardData {
@@ -42,7 +43,7 @@ export async function getDashboardData(
     return { success: false, error: "Not authenticated" };
   }
 
-  // Funds, entries and nav_history are independent — fetch them in one
+  // Funds, entries and nav_history are independent - fetch them in one
   // parallel round trip instead of three sequential awaits.
   let entriesQuery = supabase
     .from("entries")
@@ -103,7 +104,7 @@ export async function getDashboardData(
     latestNav = fund?.latest_nav ? Number(fund.latest_nav) : null;
     latestNavDate = fund?.latest_nav_date ?? null;
   } else {
-    // "All Funds" — use each fund's latest NAV for its units
+    // "All Funds" - use each fund's latest NAV for its units
     // For simplicity, calculate per-fund and sum
     let totalValue = 0;
     let hasAllNavs = true;
@@ -159,45 +160,35 @@ export async function getDashboardData(
       ? (gainLoss / effectiveInvested) * 100
       : null;
 
-  // Per-fund latest NAV lookup — needed for per-lot valuation below, since
+  // Per-fund latest NAV lookup - needed for per-lot valuation below, since
   // a blended/scalar NAV is only valid when exactly one fund is in view.
   const fundLatestNavMap = new Map<string, number>();
   for (const f of funds) {
     if (f.latest_nav) fundLatestNavMap.set(f.id, Number(f.latest_nav));
   }
 
-  // Capital Gains Tax — Nepal IRD taxes each LOT of units separately based
-  // on THAT lot's own holding period (> 365 days = long-term @ 7.5%, else
-  // short-term @ 10%), not the portfolio's total gain at both rates at
-  // once. Every entry is its own lot with its own purchase date and cost.
+  // Capital gains: VERIFIED since 2026-09-24 - FY 2083/84 statutory slab
+  // (Finance Act 2083; see src/lib/tax.ts). Lots are aged into
+  // long/short buckets and each bucket uses its own verified rate.
+  const cgt = getCapitalGainsStatus();
+
+  const LONG_TERM_DAYS = 365;
   const todayMs = Date.now();
-  const MS_PER_DAY = 1000 * 60 * 60 * 24;
   let longTermGainSum = 0;
   let shortTermGainSum = 0;
-
   for (const e of entries) {
-    const fundNav = fundLatestNavMap.get(e.fund_id);
-    if (fundNav === undefined) continue; // Can't value this lot without a current NAV
-
-    const lotCostBasis = Number(e.amount);
-    const lotCurrentValue = Number(e.units) * fundNav;
-    const lotGain = lotCurrentValue - lotCostBasis;
-
-    const purchaseMs = new Date(e.purchase_date).getTime();
-    const daysHeld = (todayMs - purchaseMs) / MS_PER_DAY;
-
-    if (daysHeld > 365) {
-      longTermGainSum += lotGain;
-    } else {
-      shortTermGainSum += lotGain;
-    }
+    const nav = fundLatestNavMap.get(e.fund_id);
+    if (!nav) continue;
+    const lotGain = Number(e.units) * nav - Number(e.amount);
+    if (lotGain <= 0) continue;
+    const ageDays = (todayMs - new Date(e.purchase_date).getTime()) / 86400000;
+    if (ageDays > LONG_TERM_DAYS) longTermGainSum += lotGain;
+    else shortTermGainSum += lotGain;
   }
-
-  // Tax applies only to NET positive gain within each bucket — a losing
-  // lot offsets gains within the same bucket, but each bucket is taxed
-  // once, at its own rate, never both rates on the same rupee of gain.
-  const estimatedCgtLongTerm = longTermGainSum > 0 ? longTermGainSum * 0.075 : 0;
-  const estimatedCgtShortTerm = shortTermGainSum > 0 ? shortTermGainSum * 0.10 : 0;
+  const estimatedCgtLongTerm =
+    (longTermGainSum * CGT_NP_REDEMPTION.longTermRatePct) / 100;
+  const estimatedCgtShortTerm =
+    (shortTermGainSum * CGT_NP_REDEMPTION.shortTermRatePct) / 100;
 
   // XIRR
   let xirr: number | null = null;
@@ -219,8 +210,12 @@ export async function getDashboardData(
     unallottedCash,
     gainLoss,
     gainLossPct,
+    cgtStatus: cgt.status,
+    cgtMessage: cgt.status === "VERIFIED" ? null : cgt.message,
     estimatedCgtLongTerm,
     estimatedCgtShortTerm,
+    cgtTaxableLongTerm: longTermGainSum,
+    cgtTaxableShortTerm: shortTermGainSum,
     xirr,
     sipStreak,
     latestNav,
@@ -229,12 +224,12 @@ export async function getDashboardData(
 
   // ---- Chart data ----
 
-  // NAV history & Portfolio Value timeline — built PER FUND throughout,
+  // NAV history & Portfolio Value timeline - built PER FUND throughout,
   // because a blended/scalar NAV is only valid when exactly one fund is in
   // view. The previous version kept a single Map<date, nav> where, in
   // "All Funds" view, one fund's NAV entry could silently overwrite
   // another fund's entry on a shared date, and then multiplied ALL funds'
-  // combined units by that one arbitrary NAV — producing a portfolio
+  // combined units by that one arbitrary NAV - producing a portfolio
   // value graph that was mathematically wrong the moment a second fund
   // was tracked. Fixed to track each fund's own units and NAV
   // independently, matching how the summary's "All Funds" currentValue is
@@ -277,7 +272,7 @@ export async function getDashboardData(
     ])
   ).sort((a, b) => a.localeCompare(b));
 
-  // Running state PER FUND — units accumulated and last-known NAV, each
+  // Running state PER FUND - units accumulated and last-known NAV, each
   // tracked independently so one fund's price can never leak into another's.
   const runningUnitsByFund = new Map<string, number>();
   const lastKnownNavByFund = new Map<string, number>();
@@ -387,6 +382,7 @@ export async function getDashboardData(
     }))
   );
   const feeDragChart = calculateFeeDrag(feeDragEntries, feeRatePct);
+
 
   return {
     success: true,

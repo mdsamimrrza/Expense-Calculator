@@ -25,6 +25,18 @@ import {
 } from "lucide-react";
 import type { DashboardSummary, FundConfig } from "@/lib/types";
 import { HistoryFundSelector } from "@/components/entries/history-fund-selector";
+import { getExitLoadSchedule, TAX_DISCLAIMER, CGT_OPEN_ENDED_INDIVIDUAL, CGT_NP_REDEMPTION, type ExitLoadSchedule } from "@/lib/tax";
+
+/** Compact human-readable form of a verified exit-load schedule. */
+function formatExitLoadSummary(s: ExitLoadSchedule): string {
+  return s.tiers
+    .map((t) =>
+      t.maxDays === null
+        ? `${t.ratePct}% thereafter`
+        : `${t.ratePct}% if held under ${t.maxDays} days`
+    )
+    .join(", ");
+}
 
 interface TaxBreakdownViewProps {
   summary: DashboardSummary;
@@ -47,14 +59,26 @@ export function TaxBreakdownView({
 
   const totalDpFeesPaid = entriesCount * 5;
   const effectiveDeployedCapital = Math.max(0, summary.totalInvested - summary.unallottedCash);
-  const isPositive = (summary.gainLoss ?? 0) >= 0;
 
   const latestFeeDrag = feeDragChart && feeDragChart.length > 0 ? feeDragChart[feeDragChart.length - 1].cumulativeDrag : 0;
-  const estimatedCgtLongTerm = summary.estimatedCgtLongTerm ?? 0;
-  const estimatedCgtShortTerm = summary.estimatedCgtShortTerm ?? 0;
-  const totalEstimatedCgt = estimatedCgtLongTerm + estimatedCgtShortTerm;
 
-  const netInHandSettlement = (summary.currentValue ?? summary.totalInvested) + summary.unallottedCash - totalEstimatedCgt;
+  // No verified Nepal CGT rate exists yet, so no tax amount is deducted.
+  // Settlement below is pre-tax and labeled as such; the moment a rate is
+  // verified (tax_rules + cgtStatus = VERIFIED) this branch changes.
+  const cgtUnresolved = summary.cgtStatus !== "VERIFIED";
+  const netInHandSettlement = (summary.currentValue ?? summary.totalInvested) + summary.unallottedCash;
+  // Verified FY 2083/84 estimate: lot-aged long/short buckets from the
+  // dashboard summary, using the verified long/short rates.
+  const estimatedCgt = cgtUnresolved
+    ? 0
+    : summary.estimatedCgtLongTerm + summary.estimatedCgtShortTerm;
+  const netPostTaxSettlement = netInHandSettlement - estimatedCgt;
+
+  const uniqueFundNames = Array.from(new Set(funds.map((f) => f.fund_name)));
+  const exitLoadSchedules = uniqueFundNames
+    .map((name) => getExitLoadSchedule(name))
+    .filter((s): s is ExitLoadSchedule => s !== null);
+  const exitLoadUnverified = uniqueFundNames.filter((name) => !getExitLoadSchedule(name));
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-fade-in pb-16 max-w-5xl mx-auto px-1 sm:px-0">
@@ -128,11 +152,13 @@ export function TaxBreakdownView({
           </div>
 
           <div>
-            <h3 className="text-xl sm:text-2xl font-extrabold font-mono text-red-400 tracking-tight">
-              {formatCurrencyWhole(totalEstimatedCgt)}
+            <h3 className="text-sm sm:text-lg font-extrabold text-amber-400 tracking-tight leading-snug">
+              {cgtUnresolved ? "Not verified" : formatCurrencyWhole(estimatedCgt)}
             </h3>
             <span className="text-[11px] sm:text-xs text-muted-foreground font-medium mt-0.5 block">
-              {isPositive ? "Withheld on Net Realized Profit" : "Zero Tax on Portfolio Net Loss"}
+              {cgtUnresolved
+                ? "Tax calculation requires additional information"
+                : `Long ${CGT_NP_REDEMPTION.longTermRatePct}% / Short ${CGT_NP_REDEMPTION.shortTermRatePct}% (FY 2083/84)`}
             </span>
           </div>
         </div>
@@ -149,13 +175,13 @@ export function TaxBreakdownView({
               </span>
             </div>
             <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-              Post-Tax Cash
+              {cgtUnresolved ? "Pre-Tax (CGT unverified)" : "Post-Tax Cash"}
             </span>
           </div>
 
           <div>
             <h3 className="text-xl sm:text-2xl font-extrabold font-mono text-emerald-400 tracking-tight">
-              {formatCurrencyWhole(netInHandSettlement)}
+              {formatCurrencyWhole(cgtUnresolved ? netInHandSettlement : netPostTaxSettlement)}
             </h3>
             <span className="text-[11px] sm:text-xs text-blue-400 font-semibold mt-0.5 block">
               (+) Rollover Wallet Cash: +{formatCurrencyWhole(summary.unallottedCash)}
@@ -342,7 +368,7 @@ export function TaxBreakdownView({
                     <TableCell className="font-medium text-foreground">Average Purchase NAV</TableCell>
                     <TableCell className="text-muted-foreground">Effective cost per unit</TableCell>
                     <TableCell className="text-right font-mono font-bold text-foreground">
-                      {summary.totalUnits > 0 ? `NPR ${(summary.totalInvested / summary.totalUnits).toFixed(2)}` : "—"}
+                      {summary.totalUnits > 0 ? `NPR ${(summary.totalInvested / summary.totalUnits).toFixed(2)}` : "-"}
                     </TableCell>
                   </TableRow>
                   <TableRow className="border-border/30 bg-purple-500/5">
@@ -428,21 +454,32 @@ export function TaxBreakdownView({
                 </TableHeader>
                 <TableBody className="text-xs">
                   <TableRow className="border-border/30">
-                    <TableCell className="font-medium text-foreground">Long-Term Capital Gains Tax</TableCell>
-                    <TableCell className="text-muted-foreground">Held &gt; 365 Days @ 7.5%</TableCell>
-                    <TableCell className="font-mono text-muted-foreground">{isPositive ? "Positive Realized Gain" : "Net Loss (NPR 0 Taxable)"}</TableCell>
-                    <TableCell className="text-right font-mono font-bold text-foreground">{formatCurrencyWhole(estimatedCgtLongTerm)}</TableCell>
+                    <TableCell className="font-medium text-foreground">Long-Term CGT</TableCell>
+                    <TableCell className="text-muted-foreground">Held over 365 days @ 7.5% (FY 2083/84)</TableCell>
+                    <TableCell className="font-mono text-muted-foreground">{formatCurrencyWhole(summary.cgtTaxableLongTerm)} gain</TableCell>
+                    <TableCell className="text-right font-mono font-bold text-amber-400">-{formatCurrencyWhole(summary.estimatedCgtLongTerm)}</TableCell>
                   </TableRow>
                   <TableRow className="border-border/30">
-                    <TableCell className="font-medium text-foreground">Short-Term Capital Gains Tax</TableCell>
-                    <TableCell className="text-muted-foreground">Held &le; 365 Days @ 10.0%</TableCell>
-                    <TableCell className="font-mono text-muted-foreground">{isPositive ? "Positive Realized Gain" : "Net Loss (NPR 0 Taxable)"}</TableCell>
-                    <TableCell className="text-right font-mono font-bold text-foreground">{formatCurrencyWhole(estimatedCgtShortTerm)}</TableCell>
+                    <TableCell className="font-medium text-foreground">Short-Term CGT</TableCell>
+                    <TableCell className="text-muted-foreground">Held 365 days or less @ 10.0% (FY 2083/84)</TableCell>
+                    <TableCell className="font-mono text-muted-foreground">{formatCurrencyWhole(summary.cgtTaxableShortTerm)} gain</TableCell>
+                    <TableCell className="text-right font-mono font-bold text-amber-400">-{formatCurrencyWhole(summary.estimatedCgtShortTerm)}</TableCell>
                   </TableRow>
                   <TableRow className="bg-secondary/30 font-semibold text-foreground border-border/40">
-                    <TableCell colSpan={3} className="text-foreground">Total Estimated Tax Withholding</TableCell>
-                    <TableCell className="text-right font-mono text-red-400 font-bold">
-                      {formatCurrencyWhole(totalEstimatedCgt)}
+                    <TableCell colSpan={4} className="text-xs font-medium">
+                      <span className="text-muted-foreground block">
+                        Basis: {CGT_OPEN_ENDED_INDIVIDUAL.basis}
+                      </span>
+                      <span className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+                        {CGT_OPEN_ENDED_INDIVIDUAL.officialSources.map((s) => (
+                          <a key={s.url} href={s.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline underline-offset-2">
+                            {s.label}
+                          </a>
+                        ))}
+                      </span>
+                      <span className="text-muted-foreground mt-1.5 block">
+                        Note: {CGT_OPEN_ENDED_INDIVIDUAL.pendingNote}
+                      </span>
                     </TableCell>
                   </TableRow>
                 </TableBody>
@@ -451,23 +488,14 @@ export function TaxBreakdownView({
 
             {/* Mobile Card List View */}
             <div className="p-4 space-y-3 block sm:hidden">
-              <div className="p-3 bg-secondary/40 rounded-xl border border-border/40 flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] text-muted-foreground font-semibold block uppercase">Long-Term Tax (&gt;365 Days)</span>
-                  <span className="text-xs text-muted-foreground">7.5% Tax Rate</span>
-                </div>
-                <span className="font-mono font-bold text-foreground text-sm">{formatCurrencyWhole(estimatedCgtLongTerm)}</span>
-              </div>
-              <div className="p-3 bg-secondary/40 rounded-xl border border-border/40 flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] text-muted-foreground font-semibold block uppercase">Short-Term Tax (&le;365 Days)</span>
-                  <span className="text-xs text-muted-foreground">10.0% Tax Rate</span>
-                </div>
-                <span className="font-mono font-bold text-foreground text-sm">{formatCurrencyWhole(estimatedCgtShortTerm)}</span>
-              </div>
-              <div className="p-3 bg-rose-500/10 rounded-xl border border-red-500/20 flex items-center justify-between">
-                <span className="text-xs font-bold text-foreground">Total Tax Withheld</span>
-                <span className="font-mono font-bold text-red-400 text-sm">{formatCurrencyWhole(totalEstimatedCgt)}</span>
+              <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
+                <span className="text-xs font-bold text-amber-400 block">Capital Gains Tax: Long 7.5% / Short 10% (Verified)</span>
+                <span className="text-xs text-muted-foreground mt-1 block">
+                  Lot-aged gains - FY 2083/84. Estimated: {formatCurrencyWhole(estimatedCgt)}.
+                </span>
+                <a href={CGT_OPEN_ENDED_INDIVIDUAL.officialSources[0].url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 underline underline-offset-2 mt-1 block">
+                  {CGT_OPEN_ENDED_INDIVIDUAL.officialSources[0].label}
+                </a>
               </div>
             </div>
           </Card>
@@ -512,16 +540,16 @@ export function TaxBreakdownView({
                     <TableCell className="text-right font-mono text-blue-400 font-bold">+{formatCurrencyWhole(summary.unallottedCash)}</TableCell>
                   </TableRow>
                   <TableRow className="border-border/30">
-                    <TableCell className="font-medium text-red-400">3. (-) Total Capital Gains Tax (CGT)</TableCell>
-                    <TableCell className="text-muted-foreground">Long term (7.5%) + Short term (10.0%)</TableCell>
-                    <TableCell className="text-right font-mono text-red-400 font-bold">-{formatCurrencyWhole(totalEstimatedCgt)}</TableCell>
+                    <TableCell className="font-medium text-amber-400">3. (-) Capital Gains Tax (CGT)</TableCell>
+                    <TableCell className="text-muted-foreground">Long 7.5% / Short 10% of lot-aged gains (FY 2083/84)</TableCell>
+                    <TableCell className="text-right font-mono text-amber-400 font-bold">-{formatCurrencyWhole(estimatedCgt)}</TableCell>
                   </TableRow>
                   <TableRow className="bg-emerald-500/10 font-bold text-xs">
                     <TableCell colSpan={2} className="py-3.5 text-foreground font-semibold uppercase tracking-wider text-[11px]">
                       FINAL REALIZED IN-HAND CASH (Bank Credit)
                     </TableCell>
                     <TableCell className="text-right font-mono text-base py-3.5 text-emerald-400 font-bold">
-                      {formatCurrencyWhole(netInHandSettlement)}
+                      {formatCurrencyWhole(cgtUnresolved ? netInHandSettlement : netPostTaxSettlement)}
                     </TableCell>
                   </TableRow>
                 </TableBody>
@@ -538,13 +566,13 @@ export function TaxBreakdownView({
                 <span className="text-xs text-blue-400 font-bold">2. (+) Rollover Cash</span>
                 <span className="font-mono font-bold text-blue-400 text-xs">+{formatCurrencyWhole(summary.unallottedCash)}</span>
               </div>
-              <div className="p-3 bg-rose-500/10 rounded-xl border border-red-500/20 flex items-center justify-between">
-                <span className="text-xs text-red-400 font-bold">3. (-) CGT Tax</span>
-                <span className="font-mono font-bold text-red-400 text-xs">-{formatCurrencyWhole(totalEstimatedCgt)}</span>
+              <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20 flex items-center justify-between">
+                <span className="text-xs text-amber-400 font-bold">3. (-) CGT Tax</span>
+                <span className="font-mono font-bold text-amber-400 text-xs">-{formatCurrencyWhole(estimatedCgt)}</span>
               </div>
               <div className="p-4 bg-emerald-500/15 rounded-xl border border-emerald-500/30 flex items-center justify-between">
                 <span className="text-xs font-black text-foreground uppercase tracking-tight">Net In-Hand Bank Cash</span>
-                <span className="font-mono font-black text-emerald-400 text-base">{formatCurrencyWhole(netInHandSettlement)}</span>
+                <span className="font-mono font-black text-emerald-400 text-base">{formatCurrencyWhole(cgtUnresolved ? netInHandSettlement : netPostTaxSettlement)}</span>
               </div>
             </div>
           </Card>
@@ -630,7 +658,7 @@ export function TaxBreakdownView({
                     <TableCell className="font-medium text-foreground">Average Purchase NAV</TableCell>
                     <TableCell className="text-muted-foreground">Effective cost per unit</TableCell>
                     <TableCell className="text-right font-mono font-bold text-foreground">
-                      {summary.totalUnits > 0 ? `NPR ${(summary.totalInvested / summary.totalUnits).toFixed(2)}` : "—"}
+                      {summary.totalUnits > 0 ? `NPR ${(summary.totalInvested / summary.totalUnits).toFixed(2)}` : "-"}
                     </TableCell>
                   </TableRow>
                   <TableRow className="border-border/30 bg-purple-500/5">
@@ -687,36 +715,46 @@ export function TaxBreakdownView({
                 </TableHeader>
                 <TableBody className="text-xs">
                   <TableRow className="border-border/30">
-                    <TableCell className="font-medium text-foreground">Long-Term Capital Gains Tax</TableCell>
-                    <TableCell className="text-muted-foreground">Held &gt; 365 Days @ 7.5%</TableCell>
-                    <TableCell className="font-mono text-muted-foreground">{isPositive ? "Positive Realized Gain" : "Net Loss (NPR 0 Taxable)"}</TableCell>
-                    <TableCell className="text-right font-mono font-bold text-foreground">{formatCurrencyWhole(estimatedCgtLongTerm)}</TableCell>
+                    <TableCell className="font-medium text-foreground">Long-Term CGT</TableCell>
+                    <TableCell className="text-muted-foreground">Held over 365 days @ 7.5% (FY 2083/84)</TableCell>
+                    <TableCell className="font-mono text-muted-foreground">{formatCurrencyWhole(summary.cgtTaxableLongTerm)} gain</TableCell>
+                    <TableCell className="text-right font-mono font-bold text-amber-400">-{formatCurrencyWhole(summary.estimatedCgtLongTerm)}</TableCell>
                   </TableRow>
                   <TableRow className="border-border/30">
-                    <TableCell className="font-medium text-foreground">Short-Term Capital Gains Tax</TableCell>
-                    <TableCell className="text-muted-foreground">Held &le; 365 Days @ 10.0%</TableCell>
-                    <TableCell className="font-mono text-muted-foreground">{isPositive ? "Positive Realized Gain" : "Net Loss (NPR 0 Taxable)"}</TableCell>
-                    <TableCell className="text-right font-mono font-bold text-foreground">{formatCurrencyWhole(estimatedCgtShortTerm)}</TableCell>
+                    <TableCell className="font-medium text-foreground">Short-Term CGT</TableCell>
+                    <TableCell className="text-muted-foreground">Held 365 days or less @ 10.0% (FY 2083/84)</TableCell>
+                    <TableCell className="font-mono text-muted-foreground">{formatCurrencyWhole(summary.cgtTaxableShortTerm)} gain</TableCell>
+                    <TableCell className="text-right font-mono font-bold text-amber-400">-{formatCurrencyWhole(summary.estimatedCgtShortTerm)}</TableCell>
                   </TableRow>
                   <TableRow className="bg-secondary/30 font-semibold text-foreground border-border/40">
-                    <TableCell colSpan={3} className="text-foreground">Total Estimated Tax Withholding</TableCell>
-                    <TableCell className="text-right font-mono text-red-400 font-bold">{formatCurrencyWhole(totalEstimatedCgt)}</TableCell>
+                    <TableCell colSpan={4} className="text-xs font-medium">
+                      <span className="text-muted-foreground block">
+                        Basis: {CGT_OPEN_ENDED_INDIVIDUAL.basis}
+                      </span>
+                      <span className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+                        {CGT_OPEN_ENDED_INDIVIDUAL.officialSources.map((s) => (
+                          <a key={s.url} href={s.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline underline-offset-2">
+                            {s.label}
+                          </a>
+                        ))}
+                      </span>
+                      <span className="text-muted-foreground mt-1.5 block">
+                        Note: {CGT_OPEN_ENDED_INDIVIDUAL.pendingNote}
+                      </span>
+                    </TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
             </CardContent>
             <div className="p-4 space-y-3 block sm:hidden">
-              <div className="p-3 bg-secondary/40 rounded-xl border border-border/40 flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Long-Term CGT (&gt;365 Days)</span>
-                <span className="font-mono font-bold text-foreground text-xs">{formatCurrencyWhole(estimatedCgtLongTerm)}</span>
-              </div>
-              <div className="p-3 bg-secondary/40 rounded-xl border border-border/40 flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Short-Term CGT (&le;365 Days)</span>
-                <span className="font-mono font-bold text-foreground text-xs">{formatCurrencyWhole(estimatedCgtShortTerm)}</span>
-              </div>
-              <div className="p-3 bg-rose-500/10 rounded-xl border border-red-500/20 flex items-center justify-between">
-                <span className="text-xs font-bold text-foreground">Total Tax Withheld</span>
-                <span className="font-mono font-bold text-red-400 text-xs">{formatCurrencyWhole(totalEstimatedCgt)}</span>
+              <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
+                <span className="text-xs font-bold text-amber-400 block">Capital Gains Tax: Long 7.5% / Short 10% (Verified)</span>
+                <span className="text-xs text-muted-foreground mt-1 block">
+                  Lot-aged gains - FY 2083/84. Estimated: {formatCurrencyWhole(estimatedCgt)}.
+                </span>
+                <a href={CGT_OPEN_ENDED_INDIVIDUAL.officialSources[0].url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 underline underline-offset-2 mt-1 block">
+                  {CGT_OPEN_ENDED_INDIVIDUAL.officialSources[0].label}
+                </a>
               </div>
             </div>
           </Card>
@@ -750,16 +788,16 @@ export function TaxBreakdownView({
                     <TableCell className="text-right font-mono text-blue-400 font-bold">+{formatCurrencyWhole(summary.unallottedCash)}</TableCell>
                   </TableRow>
                   <TableRow className="border-border/30">
-                    <TableCell className="font-medium text-red-400">3. (-) Total Capital Gains Tax (CGT)</TableCell>
-                    <TableCell className="text-muted-foreground">Long term (7.5%) + Short term (10.0%)</TableCell>
-                    <TableCell className="text-right font-mono text-red-400 font-bold">-{formatCurrencyWhole(totalEstimatedCgt)}</TableCell>
+                    <TableCell className="font-medium text-amber-400">3. (-) Capital Gains Tax (CGT)</TableCell>
+                    <TableCell className="text-muted-foreground">Long 7.5% / Short 10% of lot-aged gains (FY 2083/84)</TableCell>
+                    <TableCell className="text-right font-mono text-amber-400 font-bold">-{formatCurrencyWhole(estimatedCgt)}</TableCell>
                   </TableRow>
                   <TableRow className="bg-emerald-500/10 font-bold text-xs">
                     <TableCell colSpan={2} className="py-3.5 text-foreground font-semibold uppercase tracking-wider text-[11px]">
                       FINAL REALIZED IN-HAND CASH (Bank Credit)
                     </TableCell>
                     <TableCell className="text-right font-mono text-base py-3.5 text-emerald-400 font-bold">
-                      {formatCurrencyWhole(netInHandSettlement)}
+                      {formatCurrencyWhole(cgtUnresolved ? netInHandSettlement : netPostTaxSettlement)}
                     </TableCell>
                   </TableRow>
                 </TableBody>
@@ -774,9 +812,9 @@ export function TaxBreakdownView({
                 <span className="text-xs text-blue-400 font-bold">2. (+) Rollover Cash</span>
                 <span className="font-mono font-bold text-blue-400 text-xs">+{formatCurrencyWhole(summary.unallottedCash)}</span>
               </div>
-              <div className="p-3 bg-rose-500/10 rounded-xl border border-red-500/20 flex items-center justify-between">
-                <span className="text-xs text-red-400 font-bold">3. (-) CGT Tax</span>
-                <span className="font-mono font-bold text-red-400 text-xs">-{formatCurrencyWhole(totalEstimatedCgt)}</span>
+              <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20 flex items-center justify-between">
+                <span className="text-xs text-amber-400 font-bold">3. (-) CGT Tax</span>
+                <span className="font-mono font-bold text-amber-400 text-xs">-{formatCurrencyWhole(estimatedCgt)}</span>
               </div>
               <div className="p-4 bg-emerald-500/15 rounded-xl border border-emerald-500/30 flex items-center justify-between">
                 <span className="text-xs font-black text-foreground uppercase tracking-tight">Net In-Hand Cash</span>
@@ -786,6 +824,58 @@ export function TaxBreakdownView({
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Verified fund charges (exit load is a fund charge, never a tax) */}
+      <Card className="rounded-[1.75rem] sm:rounded-[2rem] border-border/60 shadow-sm overflow-hidden bg-card">
+        <CardHeader className="bg-muted/30 p-4 sm:p-5 border-b border-border/40">
+          <CardTitle className="text-sm sm:text-base font-bold text-foreground">
+            Verified Exit-Load Rules (Fund Charges, Not Tax)
+          </CardTitle>
+          <CardDescription className="text-xs text-muted-foreground">
+            Applied at redemption based on each purchase lot&apos;s own holding period. Kept separate from capital-gains tax, dividend tax and DP fees.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-5 space-y-3 text-xs">
+          {exitLoadSchedules.map((s) => (
+            <div key={s.fundName} className="flex flex-col gap-1 p-3 bg-secondary/40 rounded-xl border border-border/40">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-bold text-foreground">{s.fundName}</span>
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 shrink-0">
+                  VERIFIED
+                </span>
+              </div>
+              <span className="text-muted-foreground">{formatExitLoadSummary(s)}</span>
+              {s.officialSourceUrl && (
+                <a
+                  href={s.officialSourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 underline underline-offset-2 break-all"
+                >
+                  Official source (verified {s.verifiedAt})
+                </a>
+              )}
+            </div>
+          ))}
+          {exitLoadUnverified.map((name) => (
+            <div key={name} className="flex flex-col gap-1 p-3 bg-amber-500/5 rounded-xl border border-amber-500/20">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-bold text-foreground">{name}</span>
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
+                  NOT VERIFIED
+                </span>
+              </div>
+              <span className="text-muted-foreground">
+                Exit-load rules could not be verified from the official source - no rate is assumed.
+              </span>
+            </div>
+          ))}
+          <div className="flex items-start gap-2 text-[11px] text-muted-foreground pt-1">
+            <Info className="h-3.5 w-3.5 text-blue-400 shrink-0 mt-0.5" />
+            <span>{TAX_DISCLAIMER}</span>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

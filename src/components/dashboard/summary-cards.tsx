@@ -11,6 +11,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from "lucide-react";
+import { CGT_NP_REDEMPTION } from "@/lib/tax";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -60,7 +61,7 @@ const FUND_NAME_ALIASES: Record<string, string> = {
   NIBLSF: "NIBL Sahabhagita Fund",
 };
 
-/** Always show the full fund name — resolve stored codes to real names. */
+/** Always show the full fund name - resolve stored codes to real names. */
 function formatFundShortName(name: string): string {
   if (!name) return "";
   return FUND_NAME_ALIASES[name.trim().toUpperCase()] ?? name;
@@ -287,7 +288,7 @@ export function SummaryCards({
                 XIRR Return <span className="text-[9px] text-muted-foreground/80 font-normal block sm:inline sm:ml-1">(Extended Internal Rate of Return)</span>
               </span>
               <span className="text-lg font-extrabold text-foreground tracking-tight">
-                {summary.xirr !== null ? formatPercentage(summary.xirr * 100) : "—"}
+                {summary.xirr !== null ? formatPercentage(summary.xirr * 100) : "-"}
               </span>
             </div>
             <div className="text-right">
@@ -355,9 +356,9 @@ export function SummaryCards({
           </div>
         </DialogTrigger>
 
-        <DialogContent className="w-[95vw] max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl rounded-3xl p-5 md:p-6 lg:p-7 max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl rounded-3xl p-5 md:p-6 lg:p-7 max-h-[90vh] overflow-y-auto bg-background border-border text-foreground">
           <DialogHeader className="pb-1">
-            <DialogTitle className="text-lg font-extrabold flex items-center justify-between">
+            <DialogTitle className="text-lg font-extrabold flex items-center justify-between text-foreground">
               <span>Portfolio Summary</span>
               <span className="text-xs font-semibold text-blue-500 bg-blue-500/10 px-2.5 py-0.5 rounded-full">
                 {formatStreak(summary.sipStreak)} STREAK
@@ -384,7 +385,7 @@ export function SummaryCards({
                   <span className="text-[11px] font-medium text-blue-100 uppercase tracking-wider block">
                     Gain / Loss
                   </span>
-                  <span className="font-extrabold text-sm text-white">
+                  <span className="font-extrabold text-lg text-white">
                     {summary.gainLoss !== null ? formatCurrencyWhole(summary.gainLoss, true) : "NPR 0"}
                   </span>
                 </div>
@@ -395,45 +396,45 @@ export function SummaryCards({
                   Total Invested: <strong className="text-white">{formatCurrencyWhole(summary.totalInvested)}</strong>
                 </span>
                 <span className="text-blue-100 text-[11px]">
-                  Return: <strong className="text-white">{summary.gainLossPct !== null ? formatPercentage(summary.gainLossPct) : "0%"}</strong>
+                  Return: <strong className="text-[#D4AF37]">{summary.gainLossPct !== null ? formatPercentage(summary.gainLossPct) : "0%"}</strong>
                 </span>
               </div>
             </div>
 
             {/* Core Metrics Grid */}
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="bg-secondary/40 rounded-xl p-2.5 flex flex-col gap-0.5 border border-border/40">
+              <div className="bg-card rounded-xl p-2.5 flex flex-col gap-0.5 border border-border">
                 <span className="text-[10px] text-muted-foreground font-semibold">Latest NAV</span>
                 <span className="text-sm font-extrabold text-foreground">
-                  {activeFund?.latest_nav ? `NPR ${Number(activeFund.latest_nav).toFixed(2)}` : "—"}
+                  {activeFund?.latest_nav ? `NPR ${Number(activeFund.latest_nav).toFixed(2)}` : "-"}
                 </span>
               </div>
 
-              <div className="bg-secondary/40 rounded-xl p-2.5 flex flex-col gap-0.5 border border-border/40">
+              <div className="bg-card rounded-xl p-2.5 flex flex-col gap-0.5 border border-border">
                 <span className="text-[10px] text-muted-foreground font-semibold">Total Units</span>
                 <span className="text-sm font-extrabold text-foreground">{formatUnits(summary.totalUnits)}</span>
               </div>
 
-              <div className="bg-secondary/40 rounded-xl p-2.5 flex flex-col gap-0.5 border border-border/40">
+              <div className="bg-card rounded-xl p-2.5 flex flex-col gap-0.5 border border-border">
                 <span className="text-[10px] text-muted-foreground font-semibold">Avg Unit Cost</span>
                 <span className="text-sm font-extrabold text-foreground">
                   {summary.totalUnits > 0
                     ? `NPR ${(summary.totalInvested / summary.totalUnits).toFixed(2)}`
-                    : "—"}
+                    : "-"}
                 </span>
               </div>
 
-              <div className="bg-secondary/40 rounded-xl p-2.5 flex flex-col gap-0.5 border border-border/40">
+              <div className="bg-card rounded-xl p-2.5 flex flex-col gap-0.5 border border-border">
                 <span className="text-[10px] text-muted-foreground font-semibold">SIP Streak</span>
-                <span className="text-sm font-extrabold text-amber-500">
-                  {formatStreak(summary.sipStreak)}
+                <span className="text-sm font-extrabold text-orange-500">
+                  {summary.sipStreak} {summary.sipStreak === 1 ? "month" : "months"}
                 </span>
               </div>
             </div>
 
             {/* Capital Allocation & Reconciliation Breakdown */}
-            <div className="bg-secondary/20 rounded-2xl p-3.5 border border-border/40 text-xs space-y-2">
-              <div className="flex items-center justify-between border-b border-border/30 pb-2">
+            <div className="bg-card rounded-2xl p-3.5 border border-border text-xs space-y-2">
+              <div className="flex items-center justify-between border-b border-border pb-2">
                 <span className="font-bold text-foreground flex items-center gap-1.5">
                   <Coins className="h-3.5 w-3.5 text-blue-500" />
                   Capital Reconciliation
@@ -454,7 +455,7 @@ export function SummaryCards({
                   <strong className="text-blue-500 font-mono">-{formatCurrencyWhole(summary.unallottedCash)}</strong>
                 </div>
 
-                <div className="flex justify-between items-center font-semibold pt-1 border-t border-border/20 text-foreground">
+                <div className="flex justify-between items-center font-semibold pt-1 border-t border-border text-foreground">
                   <span>Effective Deployed Capital</span>
                   <span className="font-mono text-emerald-500">{formatCurrencyWhole(Math.max(0, summary.totalInvested - summary.unallottedCash))}</span>
                 </div>
@@ -464,7 +465,7 @@ export function SummaryCards({
                   <strong className="text-foreground font-mono">{formatCurrencyWhole(summary.currentValue ?? 0)}</strong>
                 </div>
 
-                <div className="flex justify-between items-center font-bold pt-1 border-t border-border/30 text-foreground">
+                <div className="flex justify-between items-center font-bold pt-1 border-t border-border text-foreground">
                   <span>Net Investment Return</span>
                   <span className={cn("font-mono", isPositive ? "text-emerald-500" : "text-rose-500")}>
                     {summary.gainLoss !== null ? formatCurrencyWhole(summary.gainLoss, true) : "NPR 0"}
@@ -474,23 +475,23 @@ export function SummaryCards({
               </div>
             </div>
 
-            {/* Tax Estimation */}
-            <div className="bg-secondary/20 rounded-xl p-3 border border-border/40 text-xs space-y-1.5">
-              <div className="flex items-center justify-between border-b border-border/30 pb-1.5">
+            {/* CGT widget: lot-aged long/short estimate (FY 2083/84 verified slab) */}
+            <div className="rounded-xl bg-card p-4 text-sm border border-border">
+              <div className="flex items-center justify-between gap-2">
                 <span className="font-bold text-foreground">Capital Gains Tax (CGT)</span>
-                <span className="text-[10px] text-muted-foreground">Estimated Tax</span>
+                <span className="text-xs text-muted-foreground">Estimated Tax</span>
               </div>
-              <div className="space-y-1">
-                <div className="flex justify-between items-center text-muted-foreground text-[11px]">
-                  <span>Long-Term (&gt; 1 yr @ 7.5%)</span>
-                  <span className="font-bold text-foreground">
-                    {formatCurrencyWhole(summary.estimatedCgtLongTerm ?? 0)}
+              <div className="mt-2.5 space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-muted-foreground">Long-Term (&gt; 1 yr @ {CGT_NP_REDEMPTION.longTermRatePct}%)</span>
+                  <span className="font-mono font-bold tabular-nums text-foreground">
+                    {formatCurrencyWhole(summary.estimatedCgtLongTerm)}
                   </span>
                 </div>
-                <div className="flex justify-between items-center text-muted-foreground text-[11px]">
-                  <span>Short-Term (&lt; 1 yr @ 10.0%)</span>
-                  <span className="font-bold text-foreground">
-                    {formatCurrencyWhole(summary.estimatedCgtShortTerm ?? 0)}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-muted-foreground">Short-Term (&lt; 1 yr @ {CGT_NP_REDEMPTION.shortTermRatePct}%)</span>
+                  <span className="font-mono font-bold tabular-nums text-foreground">
+                    {formatCurrencyWhole(summary.estimatedCgtShortTerm)}
                   </span>
                 </div>
               </div>
@@ -499,7 +500,7 @@ export function SummaryCards({
             <Button
               variant="outline"
               size="sm"
-              className="w-full rounded-xl text-xs font-bold h-9 border-blue-500/30 text-blue-500 hover:bg-blue-500/10 flex items-center justify-center gap-2"
+              className="w-full rounded-xl text-xs font-bold h-9 border-[#D4AF37] text-blue-500 hover:bg-[#D4AF37]/10 flex items-center justify-center gap-2"
               onClick={() => router.push("/tax-breakdown")}
             >
               <span>View Full Tax & Settlement Ledger</span>
@@ -509,7 +510,7 @@ export function SummaryCards({
 
           <DialogFooter className="mt-2">
             <DialogClose asChild>
-              <Button size="sm" className="w-full rounded-xl font-bold h-9">
+              <Button size="sm" className="w-full rounded-xl font-bold h-9 bg-[#D4AF37] text-[#0D1B2A] hover:bg-[#c9a227]">
                 Close Summary
               </Button>
             </DialogClose>
