@@ -4,25 +4,12 @@
 // Two legs:
 //
 //  POST /api/mobile/google            (app leg, JSON)
-//    The APK sends the random nonce it minted locally. We answer with
-//    the browser URL to open: our own GET start route below.
+//    The APK/client sends the random nonce it minted locally, along with
+//    optional redirect scheme/URL. We answer with the browser URL to open.
 //
 //  GET  /api/mobile/google?nonce=...  (browser leg, 307)
-//    Runs NextAuth's OAuth kickoff IN-PROCESS - GET /api/auth/csrf to
-//    mint the CSRF cookie, then the CSRF-validated POST to
-//    /api/auth/signin/google with callbackUrl = the handoff relay that
-//    carries the nonce - and forwards every Set-Cookie on a 307 to
-//    Google. From there it's the exact chain the web app uses:
-//    Google → /api/auth/callback/google → NextAuth session → relay →
-//    sahakarisip://auth/callback?token=<nonce>.
-//
-// Why not just GET /api/auth/signin/google? @auth/core only renders an
-// HTML page for GET; the OAuth redirect requires a CSRF-validated POST.
-// Why handlers instead of self-fetching our own URL? On Vercel,
-// server-side fetches to the app's own hostname can be intercepted by
-// deployment protection - calling the exported NextAuth handlers with a
-// crafted Request (browser's real Cookie header, host forwarded) keeps
-// everything in-process and deterministic.
+//    Runs NextAuth OAuth kickoff and forwards to Google OAuth with
+//    callbackUrl = relative relay path carrying nonce & redirect.
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
@@ -30,7 +17,12 @@ import { handlers } from "@/auth";
 
 const APP_SCHEME = process.env.MOBILE_APP_SCHEME || "sahakarisip";
 
-function webOrigin(): string {
+function webOrigin(req?: NextRequest): string {
+  if (req) {
+    const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
+    const proto = req.headers.get("x-forwarded-proto") || "https";
+    if (host) return `${proto}://${host}`;
+  }
   const explicit = process.env.NEXTAUTH_URL || process.env.AUTH_URL;
   if (explicit && /^https:\/\/(?!localhost(?:[:/]|$)|127\.0\.0\.1(?:[:/]|$))/i.test(explicit)) {
     return explicit.replace(/\/+$/, "");
@@ -45,7 +37,7 @@ function isNonce(value: string | null | undefined): value is string {
 // ---------- app leg ----------
 
 export async function POST(req: NextRequest) {
-  let body: { nonce?: string } | null = null;
+  let body: { nonce?: string; redirectUrl?: string } | null = null;
   try {
     body = await req.json();
   } catch {
@@ -60,8 +52,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const redirectParam = body?.redirectUrl ? `&redirect=${encodeURIComponent(body.redirectUrl)}` : "";
+
   return NextResponse.json({
-    url: `${webOrigin()}/api/mobile/google?nonce=${nonce}`,
+    url: `${webOrigin(req)}/api/mobile/google?nonce=${nonce}${redirectParam}`,
     callbackScheme: `${APP_SCHEME}://`,
   });
 }
@@ -70,13 +64,13 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   const nonce = req.nextUrl.searchParams.get("nonce");
+  const redirectUrl = req.nextUrl.searchParams.get("redirect") || `${APP_SCHEME}://auth/callback`;
+
   if (!isNonce(nonce)) {
     return errorPage("Sign-in link invalid", 400);
   }
 
-  const origin = webOrigin();
-  // Preserve the real host so NextAuth's trustHost/url inference works
-  // exactly like a browser request to this origin.
+  const origin = webOrigin(req);
   const host = req.headers.get("host") || new URL(origin).host;
   const incomingCookie = req.headers.get("cookie") ?? "";
 
@@ -85,31 +79,30 @@ export async function GET(req: NextRequest) {
     "x-forwarded-host": host,
     "x-forwarded-proto": req.headers.get("x-forwarded-proto") || "https",
   };
-  const relayUrl = `${origin}/api/mobile/handoff?nonce=${nonce}`;
 
-  // 1. Mint (or reuse) the CSRF cookie, exactly like the client lib does.
+  // Use a relative relay URL with nonce and target redirect
+  const relayPath = `/api/mobile/handoff?nonce=${nonce}&redirect=${encodeURIComponent(redirectUrl)}`;
+
+  // 1. Mint (or reuse) the CSRF cookie
   const csrfRes = await handlers.GET(
     new NextRequest(
-      `${origin}/api/auth/csrf?callbackUrl=${encodeURIComponent(relayUrl)}`,
+      `${origin}/api/auth/csrf?callbackUrl=${encodeURIComponent(relayPath)}`,
       {
         headers: { ...forwardedHeaders, cookie: incomingCookie },
       }
     )
   );
   const csrfCookies = csrfRes.headers.getSetCookie();
-  // @auth/core's /csrf responds { csrfToken } - not { token }.
   const csrfToken: string =
     ((await csrfRes.json().catch(() => null)) as { csrfToken?: string } | null)?.csrfToken ?? "";
   if (!csrfToken) {
     return errorPage("Google sign-in could not start. Please try again.", 502);
   }
 
-  // Cookie jar for the second hop: whatever the browser already had plus
-  // the freshly issued CSRF cookie.
   const cookieJar = [incomingCookie, ...csrfCookies].filter(Boolean).join("; ");
 
-  // 2. The actual OAuth kickoff: NextAuth's CSRF-validated POST.
-  const form = new URLSearchParams({ csrfToken, callbackUrl: relayUrl });
+  // 2. OAuth kickoff POST with relative callbackUrl
+  const form = new URLSearchParams({ csrfToken, callbackUrl: relayPath });
   const signinRes = await handlers.POST(
     new NextRequest(`${origin}/api/auth/signin/google`, {
       method: "POST",
@@ -124,17 +117,11 @@ export async function GET(req: NextRequest) {
 
   const googleUrl = signinRes.headers.get("location");
   if (!googleUrl || !/^https:\/\//.test(googleUrl)) {
-    // No redirect (bad config / error page) - surface a friendly page
-    // rather than a half-started flow.
     console.error("[mobile google] signin did not redirect; status", signinRes.status);
     return errorPage("Google sign-in could not start. Please try again.", 502);
   }
 
-  // 3. Hand the browser the Google URL with all Set-Cookie headers from
-  //    both hops, so CSRF/state/nonce cookies are first-party on this
-  //    origin and ride along to the callback.
-  // Also bind the nonce to this browser with an httpOnly cookie so the
-  // handoff relay can verify the flow wasn't hijacked cross-site.
+  // 3. Hand browser the Google URL with cookies
   const response = NextResponse.redirect(googleUrl, 307);
   for (const cookie of csrfCookies) response.headers.append("set-cookie", cookie);
   for (const cookie of signinRes.headers.getSetCookie()) {
@@ -144,14 +131,14 @@ export async function GET(req: NextRequest) {
     httpOnly: true,
     sameSite: "lax",
     secure: true,
-    path: "/api/mobile/handoff",
+    path: "/",
     maxAge: 600,
   });
   return response;
 }
 
 function errorPage(message: string, status: number): NextResponse {
-  const body = `<html><body style="font-family:sans-serif;text-align:center;padding-top:20vh"><h2>${message}</h2><p>Please try Google sign-in again from the SahakariSIP app.</p></body></html>`;
+  const body = `<!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding-top:20vh;background:#0B0F19;color:#EDEAE0"><h2>${message}</h2><p style="color:#94A3B8">Please try Google sign-in again from the SahakariSIP app.</p></body></html>`;
   return new NextResponse(body, {
     status,
     headers: { "content-type": "text/html; charset=utf-8" },

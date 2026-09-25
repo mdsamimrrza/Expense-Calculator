@@ -38,16 +38,28 @@ function AuthNotifier() {
         description: "Invalid email or password. Please try again.",
         variant: "destructive",
       });
-    } else if (error === "auth_failed") {
+    } else if (error === "auth_failed" || error === "OAuthCallbackError" || error === "OAuthSignin") {
       toast({
         title: "Authentication Failed",
-        description: "Google sign-in was cancelled or failed. Please try again.",
+        description: "Google sign-in was cancelled or encountered an error. Please try again.",
+        variant: "destructive",
+      });
+    } else if (error === "Configuration") {
+      toast({
+        title: "Configuration Error",
+        description: "Server authentication configuration issue. Please check environment variables.",
+        variant: "destructive",
+      });
+    } else if (error === "AccessDenied") {
+      toast({
+        title: "Access Denied",
+        description: "You do not have permission to sign in with this account.",
         variant: "destructive",
       });
     } else if (error) {
       toast({
         title: "Authentication Error",
-        description: "Something went wrong. Please try again.",
+        description: error.length > 30 ? "Something went wrong. Please try again." : `Error: ${error}. Please try again.`,
         variant: "destructive",
       });
     }

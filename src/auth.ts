@@ -46,6 +46,8 @@ const providers: Provider[] = [
   // existing row for the same email is safe. The signIn callback below
   // evicts attacker-planted password credentials on never-verified rows.
   Google({
+    clientId: process.env.AUTH_GOOGLE_ID || process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.AUTH_GOOGLE_SECRET || process.env.GOOGLE_CLIENT_SECRET,
     allowDangerousEmailAccountLinking: true,
   }),
 
@@ -82,122 +84,126 @@ const providers: Provider[] = [
 // cache() dedupes them to one round trip per request without touching callers.
 const nextAuth = NextAuth({
   ...authConfig,
+  trustHost: true,
   providers,
   adapter: SupabaseAdapter({
     url: supabaseUrl,
     secret: supabaseSecret,
   }),
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith("/")) {
+        return `${baseUrl.replace(/\/+$/, "")}${url}`;
+      }
+      try {
+        const parsed = new URL(url);
+        const parsedBase = new URL(baseUrl);
+        if (
+          parsed.origin === parsedBase.origin ||
+          parsed.hostname === "sahakari-sip.vercel.app" ||
+          parsed.hostname === "localhost" ||
+          parsed.hostname.endsWith(".vercel.app") ||
+          parsed.pathname.startsWith("/api/mobile/handoff")
+        ) {
+          return url;
+        }
+      } catch {
+        // Fall back to baseUrl on parse error
+      }
+      return baseUrl;
+    },
     async signIn({ user, account, profile }) {
-      if (account?.provider === "google" && user?.email) {
-        const nextAuthClient = getNextAuthClient();
+      try {
+        if (account?.provider === "google" && user?.email) {
+          const nextAuthClient = getNextAuthClient();
 
-        const { data: rows } = await nextAuthClient
-          .from("users")
-          .select("id, name, image, emailVerified")
-          .eq("email", user.email.toLowerCase().trim())
-          .limit(1);
-
-        const row = rows && rows.length > 0 ? rows[0] : null;
-
-        if (row && !row.emailVerified) {
-          // The row was created via password signup but never verified -
-          // the only password that can be on it belongs to whoever claimed
-          // the email without proving ownership. Google's verification is
-          // stronger proof, so evict the password, mark the email verified,
-          // and let the real owner claim the account.
-          await getPublicClient().from("user_passwords").delete().eq("user_id", row.id);
-          await nextAuthClient
+          const { data: rows } = await nextAuthClient
             .from("users")
-            .update({ emailVerified: new Date().toISOString() })
-            .eq("id", row.id);
-        }
+            .select("id, name, image, emailVerified")
+            .eq("email", user.email.toLowerCase().trim())
+            .limit(1);
 
-        // Backfill the profile photo (and missing name) from Google.
-        // A row created earlier via email/password signup has image = null,
-        // and account linking never copies Google's picture into it - so a
-        // Google login on such an account would leave the avatar empty.
-        const googlePicture =
-          (profile as { picture?: string } | null)?.picture ??
-          (user as { image?: string | null }).image ??
-          null;
-        const googleName =
-          (profile as { name?: string } | null)?.name ??
-          (user as { name?: string | null }).name ??
-          null;
-        if (row && googlePicture && row.image !== googlePicture) {
-          await nextAuthClient
-            .from("users")
-            .update({ image: googlePicture })
-            .eq("id", row.id);
+          const row = rows && rows.length > 0 ? rows[0] : null;
+
+          if (row && !row.emailVerified) {
+            await getPublicClient().from("user_passwords").delete().eq("user_id", row.id);
+            await nextAuthClient
+              .from("users")
+              .update({ emailVerified: new Date().toISOString() })
+              .eq("id", row.id);
+          }
+
+          const googlePicture =
+            (profile as { picture?: string } | null)?.picture ??
+            (user as { image?: string | null }).image ??
+            null;
+          const googleName =
+            (profile as { name?: string } | null)?.name ??
+            (user as { name?: string | null }).name ??
+            null;
+          if (row && googlePicture && row.image !== googlePicture) {
+            await nextAuthClient
+              .from("users")
+              .update({ image: googlePicture })
+              .eq("id", row.id);
+          }
+          if (row && !row.name && googleName) {
+            await nextAuthClient
+              .from("users")
+              .update({ name: googleName })
+              .eq("id", row.id);
+          }
         }
-        if (row && !row.name && googleName) {
-          await nextAuthClient
-            .from("users")
-            .update({ name: googleName })
-            .eq("id", row.id);
-        }
+      } catch (err) {
+        console.error("[signIn callback] non-fatal profile sync error:", err);
       }
       return true;
     },
     async jwt({ token, user, account, profile, trigger, session }) {
-      // Client-side `useSession().update({ user: { image } })` after a
-      // profile upload lands here - persist it so the new avatar survives.
-      if (
-        trigger === "update" &&
-        (session as { user?: { image?: string | null } } | undefined)?.user?.image !== undefined
-      ) {
-        token.picture = (session as { user: { image: string | null } }).user.image;
-      }
-      if (user) {
-        token.id = user.id;
-        // Persist profile fields into the JWT so the session (and the
-        // settings avatar) can render them. `image` comes from the
-        // next_auth.users.image column (credentials) or Google (`picture`).
-        // On a Google sign-in prefer the live profile picture: the linked
-        // DB row may still hold the old null from an earlier password signup.
-        token.name = user.name ?? token.name;
-        token.email = user.email ?? token.email;
-        token.picture =
-          (profile as { picture?: string } | null)?.picture ??
-          (user as any).image ??
-          (user as any).picture ??
-          token.picture;
-      }
-
-      // Enforce the per-user credential epoch: after a password reset
-      // (or account deletion) every previously issued JWT goes stale.
-      // A missing row counts as maximally stale.
-      //
-      // Throttled: the DB check runs at most once per EPOCH_CHECK_INTERVAL_MS
-      // per session (timestamp persisted in the JWT cookie). Between checks
-      // the stored epoch is trusted. Always checked on fresh sign-ins
-      // (user present). This removes one cross-region round trip from every
-      // page load and server action.
-      const userId = (user?.id as string | undefined) ?? (token.id as string | undefined);
-      if (userId) {
-        const now = Date.now();
-        const lastCheck = Number(token.epochCheckedAt ?? 0);
-        const needsCheck = Boolean(user) || now - lastCheck >= EPOCH_CHECK_INTERVAL_MS;
-
-        if (needsCheck) {
-          const { data: rows } = await getNextAuthClient()
-            .from("users")
-            .select("credential_epoch")
-            .eq("id", userId)
-            .limit(1);
-
-          const currentEpoch =
-            rows && rows.length > 0 ? Number(rows[0].credential_epoch ?? 0) : -1;
-
-          if (user) {
-            token.epoch = (user as any).credential_epoch ?? currentEpoch;
-          } else if (token.epoch !== undefined && Number(token.epoch) !== currentEpoch) {
-            // Force the session JWT to expire immediately.
-            token.exp = Math.floor(Date.now() / 1000) - 60;
-          }
-          token.epochCheckedAt = now;
+      try {
+        if (
+          trigger === "update" &&
+          (session as { user?: { image?: string | null } } | undefined)?.user?.image !== undefined
+        ) {
+          token.picture = (session as { user: { image: string | null } }).user.image;
         }
+        if (user) {
+          token.id = user.id;
+          token.name = user.name ?? token.name;
+          token.email = user.email ?? token.email;
+          token.picture =
+            (profile as { picture?: string } | null)?.picture ??
+            (user as any).image ??
+            (user as any).picture ??
+            token.picture;
+        }
+
+        const userId = (user?.id as string | undefined) ?? (token.id as string | undefined);
+        if (userId) {
+          const now = Date.now();
+          const lastCheck = Number(token.epochCheckedAt ?? 0);
+          const needsCheck = Boolean(user) || now - lastCheck >= EPOCH_CHECK_INTERVAL_MS;
+
+          if (needsCheck) {
+            const { data: rows } = await getNextAuthClient()
+              .from("users")
+              .select("credential_epoch")
+              .eq("id", userId)
+              .limit(1);
+
+            const currentEpoch =
+              rows && rows.length > 0 ? Number(rows[0].credential_epoch ?? 0) : -1;
+
+            if (user) {
+              token.epoch = (user as any).credential_epoch ?? currentEpoch;
+            } else if (token.epoch !== undefined && Number(token.epoch) !== currentEpoch) {
+              token.exp = Math.floor(Date.now() / 1000) - 60;
+            }
+            token.epochCheckedAt = now;
+          }
+        }
+      } catch (err) {
+        console.error("[jwt callback] non-fatal error:", err);
       }
 
       return token;
@@ -205,8 +211,6 @@ const nextAuth = NextAuth({
     async session({ session, token }) {
       if (token && session.user) {
         session.user.id = token.id as string;
-        // Expose the persisted profile fields (image lives in
-        // next_auth.users.image) to all `auth()` / `useSession()` callers.
         if (token.name) session.user.name = token.name as string;
         if (token.email) session.user.email = token.email as string;
         session.user.image =
@@ -214,17 +218,21 @@ const nextAuth = NextAuth({
           (token.image as string | undefined) ??
           null;
       }
-      const signingSecret = process.env.SUPABASE_JWT_SECRET;
-      if (signingSecret && token.sub) {
-        const payload = {
-          aud: "authenticated",
-          exp: Math.floor(new Date(session.expires).getTime() / 1000),
-          sub: token.sub,
-          email: session.user.email,
-          role: "authenticated",
-          epoch: token.epoch ?? 0,
-        };
-        session.supabaseAccessToken = jwt.sign(payload, signingSecret);
+      try {
+        const signingSecret = process.env.SUPABASE_JWT_SECRET;
+        if (signingSecret && token.sub) {
+          const payload = {
+            aud: "authenticated",
+            exp: Math.floor(new Date(session.expires).getTime() / 1000),
+            sub: token.sub,
+            email: session.user.email,
+            role: "authenticated",
+            epoch: token.epoch ?? 0,
+          };
+          session.supabaseAccessToken = jwt.sign(payload, signingSecret);
+        }
+      } catch (err) {
+        console.error("[session callback] signing token error:", err);
       }
       return session;
     },
