@@ -135,10 +135,10 @@ export async function GET(req: NextRequest) {
   const separator = redirectTarget.includes("?") ? "&" : "?";
   const deepLink = `${redirectTarget}${separator}token=${nonce}`;
 
-  // Deliver both Location header and auto-launching HTML fallback page
+  // Deliver both Location header with HTTP 307 Redirect and auto-launching HTML fallback page
   const html = redirectHtmlResponse(deepLink);
   const response = new NextResponse(html, {
-    status: 200,
+    status: 307,
     headers: {
       "content-type": "text/html; charset=utf-8",
       "location": deepLink,
