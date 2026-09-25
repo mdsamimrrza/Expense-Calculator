@@ -15,8 +15,20 @@ declare module "next-auth" {
   }
 }
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
-const supabaseSecret = process.env.SUPABASE_SERVICE_ROLE_KEY || "placeholder-key";
+const supabaseUrl =
+  process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseSecret = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const authSecret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
+
+const googleClientId =
+  process.env.AUTH_GOOGLE_ID ||
+  process.env.GOOGLE_CLIENT_ID ||
+  process.env.GOOGLE_ID;
+
+const googleClientSecret =
+  process.env.AUTH_GOOGLE_SECRET ||
+  process.env.GOOGLE_CLIENT_SECRET ||
+  process.env.GOOGLE_SECRET;
 
 // One client per schema for the function instance's lifetime: supabase-js
 // keeps its HTTP connections warm, so repeat queries skip the TLS
@@ -42,12 +54,9 @@ const getPublicClient = once(() => createClient(supabaseUrl, supabaseSecret));
 const EPOCH_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
 const providers: Provider[] = [
-  // Google verifies mailbox ownership, so linking an OAuth sign-in to an
-  // existing row for the same email is safe. The signIn callback below
-  // evicts attacker-planted password credentials on never-verified rows.
   Google({
-    clientId: process.env.AUTH_GOOGLE_ID || process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.AUTH_GOOGLE_SECRET || process.env.GOOGLE_CLIENT_SECRET,
+    ...(googleClientId ? { clientId: googleClientId } : {}),
+    ...(googleClientSecret ? { clientSecret: googleClientSecret } : {}),
     allowDangerousEmailAccountLinking: true,
   }),
 
@@ -60,8 +69,6 @@ const providers: Provider[] = [
     async authorize(credentials) {
       if (!credentials?.email || !credentials?.password) return null;
 
-      // Shared core with the mobile API: brute-force limiter, emailVerified
-      // gate, bcrypt compare - one implementation, no drift.
       const result = await verifyCredentials(
         credentials.email as string,
         credentials.password as string
@@ -79,11 +86,9 @@ const providers: Provider[] = [
   }),
 ];
 
-// The jwt callback does a Supabase round trip (credential_epoch check) on
-// every auth() call - and layout + page both call auth() in the same render.
-// cache() dedupes them to one round trip per request without touching callers.
 const nextAuth = NextAuth({
   ...authConfig,
+  secret: authSecret,
   trustHost: true,
   providers,
   adapter: SupabaseAdapter({

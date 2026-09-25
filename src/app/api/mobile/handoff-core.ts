@@ -8,14 +8,6 @@
 // that token and gets back the same Supabase-compatible JWT the web
 // session callback already mints (supabaseAccessToken), which the RLS
 // policies accept via next_auth.uid().
-//
-// Security properties:
-//   • tokens are random 128-bit nonces, stored server-side, deleted on
-//     first exchange → single-use and unguessable
-//   • 60-second TTL; expired/unused rows are swept on every issue
-//   • the browser leg that creates the token is protected by the live
-//     NextAuth cookie session (only the account that just signed in can
-//     mint a handoff token for itself)
 // ============================================================
 
 import { createClient } from "@supabase/supabase-js";
@@ -24,9 +16,6 @@ import { createPrivateKey, createPublicKey, randomBytes, randomInt } from "crypt
 import type { NextRequest } from "next/server";
 
 const HANDOFF_TTL_SECONDS = 60;
-/** Mobile session lifetime: the RLS JWT itself is the long-lived token.
- *  When it expires the app falls back to the sign-in screen (Google
- *  handoff or password) exactly like a web session ending. */
 export const TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 function readJwtPrivateKey(): ReturnType<typeof createPrivateKey> | null {
@@ -42,19 +31,22 @@ function readJwtPrivateKey(): ReturnType<typeof createPrivateKey> | null {
   }
 }
 
+function getSupabaseUrl(): string {
+  return process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+}
+
+function getServiceKey(): string {
+  return process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+}
+
 function publicClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  return createClient(getSupabaseUrl(), getServiceKey());
 }
 
 function nextAuthClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { db: { schema: "next_auth" } }
-  );
+  return createClient(getSupabaseUrl(), getServiceKey(), {
+    db: { schema: "next_auth" },
+  });
 }
 
 /** Mint a Supabase RLS JWT for a next_auth user id (mirrors auth.ts session callback). */
@@ -87,10 +79,7 @@ export function mintSupabaseAccessToken(sub: string, email: string | null, crede
 
   const secret = process.env.SUPABASE_JWT_SECRET;
   if (!secret) {
-    // Surface the real cause to the client instead of a generic 500.
-    throw new Error(
-      "Server is missing SUPABASE_JWT_SECRET. Set it in Vercel to your Supabase project's current JWT signing key."
-    );
+    throw new Error("Server is missing SUPABASE_JWT_SECRET.");
   }
   return jwt.sign(payload, secret);
 }
@@ -101,7 +90,6 @@ export async function issueHandoffToken(
   requestedNonce?: string
 ): Promise<string> {
   const pub = publicClient();
-  // Sweep stale unconsumed tokens (crashed browser mid-handoff).
   await pub
     .from("mobile_handoff_tokens")
     .delete()
@@ -125,20 +113,12 @@ export interface ExchangeResult {
   name: string | null;
   image: string | null;
   accessToken: string;
-  /** Seconds the minted JWT is valid for (24h). */
   expiresIn: number;
 }
 
-/**
- * Consume a handoff nonce (single-use, 60s TTL) and return the session
- * payload for the phone. Returns null when the token is unknown,
- * expired, or already consumed.
- */
 export async function consumeHandoffToken(nonce: string): Promise<ExchangeResult | null> {
   const pub = publicClient();
 
-  // Atomic consume: delete the row if it exists and is within TTL,
-  // returning the consumed row. Exactly one caller gets the row.
   const cutoff = new Date(Date.now() - HANDOFF_TTL_SECONDS * 1000).toISOString();
   const { data: consumed, error } = await pub
     .from("mobile_handoff_tokens")
@@ -173,25 +153,19 @@ export async function consumeHandoffToken(nonce: string): Promise<ExchangeResult
   };
 }
 
-/** 6-digit OTP from a CSPRNG. */
 export function generateOtp(): string {
   return randomInt(100000, 1000000).toString();
 }
 
-/**
- * Authenticate a mobile request by verifying the Bearer token this
- * module's mint function issues (signed with SUPABASE_JWT_SECRET).
- * Returns the next_auth identity or null.
- */
 export async function authenticateMobileRequest(req: NextRequest): Promise<{ sub: string; email: string | null } | null> {
   const header = req.headers.get("authorization") || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : "";
   if (!token) return null;
   try {
-      const privateKey = readJwtPrivateKey();
-      if (process.env.SUPABASE_JWT_PRIVATE_KEY && !privateKey) return null;
-      const key = privateKey
-        ? createPublicKey(privateKey)
+    const privateKey = readJwtPrivateKey();
+    if (process.env.SUPABASE_JWT_PRIVATE_KEY && !privateKey) return null;
+    const key = privateKey
+      ? createPublicKey(privateKey)
       : process.env.SUPABASE_JWT_SECRET;
     if (!key) return null;
     const payload = jwt.verify(token, key, {
@@ -200,7 +174,6 @@ export async function authenticateMobileRequest(req: NextRequest): Promise<{ sub
     }) as jwt.JwtPayload;
     if (payload.role !== "authenticated" || typeof payload.sub !== "string") return null;
 
-    // Verify credential epoch matches current stored epoch (revoked on password reset).
     const { data: userRows } = await nextAuthClient()
       .from("users")
       .select("credential_epoch")
@@ -213,7 +186,6 @@ export async function authenticateMobileRequest(req: NextRequest): Promise<{ sub
 
     return { sub: payload.sub, email: typeof payload.email === "string" ? payload.email : null };
   } catch {
-    // Expired or forged - same null path.
     return null;
   }
 }
