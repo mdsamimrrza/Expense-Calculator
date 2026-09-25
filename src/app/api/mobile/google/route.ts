@@ -127,13 +127,10 @@ export async function GET(req: NextRequest) {
   for (const cookie of signinRes.headers.getSetCookie()) {
     response.headers.append("set-cookie", cookie);
   }
-  response.cookies.set("mobile_handoff_nonce", nonce, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: true,
-    path: "/",
-    maxAge: 600,
-  });
+  response.headers.append(
+    "set-cookie",
+    `mobile_handoff_nonce=${nonce}; Path=/; Max-Age=600; HttpOnly; SameSite=Lax; Secure`
+  );
   return response;
 }
 

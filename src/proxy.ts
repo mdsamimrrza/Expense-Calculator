@@ -18,6 +18,12 @@ export default auth((req) => {
   const isProtectedRoute = PROTECTED_ROUTES.some((route) => nextUrl.pathname.startsWith(route));
   const isAuthRoute = AUTH_ROUTES.some((route) => nextUrl.pathname.startsWith(route));
 
+  // If mobile handoff is pending and session is active, route directly to handoff endpoint
+  const mobileNonce = req.cookies.get("mobile_handoff_nonce")?.value;
+  if (mobileNonce && isLoggedIn && !nextUrl.pathname.startsWith("/api/mobile")) {
+    return NextResponse.redirect(new URL(`/api/mobile/handoff?nonce=${mobileNonce}`, nextUrl));
+  }
+
   if (isProtectedRoute && !isLoggedIn) {
     return NextResponse.redirect(new URL("/login", nextUrl));
   }
