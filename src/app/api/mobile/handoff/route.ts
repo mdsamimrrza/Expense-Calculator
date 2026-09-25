@@ -57,8 +57,9 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Use server-issued nonce (no requestedNonce) to avoid client-chosen values.
-    await issueHandoffToken(session.user.id);
+    // The APK exchanges the nonce it created at sign-in start. The matching
+    // browser-only cookie prevents another browser from choosing that value.
+    await issueHandoffToken(session.user.id, nonce);
   } catch {
     return htmlResponse(
       "Something went wrong",
