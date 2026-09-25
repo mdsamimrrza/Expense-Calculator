@@ -30,27 +30,19 @@ const googleClientSecret =
   process.env.GOOGLE_CLIENT_SECRET ||
   process.env.GOOGLE_SECRET;
 
-// One client per schema for the function instance's lifetime: supabase-js
-// keeps its HTTP connections warm, so repeat queries skip the TLS
-// handshake that a fresh createClient() pays every time.
 function once<T>(factory: () => T): () => T {
   let value: T | null = null;
   return () => (value ??= factory());
 }
 
-// Client for next_auth schema (users, accounts)
 const getNextAuthClient = once(() =>
   createClient(supabaseUrl, supabaseSecret, {
     db: { schema: "next_auth" },
   })
 );
 
-// Client for public schema (user_passwords, otp_tokens, rate_limit_events)
 const getPublicClient = once(() => createClient(supabaseUrl, supabaseSecret));
 
-// How often the credential_epoch DB check may run per session. Between
-// checks the JWT's stored epoch is trusted. A reset/deleted account is
-// locked out within this window instead of on every request.
 const EPOCH_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
 const providers: Provider[] = [
@@ -97,25 +89,35 @@ const nextAuth = NextAuth({
   }),
   callbacks: {
     async redirect({ url, baseUrl }) {
+      const defaultOrigin = "https://sahakari-sip.vercel.app";
+      const baseOrigin = (baseUrl && !baseUrl.includes("localhost:4000") ? baseUrl : defaultOrigin).replace(/\/+$/, "");
+
+      // 1. Relative URLs
       if (url.startsWith("/")) {
-        return `${baseUrl.replace(/\/+$/, "")}${url}`;
+        return `${baseOrigin}${url}`;
       }
+
+      // 2. Absolute URLs
       try {
         const parsed = new URL(url);
-        const parsedBase = new URL(baseUrl);
+        // If it's the mobile handoff relay, ALWAYS allow and ensure proper host
+        if (parsed.pathname.startsWith("/api/mobile/handoff")) {
+          const originToUse = parsed.origin.includes("localhost:4000") ? baseOrigin : parsed.origin;
+          return `${originToUse}${parsed.pathname}${parsed.search}`;
+        }
+        // If it's a known domain or same origin
         if (
-          parsed.origin === parsedBase.origin ||
-          parsed.hostname === "sahakari-sip.vercel.app" ||
-          parsed.hostname === "localhost" ||
+          parsed.origin === baseOrigin ||
           parsed.hostname.endsWith(".vercel.app") ||
-          parsed.pathname.startsWith("/api/mobile/handoff")
+          parsed.hostname === "localhost"
         ) {
           return url;
         }
       } catch {
-        // Fall back to baseUrl on parse error
+        // Fallback
       }
-      return baseUrl;
+
+      return `${baseOrigin}/dashboard`;
     },
     async signIn({ user, account, profile }) {
       try {
