@@ -53,8 +53,8 @@ async function verifyGoogleIdToken(idToken: string): Promise<GoogleTokenPayload 
 
     // Verify the audience matches our Android client ID or web client ID
     const androidClientId = process.env.GOOGLE_ANDROID_CLIENT_ID;
-    const webClientId = process.env.GOOGLE_CLIENT_ID || process.env.AUTH_GOOGLE_ID || "416335590615-e96duqpfc9f7eg4qg0aqnj42avuiqs8l.apps.googleusercontent.com";
-    const validAudiences = [androidClientId, webClientId, "416335590615-e96duqpfc9f7eg4qg0aqnj42avuiqs8l.apps.googleusercontent.com"].filter(Boolean);
+    const webClientId = process.env.GOOGLE_CLIENT_ID || process.env.AUTH_GOOGLE_ID || "416335590615-7qmsb34qr1aegnng0rfsib9lca10ke3m.apps.googleusercontent.com";
+    const validAudiences = [androidClientId, webClientId, "416335590615-7qmsb34qr1aegnng0rfsib9lca10ke3m.apps.googleusercontent.com"].filter(Boolean);
     if (validAudiences.length > 0 && !validAudiences.includes(payload.aud)) {
       console.error("[google-native] Token audience mismatch:", payload.aud);
       return null;
