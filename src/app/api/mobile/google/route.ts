@@ -85,12 +85,16 @@ export async function GET(req: NextRequest) {
     "x-forwarded-host": host,
     "x-forwarded-proto": req.headers.get("x-forwarded-proto") || "https",
   };
+  const relayUrl = `${origin}/api/mobile/handoff?nonce=${nonce}`;
 
   // 1. Mint (or reuse) the CSRF cookie, exactly like the client lib does.
   const csrfRes = await handlers.GET(
-    new NextRequest(`${origin}/api/auth/csrf`, {
-      headers: { ...forwardedHeaders, cookie: incomingCookie },
-    })
+    new NextRequest(
+      `${origin}/api/auth/csrf?callbackUrl=${encodeURIComponent(relayUrl)}`,
+      {
+        headers: { ...forwardedHeaders, cookie: incomingCookie },
+      }
+    )
   );
   const csrfCookies = csrfRes.headers.getSetCookie();
   // @auth/core's /csrf responds { csrfToken } - not { token }.
@@ -105,7 +109,6 @@ export async function GET(req: NextRequest) {
   const cookieJar = [incomingCookie, ...csrfCookies].filter(Boolean).join("; ");
 
   // 2. The actual OAuth kickoff: NextAuth's CSRF-validated POST.
-  const relayUrl = `${origin}/api/mobile/handoff?nonce=${nonce}`;
   const form = new URLSearchParams({ csrfToken, callbackUrl: relayUrl });
   const signinRes = await handlers.POST(
     new NextRequest(`${origin}/api/auth/signin/google`, {
