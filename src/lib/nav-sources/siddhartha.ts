@@ -73,7 +73,7 @@ export const siddharthaAdapter: NavSourceAdapter = {
   },
 
   async fetchHistory(schemeId) {
-    // The table is paginated by Bikram Sambat year (2074–2083).
+    // The table is paginated by Bikram Sambat year (2074-2083).
     const byDate = new Map<string, number>();
     for (let year = 2074; year <= 2083; year++) {
       try {

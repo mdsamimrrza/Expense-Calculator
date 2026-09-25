@@ -11,7 +11,6 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from "lucide-react";
-import { CGT_NP_REDEMPTION } from "@/lib/tax";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -476,25 +475,23 @@ export function SummaryCards({
             </div>
 
             {/* CGT widget: lot-aged long/short estimate (FY 2083/84 verified slab) */}
-            <div className="rounded-xl bg-card p-3.5 border border-border text-xs space-y-2">
+            <div className="rounded-xl bg-card p-4 text-sm border border-border">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-bold text-foreground">Capital Gains Tax (CGT)</span>
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  Estimated Tax
-                </span>
+                <span className="text-xs text-muted-foreground">Estimated Tax</span>
               </div>
-              <div className="space-y-1 text-[11px]">
+              <div className="mt-2.5 space-y-1.5">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-muted-foreground">Long-Term (&gt; 1 yr @ {CGT_NP_REDEMPTION.longTermRatePct}%)</span>
-                  <strong className="font-mono font-semibold tabular-nums text-foreground">
+                  <span className="text-muted-foreground">Long-Term (&gt; 1 yr @ 7.5%)</span>
+                  <span className="font-mono font-bold tabular-nums text-foreground">
                     {formatCurrencyWhole(summary.estimatedCgtLongTerm)}
-                  </strong>
+                  </span>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-muted-foreground">Short-Term (&lt; 1 yr @ {CGT_NP_REDEMPTION.shortTermRatePct}%)</span>
-                  <strong className="font-mono font-semibold tabular-nums text-foreground">
+                  <span className="text-muted-foreground">Short-Term (&lt; 1 yr @ 10.0%)</span>
+                  <span className="font-mono font-bold tabular-nums text-foreground">
                     {formatCurrencyWhole(summary.estimatedCgtShortTerm)}
-                  </strong>
+                  </span>
                 </div>
               </div>
             </div>

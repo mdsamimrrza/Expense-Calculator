@@ -10,7 +10,7 @@
 //  GET  /api/mobile/google?nonce=...  (browser leg, 307)
 //    Runs NextAuth's OAuth kickoff IN-PROCESS - GET /api/auth/csrf to
 //    mint the CSRF cookie, then the CSRF-validated POST to
-//    /api/auth/signin/google with callbackUrl = the handoff relay that
+//    /api/auth/signin/google with redirectTo = the handoff relay that
 //    carries the nonce - and forwards every Set-Cookie on a 307 to
 //    Google. From there it's the exact chain the web app uses:
 //    Google → /api/auth/callback/google → NextAuth session → relay →
@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
 
   // 2. The actual OAuth kickoff: NextAuth's CSRF-validated POST.
   const relayUrl = `${origin}/api/mobile/handoff?nonce=${nonce}`;
-  const form = new URLSearchParams({ csrfToken, callbackUrl: relayUrl });
+  const form = new URLSearchParams({ csrfToken, redirectTo: relayUrl });
   const signinRes = await handlers.POST(
     new NextRequest(`${origin}/api/auth/signin/google`, {
       method: "POST",

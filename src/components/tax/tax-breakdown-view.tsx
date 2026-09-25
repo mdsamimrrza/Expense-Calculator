@@ -300,7 +300,7 @@ export function TaxBreakdownView({
                   </TableRow>
                   <TableRow className="bg-secondary/30 font-semibold text-foreground border-border/40">
                     <TableCell className="font-bold text-foreground">Net Cash Available for Unit Allotment</TableCell>
-                    <TableCell className="text-muted-foreground font-normal">Deposited Cash - SEBON DP Fees</TableCell>
+                    <TableCell className="text-muted-foreground font-normal">Deposited Cash after SEBON DP Fees</TableCell>
                     <TableCell className="text-right font-mono text-emerald-400 text-sm font-bold">{formatCurrencyWhole(summary.totalInvested - totalDpFeesPaid)}</TableCell>
                   </TableRow>
                 </TableBody>
@@ -645,7 +645,7 @@ export function TaxBreakdownView({
                   </TableRow>
                   <TableRow className="bg-secondary/30 font-semibold text-foreground border-border/40">
                     <TableCell className="font-bold text-foreground">Net Cash Available for Unit Allotment</TableCell>
-                    <TableCell className="text-muted-foreground font-normal">Deposited Cash - SEBON DP Fees</TableCell>
+                    <TableCell className="text-muted-foreground font-normal">Deposited Cash after SEBON DP Fees</TableCell>
                     <TableCell className="text-right font-mono text-emerald-400 text-sm font-bold">{formatCurrencyWhole(summary.totalInvested - totalDpFeesPaid)}</TableCell>
                   </TableRow>
                 </TableBody>

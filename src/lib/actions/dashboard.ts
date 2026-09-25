@@ -145,9 +145,10 @@ export async function getDashboardData(
     fundRolloverMap.set(e.fund_id, leftover);
   }
 
-  const unallottedCash = fundId
-    ? fundRolloverMap.get(fundId) || 0
-    : Array.from(fundRolloverMap.values()).reduce((sum, val) => sum + val, 0);
+  const unallottedCash =
+    fundId && fundId !== "all"
+      ? fundRolloverMap.get(fundId) || 0
+      : Array.from(fundRolloverMap.values()).reduce((sum, val) => sum + val, 0);
 
 
   // Pure Portfolio Value = totalUnits * latestNav (excluding rollover cash)

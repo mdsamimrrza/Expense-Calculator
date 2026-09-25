@@ -26,7 +26,7 @@ export function AppShell({
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Daily installments popup — appears once per day */}
+      {/* Daily installments popup - appears once per day */}
       <DailyInstallmentsPopup />
 
       {/* Desktop sidebar */}

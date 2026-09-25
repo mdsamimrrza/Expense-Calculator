@@ -24,7 +24,7 @@ export const fundConfigSchema = z
     fee_rate_pct: z
       .number()
       .min(0, "Fee rate cannot be negative")
-      .max(10, "Fee rate seems too high - please verify"),
+      .max(10, "Fee rate seems too high. Please verify."),
     start_date: z.coerce.date({
       required_error: "Start date is required",
       invalid_type_error: "Please enter a valid date",

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -64,6 +64,17 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
   const [latestNav, setLatestNav] = useState("");
   const [selectedPreset, setSelectedPreset] = useState<string>("");
   const [schedule, setSchedule] = useState<SIPScheduleValue>(EMPTY_SCHEDULE);
+  // True once the user deliberately edits the SIP start date; until then it
+  // mirrors the registration date.
+  const [anchorEdited, setAnchorEdited] = useState(false);
+
+  // Keep the SIP start date in sync with the registration date unless the
+  // user has explicitly customized it.
+  useEffect(() => {
+    if (!anchorEdited) {
+      setSchedule((s) => (s.anchorDate === startDate ? s : { ...s, anchorDate: startDate, verified: false }));
+    }
+  }, [startDate, anchorEdited]);
   // Dialog section stepper - one stage at a time on every screen.
   const [step, setStep] = useState(0);
   const [maxReached, setMaxReached] = useState(0);
@@ -93,10 +104,12 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
     setStartDate(fund.start_date);
     setMonthlySip(fund.monthly_sip.toString());
     setLatestNav(fund.latest_nav ? fund.latest_nav.toString() : "");
+    // The SIP start date defaults to the registration date; only treat it
+    // as user-customized when a saved anchor differs from the start date.
+    setAnchorEdited(Boolean(fund.anchor_date && fund.anchor_date !== fund.start_date));
     setSchedule({
       frequency: fund.frequency,
-      calendarSystem: fund.calendar_system,
-      anchorDate: fund.anchor_date,
+      anchorDate: fund.anchor_date ?? fund.start_date,
       verified: fund.schedule_verified,
     });
     // If fund matches a preset, pre-select it
@@ -108,14 +121,16 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
   }
 
   function openCreate() {
+    const today = new Date().toISOString().split("T")[0];
     setEditingFund(null);
     setFundName("");
     setFeeRate("1.80");
-    setStartDate(new Date().toISOString().split("T")[0]);
+    setStartDate(today);
     setMonthlySip("5000");
     setLatestNav("10.00");
     setSelectedPreset("");
-    setSchedule(EMPTY_SCHEDULE);
+    setAnchorEdited(false);
+    setSchedule({ ...EMPTY_SCHEDULE, anchorDate: today });
     setStep(0);
     setMaxReached(0);
     setOpen(true);
@@ -145,10 +160,11 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
       if (!(parseFloat(monthlySip) >= minSip)) {
         return `SIP installment must be at least NPR ${minSip.toLocaleString("en-IN")}.`;
       }
-      const { frequency, calendarSystem, anchorDate } = schedule;
-      const partial = Boolean(frequency || calendarSystem || anchorDate);
-      if (partial && !(frequency && calendarSystem && anchorDate)) {
-        return "Finish the registered schedule (frequency, calendar and first due date) or clear it.";
+      // The start date is always populated (mirrors registration), so the
+      // only way the schedule is "partial" is a chosen interval with no date.
+      const { frequency, anchorDate } = schedule;
+      if (frequency && !anchorDate) {
+        return "Finish the registered schedule (interval and start date) or clear it.";
       }
       return null;
     }
@@ -407,7 +423,7 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
                 )}
                 {source === "registration" && (
                   <span className="text-amber-500">
-                    {" "}· from your start date - confirm the exact schedule to edit
+                    {" "}· from your start date. Confirm the exact schedule to edit
                   </span>
                 )}
               </p>
@@ -421,7 +437,7 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
       {filteredFunds.length > ITEMS_PER_PAGE && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 text-xs">
           <span className="text-muted-foreground">
-            Showing <strong>{startIndex + 1}</strong>–
+            Showing <strong>{startIndex + 1}</strong>-
             <strong>{Math.min(startIndex + ITEMS_PER_PAGE, filteredFunds.length)}</strong> of{" "}
             <strong>{filteredFunds.length}</strong> funds
           </span>
@@ -585,29 +601,45 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
 
             {/* Section 2 - SIP schedule */}
             <section className={step === 1 ? "space-y-3" : "hidden"}>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                2 · SIP schedule
-              </p>
-              <div className="space-y-1.5">
-                <Label htmlFor="sip-amount-input">SIP Installment (NPR)</Label>
-                <Input
-                  id="sip-amount-input"
-                  className="h-9"
-                  type="number"
-                  min={String(getFundMeta(fundName)?.minimumSipAmount ?? 0)}
-                  value={monthlySip}
-                  onChange={(e) => setMonthlySip(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {getFundMeta(fundName)
-                    ? `Min NPR ${getFundMeta(fundName)!.minimumSipAmount.toLocaleString("en-IN")} for ${fundName}`
-                    : "Minimum set by your fund registration"}
+              <div>
+                <p className="text-sm font-semibold text-foreground">SIP Schedule</p>
+                <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                  Enter the details exactly as printed on your SIP registration form.
+                  Unlimited SIP only. No maturity date or installment count.
                 </p>
               </div>
-              <SIPScheduleFields fundName={fundName} value={schedule} onChange={setSchedule} />
+
+              {/* Installment amount with inline minimum chip */}
+              <div className="space-y-1.5">
+                <Label htmlFor="sip-amount-input" className="text-xs">
+                  SIP Installment (NPR)
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="sip-amount-input"
+                    className="h-9 flex-1"
+                    type="number"
+                    min={String(getFundMeta(fundName)?.minimumSipAmount ?? 0)}
+                    value={monthlySip}
+                    onChange={(e) => setMonthlySip(e.target.value)}
+                  />
+                  <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">
+                    {getFundMeta(fundName)
+                      ? `Min ${formatCurrencyWhole(getFundMeta(fundName)!.minimumSipAmount)}`
+                      : "Min set by fund"}
+                  </span>
+                </div>
+              </div>
+
+              <SIPScheduleFields
+                fundName={fundName}
+                value={schedule}
+                onChange={setSchedule}
+                startDateLocked={!anchorEdited}
+                onEditStartDate={() => setAnchorEdited(true)}
+              />
               <DraftInstallmentsPreview
                 frequency={schedule.frequency}
-                calendarSystem={schedule.calendarSystem}
                 anchorDate={schedule.anchorDate}
               />
             </section>
@@ -712,20 +744,19 @@ export function FundConfigForm({ funds }: FundConfigFormProps) {
     (e.g. out-of-range BS dates) simply hide the preview. */
 function DraftInstallmentsPreview({
   frequency,
-  calendarSystem,
   anchorDate,
 }: {
   frequency: SIPScheduleValue["frequency"];
-  calendarSystem: SIPScheduleValue["calendarSystem"];
   anchorDate: SIPScheduleValue["anchorDate"];
 }) {
-  if (!frequency || !calendarSystem || !anchorDate) return null;
+  if (!frequency || !anchorDate) return null;
   let dates: string[] = [];
   try {
     // Preview the schedule itself from the registered first due date
     // (#1 = anchor), so the user verifies the actual registration.
+    // Recurrence is always BS (the fund-side rule); the user just gave AD.
     dates = upcomingDueDates(
-      { frequency, calendarSystem, anchorDate },
+      { frequency, calendarSystem: "BS", anchorDate },
       nepalTodayAD(),
       3,
       true
@@ -735,23 +766,43 @@ function DraftInstallmentsPreview({
   }
   if (dates.length === 0) return null;
   return (
-    <div>
-      <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-        Preview - next installments from this schedule
+    <div className="rounded-xl border border-border bg-card p-3">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        Upcoming installments
       </p>
-      <div className="mt-1.5 flex flex-wrap gap-1.5">
-        {dates.map((d, i) => (
-          <span
-            key={`${d}-${i}`}
-            className="rounded-lg border border-border bg-secondary/40 px-2.5 py-1.5 text-xs"
-          >
-            <span className="font-bold text-primary">#{i + 1}</span>{" "}
-            <span className="font-semibold tabular-nums text-foreground">{formatDate(d)}</span>
-            <span className="block text-[11px] font-normal tabular-nums text-muted-foreground">
-              {formatBSDate(d)} BS
-            </span>
-          </span>
-        ))}
+      {/* Horizontal timeline: node - line - node - line - node */}
+      <div className="mt-3 flex items-start">
+        {dates.map((d, i) => {
+          const segments = [];
+          if (i > 0) {
+            segments.push(<span key="line" className="mt-3 h-px flex-1 bg-border" aria-hidden />);
+          }
+          segments.push(
+            <div key="node" className="flex w-[104px] shrink-0 flex-col items-center text-center sm:w-28">
+              <span
+                className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black ${
+                  i === 0
+                    ? "bg-primary text-primary-foreground"
+                    : "border border-border bg-secondary text-muted-foreground"
+                }`}
+              >
+                {i + 1}
+              </span>
+              <p className="mt-1.5 text-[11px] font-semibold leading-tight tabular-nums text-foreground">
+                {formatDate(d)}
+              </p>
+              <p className="text-[10px] leading-tight tabular-nums text-muted-foreground">
+                {formatBSDate(d)} BS
+              </p>
+              {i === 0 && (
+                <span className="mt-1 rounded-full bg-primary/10 px-1.5 py-px text-[8px] font-bold uppercase tracking-wide text-primary">
+                  Next
+                </span>
+              )}
+            </div>
+          );
+          return segments;
+        })}
       </div>
     </div>
   );

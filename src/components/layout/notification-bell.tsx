@@ -52,7 +52,7 @@ export function NotificationBell() {
   const router = useRouter();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
-  // Fetch on mount / open — one action returns notifications + upcoming
+  // Fetch on mount / open - one action returns notifications + upcoming
   const fetchNotifications = async () => {
     const res = await getNotificationData();
     if (res.success) {

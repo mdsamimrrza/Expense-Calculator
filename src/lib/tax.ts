@@ -78,22 +78,22 @@ export const CGT_NP_REDEMPTION: CgtRateInfo = {
   longTermRatePct: 3.75,
   shortTermRatePct: 5,
   longTermOverDays: 365,
-  scope: "All Nepal mutual funds — resident individuals redeeming units (applied to every tracked fund, regardless of fund manager)",
+  scope: "All Nepal mutual funds: resident individuals redeeming units (applied to every tracked fund, regardless of fund manager)",
   effectiveFrom: "2026-07-17",
   basis:
-    "Capital gains on mutual-fund unit redemptions depend on the lot's holding period and are auto-deducted at redemption. Applies to every fund tracked in the app.",
+    "Capital gains on mutual-fund redemptions depend on the lot's holding period and are auto-deducted at redemption.",
   officialSources: [
     {
-      label: "Bank confirmation (Siddhartha Capital, 2026-09-24)",
+      label: "Bank confirmation",
       url: "https://www.siddharthacapital.com/ssis-faq/",
     },
     {
-      label: "Fiscal Nepal — listed share-market schedule (reference only)",
+      label: "Listed share-market schedule (reference only)",
       url: "https://www.fiscalnepal.com/2026-07-16/26974/new-cgt-rates-on-shares-real-estate-take-effect-friday",
     },
   ],
   pendingNote:
-    "The 7.5%/10% Finance Act schedule applies to the listed share market only — not to the open-ended SIP funds this app tracks.",
+    "The 7.5%/10% Finance Act schedule applies to the listed share market only.",
 };
 
 /** Keep the historic export name working - now the short-term (flat) leg. */
@@ -178,8 +178,8 @@ const EXIT_LOAD_SCHEDULES: Record<string, Omit<ExitLoadSchedule, "fundName" | "s
     ],
   },
   // Official: https://nimbacecapital.com/nibl-sahabhagita-fund/
-  // 1.5% within 6 months; 1.25% within 6–12 months; 1% within 12–18
-  // months; 0.75% within 18–24 months; none listed beyond 24 months.
+  // 1.5% within 6 months; 1.25% within 6-12 months; 1% within 12-18
+  // months; 0.75% within 18-24 months; none listed beyond 24 months.
   "NIBL Sahabhagita Fund": {
     officialSourceUrl: "https://nimbacecapital.com/nibl-sahabhagita-fund/",
     verifiedAt: "2026-09-23",

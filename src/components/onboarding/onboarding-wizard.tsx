@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, ChevronRight, ChevronLeft, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -53,6 +53,16 @@ export function OnboardingWizard() {
   );
   const [latestNav, setLatestNav] = useState("10.00");
   const [schedule, setSchedule] = useState<SIPScheduleValue>(EMPTY_SCHEDULE);
+  // The SIP start date mirrors the registration date until customized.
+  const [anchorEdited, setAnchorEdited] = useState(false);
+
+  useEffect(() => {
+    if (!anchorEdited) {
+      setSchedule((s) =>
+        s.anchorDate === startDate ? s : { ...s, anchorDate: startDate, verified: false }
+      );
+    }
+  }, [startDate, anchorEdited]);
 
   const router = useRouter();
   const { toast } = useToast();
@@ -168,7 +178,7 @@ export function OnboardingWizard() {
                         </SelectItem>
                       ))}
                       <SelectItem value="other">
-                        Other - enter manually
+                        Other (enter manually)
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -203,7 +213,7 @@ export function OnboardingWizard() {
                 />
                 {fundName && !isCustomFund && (
                   <p className="text-xs text-muted-foreground">
-                    Pre-filled from {fundName} - you can edit this if needed
+                    Pre-filled from {fundName}. You can edit this if needed.
                   </p>
                 )}
               </div>
@@ -270,6 +280,8 @@ export function OnboardingWizard() {
                 fundName={actualFundName}
                 value={schedule}
                 onChange={setSchedule}
+                startDateLocked={!anchorEdited}
+                onEditStartDate={() => setAnchorEdited(true)}
               />
             )}
 

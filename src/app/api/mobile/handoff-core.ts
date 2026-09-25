@@ -89,7 +89,7 @@ export function mintSupabaseAccessToken(sub: string, email: string | null, crede
   if (!secret) {
     // Surface the real cause to the client instead of a generic 500.
     throw new Error(
-      "Server is missing SUPABASE_JWT_SECRET - set it in Vercel to your Supabase project's current JWT signing key."
+      "Server is missing SUPABASE_JWT_SECRET. Set it in Vercel to your Supabase project's current JWT signing key."
     );
   }
   return jwt.sign(payload, secret);
