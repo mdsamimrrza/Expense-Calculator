@@ -94,6 +94,18 @@ async function handleCronFetchNav(req: Request) {
     const historyQuotes = new Map<string, NavQuote[]>();
     const sourceErrors: Array<{ source: string; code: string; error: string }> = [];
 
+    // Each unique (source, code) maps to the normalized fund names that
+    // use it - one fetch feeds every user of that fund through the shared
+    // nav_reference series.
+    const normalizeFundKey = (name: string) => name.trim().toLowerCase();
+    const fundKeysByCode = new Map<string, Set<string>>();
+    for (const { fund, source } of matched) {
+      const key = codeKey(source.source, source.code);
+      const set = fundKeysByCode.get(key) ?? new Set<string>();
+      set.add(normalizeFundKey(fund.fund_name));
+      fundKeysByCode.set(key, set);
+    }
+
     await Promise.all(
       Array.from(neededCodes.entries()).map(async ([key, { source, code }]) => {
         try {
@@ -123,6 +135,7 @@ async function handleCronFetchNav(req: Request) {
     let latestUpdated = 0;
     let rejectedQuotes = 0;
     const upsertErrors: string[] = [];
+    const referenceWritten = new Set<string>();
     const todayStr = nepalTodayAD();
 
     const isPlausible = (q: NavQuote) =>
@@ -149,27 +162,38 @@ async function handleCronFetchNav(req: Request) {
       });
       if (plausibleQuotes.length === 0) continue;
 
-      // nav_history upsert on the same (fund_id, nav_date) unique
-      // constraint every other NAV writer in the app uses.
-      for (const batch of chunk(plausibleQuotes, 500)) {
-        const rows = batch.map((q) => ({
-          fund_id: fund.id,
-          user_id: fund.user_id,
-          nav_date: q.date,
-          nav_value: q.nav,
-        }));
-        const { error } = await supabase
-          .from("nav_history")
-          .upsert(rows, { onConflict: "fund_id,nav_date" });
-        if (error) {
-          // Surface the failure instead of swallowing it - a CHECK
-          // violation here means the data written for this fund is bad.
-          console.error("[fetch-nav] nav_history upsert error:", error.message);
-          if (upsertErrors.length < 20) {
-            upsertErrors.push(`${fund.fund_name}: ${error.message}`);
+      // nav_reference: ONE shared series per fund - upserted once per
+      // (fund_key, nav_date) and read by every user. The cron no longer
+      // writes per-user nav_history rows, so the table stops growing
+      // with the user count. (User-entered NAV points still live in
+      // nav_history, written by the app itself.)
+      // The loop below runs per user's fund row; the reference write is
+      // guarded so each unique source code writes exactly once.
+      if (!referenceWritten.has(key)) {
+        referenceWritten.add(key);
+        const fundKeys = fundKeysByCode.get(key) ?? [];
+        for (const fundKey of fundKeys) {
+          for (const batch of chunk(plausibleQuotes, 500)) {
+            const rows = batch.map((q) => ({
+              fund_key: fundKey,
+              nav_date: q.date,
+              nav_value: q.nav,
+              source: source.source,
+            }));
+            const { error } = await supabase
+              .from("nav_reference")
+              .upsert(rows, { onConflict: "fund_key,nav_date" });
+            if (error) {
+              // Surface the failure instead of swallowing it - a CHECK
+              // violation here means the data written for this fund is bad.
+              console.error("[fetch-nav] nav_reference upsert error:", error.message);
+              if (upsertErrors.length < 20) {
+                upsertErrors.push(`${fund.fund_name}: ${error.message}`);
+              }
+            } else {
+              quotesUpserted += rows.length;
+            }
           }
-        } else {
-          quotesUpserted += rows.length;
         }
       }
 

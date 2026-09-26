@@ -90,6 +90,25 @@ export async function getDashboardData(
 
   const entries = (entriesRaw ?? []) as Entry[];
 
+  // Shared market NAV series (nav_reference): ONE row per (fund, date)
+  // for ALL users, written by the NAV cron. Each of the user's funds
+  // overlays its own series by normalized fund name; the user's own
+  // nav_history rows (manual corrections) are applied after and win.
+  const fundKeyToIds = new Map<string, string[]>();
+  for (const f of funds) {
+    const k = f.fund_name.trim().toLowerCase();
+    fundKeyToIds.set(k, [...(fundKeyToIds.get(k) ?? []), f.id]);
+  }
+  let navRefRows: Array<{ fund_key: string; nav_date: string; nav_value: number }> = [];
+  if (fundKeyToIds.size > 0) {
+    const { data: refData } = await supabase
+      .from("nav_reference")
+      .select("fund_key, nav_date, nav_value")
+      .in("fund_key", [...fundKeyToIds.keys()])
+      .order("nav_date", { ascending: true });
+    navRefRows = (refData ?? []) as typeof navRefRows;
+  }
+
   // ---- Calculate summary ----
 
   const totalInvested = entries.reduce((sum, e) => sum + Number(e.amount), 0);
@@ -249,8 +268,18 @@ export async function getDashboardData(
     }
   }
 
-  // 2. Overlay nav_history rows (fetched in the parallel batch above),
-  //    each tagged to its own fund_id (never mixed)
+  // 2. Overlay the shared market series from nav_reference (one series
+  //    per fund, every user reads the same rows), each mapped back to
+  //    the user's own fund ids
+  for (const row of navRefRows) {
+    for (const fid of fundKeyToIds.get(row.fund_key) ?? []) {
+      ensureFundMap(fid).set(row.nav_date, Number(row.nav_value));
+    }
+  }
+
+  // 3. Overlay nav_history rows (fetched in the parallel batch above),
+  //    each tagged to its own fund_id (never mixed). These are the
+  //    user's own manual NAV points and win over the shared series.
   const navHistoryRows = navRes.data;
   if (navHistoryRows) {
     for (const row of navHistoryRows) {
@@ -258,7 +287,7 @@ export async function getDashboardData(
     }
   }
 
-  // 3. Ensure each fund's own latest NAV/date is included in ITS OWN map
+  // 4. Ensure each fund's own latest NAV/date is included in ITS OWN map
   for (const f of funds) {
     if (f.latest_nav && f.latest_nav_date) {
       ensureFundMap(f.id).set(f.latest_nav_date, Number(f.latest_nav));
