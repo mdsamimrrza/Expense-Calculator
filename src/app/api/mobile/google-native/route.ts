@@ -125,7 +125,9 @@ async function findOrCreateUser(googlePayload: GoogleTokenPayload): Promise<{
       email: googlePayload.email.toLowerCase(),
       name: googlePayload.name ?? null,
       image: googlePayload.picture ?? null,
-      email_verified: new Date().toISOString(),
+      // next_auth.users uses camelCase - a snake_case column here made
+      // every new Google account creation fail with a schema-cache error.
+      emailVerified: new Date().toISOString(),
       credential_epoch: 0,
     });
     if (userErr) {
