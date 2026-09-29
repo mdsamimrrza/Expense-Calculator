@@ -11,8 +11,10 @@
 //   GET/POST /api/cron/fetch-nav?backfill=1 → + full history
 //
 // Auth: Authorization: Bearer <CRON_SECRET> (same as reminders).
-// Schedule: vercel.json → 13:00 UTC (18:45 NPT), Sun-Thu,
-// matching when Nepali fund managers publish NAVs.
+// Schedule: vercel.json → 15:00 UTC (20:45 NPT), Sun-Thu.
+// Fund managers publish the day's NAV in the Nepal evening; 20:45
+// clears the late publishers, and the 7-day fetch window catches
+// anything still missing on the next run.
 // ============================================================
 
 import { NextResponse } from "next/server";

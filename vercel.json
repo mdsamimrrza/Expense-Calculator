@@ -3,7 +3,9 @@
   "buildCommand": "npm run build",
   "installCommand": "npm ci",
   "outputDirectory": ".next",
-  "regions": ["bom1"],
+  "regions": [
+    "bom1"
+  ],
   "crons": [
     {
       "path": "/api/cron/reminders",
@@ -11,7 +13,7 @@
     },
     {
       "path": "/api/cron/fetch-nav",
-      "schedule": "0 13 * * 0-4"
+      "schedule": "0 15 * * 0-4"
     }
   ]
 }
