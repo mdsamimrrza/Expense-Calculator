@@ -72,6 +72,15 @@ export const siddharthaAdapter: NavSourceAdapter = {
     return quotes.reduce((a, b) => (b.date > a.date ? b : a));
   },
 
+  async fetchRecent(schemeId, days) {
+    // No year filter -> newest rows first; take the recent window.
+    const cutoff = new Date();
+    cutoff.setUTCDate(cutoff.getUTCDate() - days);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    const rows = await fetchRows(schemeId, {});
+    return toQuotes(rows).filter((q) => q.date >= cutoffStr);
+  },
+
   async fetchHistory(schemeId) {
     // The table is paginated by Bikram Sambat year (2074-2083).
     const byDate = new Map<string, number>();

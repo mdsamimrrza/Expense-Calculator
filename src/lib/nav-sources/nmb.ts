@@ -68,4 +68,16 @@ export const nmbAdapter: NavSourceAdapter = {
     // Empty from/to returns the full daily series.
     return fetchHistoryPage(code, "", "");
   },
+
+  async fetchRecent(code, days) {
+    const cutoff = recentCutoff(days);
+    const quotes = await fetchHistoryPage(code, "", "");
+    return quotes.filter((q) => q.date >= cutoff);
+  },
 };
+
+function recentCutoff(days: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0, 10);
+}

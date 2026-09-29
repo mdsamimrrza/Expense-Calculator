@@ -17,6 +17,13 @@ export interface NavSourceAdapter {
   /** Latest published NAV for the given source code. */
   fetchLatest(code: string): Promise<NavQuote | null>;
   /**
+   * All quotes from the last `days` calendar days (cheap window, not the
+   * full history). The nightly cron uses this instead of fetchLatest so a
+   * fund publishing its NAV after the cron window is caught on the next
+   * run instead of being skipped forever.
+   */
+  fetchRecent(code: string, days: number): Promise<NavQuote[]>;
+  /**
    * Full available daily NAV history (used only by the one-time
    * backfill mode). Adapters that cannot backfill return [].
    */

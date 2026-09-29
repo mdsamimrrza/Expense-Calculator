@@ -112,6 +112,26 @@ export const nimbaceAdapter: NavSourceAdapter = {
     return quotes.reduce((a, b) => (b.date > a.date ? b : a));
   },
 
+  async fetchRecent(code, days) {
+    const cutoff = new Date();
+    cutoff.setUTCDate(cutoff.getUTCDate() - days);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    const config = await getPageConfig(code);
+    // Newest rows are on page 1 of the daily table; a few pages covers
+    // any reasonable recent window even with weekend gaps.
+    const byDate = new Map<string, number>();
+    for (let page = 1; page <= 3; page++) {
+      const quotes = await fetchTable(config, page, 50);
+      if (quotes.length === 0) break;
+      for (const q of quotes) if (q.date >= cutoffStr) byDate.set(q.date, q.nav);
+      const oldest = quotes.reduce((a, b) => (b.date < a.date ? b : a));
+      if (oldest.date < cutoffStr || quotes.length < 50) break;
+    }
+    return Array.from(byDate.entries())
+      .map(([date, nav]) => ({ date, nav }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  },
+
   async fetchHistory(code) {
     const config = await getPageConfig(code);
     // The endpoint caps `entries`; 100 is accepted and keeps the

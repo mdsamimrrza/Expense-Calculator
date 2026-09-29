@@ -90,7 +90,11 @@ async function handleCronFetchNav(req: Request) {
       if (!neededCodes.has(key)) neededCodes.set(key, { source, code: source.code });
     }
 
-    const latestQuotes = new Map<string, NavQuote | null>();
+    // Recent-window fetch (7 days): every run upserts the last week of
+    // the series, so a fund that publishes its NAV after the 13:00 UTC
+    // cron window (e.g. NMB on Sep 28) is caught on the next run instead
+    // of being skipped until a newer quote appears.
+    const recentQuotes = new Map<string, NavQuote[]>();
     const historyQuotes = new Map<string, NavQuote[]>();
     const sourceErrors: Array<{ source: string; code: string; error: string }> = [];
 
@@ -109,7 +113,7 @@ async function handleCronFetchNav(req: Request) {
     await Promise.all(
       Array.from(neededCodes.entries()).map(async ([key, { source, code }]) => {
         try {
-          latestQuotes.set(key, await source.adapter.fetchLatest(code));
+          recentQuotes.set(key, await source.adapter.fetchRecent(code, 7));
           if (backfill) {
             historyQuotes.set(key, await source.adapter.fetchHistory(code));
           }
@@ -149,10 +153,7 @@ async function handleCronFetchNav(req: Request) {
       if (backfill && historyQuotes.has(key)) {
         quotes.push(...(historyQuotes.get(key) ?? []));
       }
-      const latest = latestQuotes.get(key);
-      if (latest && !quotes.some((q) => q.date === latest.date)) {
-        quotes.push(latest);
-      }
+      quotes.push(...(recentQuotes.get(key) ?? []));
       if (quotes.length === 0) continue;
 
       const plausibleQuotes = quotes.filter((q) => {
