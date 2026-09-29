@@ -28,6 +28,8 @@ interface DashboardData {
   portfolioChart: PortfolioChartPoint[];
   monthlyContributions: MonthlyContribution[];
   navHistory: ChartDataPoint[];
+  /** Which fund the navHistory series belongs to (never a blend). */
+  navHistoryFundName: string | null;
   feeDragChart: FeeDragPoint[];
   entriesCount: number;
 }
@@ -325,7 +327,6 @@ export async function getDashboardData(
   }
 
   const portfolioChart: PortfolioChartPoint[] = [];
-  const blendedNavPoints: ChartDataPoint[] = []; // used only for "All Funds" NAV chart
   let runningInvested = 0;
 
   for (const dt of timelineDates) {
@@ -355,23 +356,32 @@ export async function getDashboardData(
       portfolioValue,
       totalInvested: runningInvested,
     });
-
-    if (totalUnitsAtDate > 0) {
-      blendedNavPoints.push({ date: dt, value: portfolioValue / totalUnitsAtDate });
-    }
   }
 
-  // NAV history chart: a single selected fund shows its own real NAV
-  // series. "All Funds" has no single meaningful NAV to show (different
-  // funds trade at unrelated price levels), so it shows the weighted
-  // blended per-unit value of the combined position instead of one fund's
-  // price silently overwriting another's on a shared date.
-  const navHistory: ChartDataPoint[] =
-    fundId && fundId !== "all"
-      ? Array.from((fundNavTimeline.get(fundId) ?? new Map()).entries())
-          .map(([date, value]) => ({ date, value }))
-          .sort((a, b) => a.date.localeCompare(b.date))
-      : blendedNavPoints;
+  // NAV history chart: ALWAYS one real fund's own series - never a blend
+  // of funds. In "All Funds" view it shows the first fund's NAV. The
+  // series is clipped to where this user's SIP for that fund actually
+  // began (first entry, else the fund's start date), so market history
+  // from years before the user invested is not shown as if it were
+  // theirs.
+  const navHistoryFund =
+    (fundId && fundId !== "all" ? funds.find((f) => f.id === fundId) : undefined) ?? funds[0];
+  let navHistoryFrom = navHistoryFund?.start_date ?? "";
+  if (navHistoryFund) {
+    const firstEntry = entries
+      .filter((e) => e.fund_id === navHistoryFund.id)
+      .reduce<string | null>(
+        (min, e) => (e.purchase_date && (!min || e.purchase_date < min) ? e.purchase_date : min),
+        null
+      );
+    if (firstEntry) navHistoryFrom = firstEntry;
+  }
+  const navHistory: ChartDataPoint[] = navHistoryFund
+    ? Array.from((fundNavTimeline.get(navHistoryFund.id) ?? new Map()).entries())
+        .filter(([date]) => !navHistoryFrom || date >= navHistoryFrom)
+        .map(([date, value]) => ({ date, value }))
+        .sort((a, b) => a.date.localeCompare(b.date))
+    : [];
 
   // Monthly contributions
   const monthlyMap = new Map<string, { total: number; breakdownMap: Map<string, number> }>();
@@ -422,6 +432,7 @@ export async function getDashboardData(
       portfolioChart,
       monthlyContributions,
       navHistory,
+      navHistoryFundName: navHistoryFund?.fund_name ?? null,
       feeDragChart,
       entriesCount: entries.length,
     },

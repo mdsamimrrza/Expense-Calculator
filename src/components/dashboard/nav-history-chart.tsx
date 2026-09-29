@@ -20,6 +20,8 @@ const TIME_RANGES: TimeRange[] = ["1M", "3M", "6M", "1Y", "3Y", "5Y", "ALL"];
 
 interface NavHistoryChartProps {
   data: ChartDataPoint[];
+  /** Which fund this series belongs to; shown in the title. */
+  fundName?: string | null;
 }
 
 function CustomNavTooltip({ active, payload, label }: any) {
@@ -36,7 +38,7 @@ function CustomNavTooltip({ active, payload, label }: any) {
   return null;
 }
 
-export function NavHistoryChart({ data }: NavHistoryChartProps) {
+export function NavHistoryChart({ data, fundName }: NavHistoryChartProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>("ALL");
 
   const filteredData = useMemo(() => {
@@ -64,7 +66,7 @@ export function NavHistoryChart({ data }: NavHistoryChartProps) {
     return (
       <Card className="border-border/60 rounded-[2rem] shadow-sm bg-card">
         <CardHeader>
-          <CardTitle className="text-base font-extrabold tracking-tight">NAV History</CardTitle>
+          <CardTitle className="text-base font-extrabold tracking-tight">NAV History{fundName ? ` - ${fundName}` : ""}</CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center h-[260px] text-muted-foreground text-xs">
           Update NAV daily to track price history
@@ -78,7 +80,7 @@ export function NavHistoryChart({ data }: NavHistoryChartProps) {
       <CardHeader className="pb-3 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <CardTitle className="text-base font-extrabold tracking-tight">NAV History</CardTitle>
+            <CardTitle className="text-base font-extrabold tracking-tight">NAV History{fundName ? ` - ${fundName}` : ""}</CardTitle>
             {data.length > 0 && (
               <span className="text-xs font-extrabold text-emerald-500 bg-emerald-500/10 px-2.5 py-1 rounded-full self-start">
                 NPR {formatNav(data[data.length - 1].value)}

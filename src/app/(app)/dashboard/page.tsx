@@ -42,6 +42,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     portfolioChart,
     monthlyContributions,
     navHistory,
+    navHistoryFundName,
     feeDragChart,
   } = result.data;
 
@@ -94,7 +95,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       {/* 3. Secondary Analytics Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-6 flex flex-col gap-6">
-          <NavHistoryChart data={navHistory} />
+          <NavHistoryChart data={navHistory} fundName={navHistoryFundName} />
           <MonthlyContributionsBar data={monthlyContributions} />
         </div>
 
