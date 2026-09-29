@@ -65,7 +65,13 @@ export function NotificationBell() {
   useEffect(() => {
     setDismissed(getDismissed());
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60000);
+    // Poll every 5 minutes, skipped while the tab is hidden. The badge
+    // doesn't need to be fresher than that, and each tick costs 3-4
+    // DB queries (notifications + unread count + funds + session check).
+    const tick = () => {
+      if (document.visibilityState === "visible") fetchNotifications();
+    };
+    const interval = setInterval(tick, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
