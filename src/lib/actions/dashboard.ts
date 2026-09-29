@@ -352,15 +352,17 @@ export async function getDashboardData(
       totalUnitsAtDate += units;
     }
 
-    portfolioChart.push({
-      date: dt,
-      portfolioValue,
-      totalInvested: runningInvested,
-    });
-
-    // Only dates where the user actually holds units get a blended point,
-    // so the series starts at their first SIP entry, not at market history.
+    // Only dates where the user actually holds units are charted. This
+    // clips both series to the user's own history: the combined view
+    // starts at their earliest entry across funds, a single-fund view at
+    // that fund's first entry - never at market NAV history from years
+    // before the SIP existed.
     if (totalUnitsAtDate > 0) {
+      portfolioChart.push({
+        date: dt,
+        portfolioValue,
+        totalInvested: runningInvested,
+      });
       blendedNavPoints.push({ date: dt, value: portfolioValue / totalUnitsAtDate });
     }
   }
