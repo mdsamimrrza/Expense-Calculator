@@ -11,6 +11,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from "lucide-react";
+import { CGT_NP_REDEMPTION } from "@/lib/tax";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -482,13 +483,13 @@ export function SummaryCards({
               </div>
               <div className="mt-2.5 space-y-1.5">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-muted-foreground">Long-Term (&gt; 1 yr @ 7.5%)</span>
+                  <span className="text-muted-foreground">Long-Term (&gt; 1 yr @ {CGT_NP_REDEMPTION.longTermRatePct}%)</span>
                   <span className="font-mono font-bold tabular-nums text-foreground">
                     {formatCurrencyWhole(summary.estimatedCgtLongTerm)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-muted-foreground">Short-Term (&lt; 1 yr @ 10.0%)</span>
+                  <span className="text-muted-foreground">Short-Term (&lt; 1 yr @ {CGT_NP_REDEMPTION.shortTermRatePct}%)</span>
                   <span className="font-mono font-bold tabular-nums text-foreground">
                     {formatCurrencyWhole(summary.estimatedCgtShortTerm)}
                   </span>
