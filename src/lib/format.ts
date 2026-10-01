@@ -44,6 +44,25 @@ export function formatPercentage(value: number | null | undefined, showSign = tr
 }
 
 /**
+ * Tailwind text-size class that shrinks as the formatted amount grows,
+ * so KPI card values never wrap or push neighbouring cards around.
+ * `hero` starts at the larger dashboard-card scale.
+ */
+export function amountSizeClass(text: string, hero = false): string {
+  const n = text.length;
+  if (hero) {
+    if (n <= 11) return "text-2xl lg:text-[1.65rem]";
+    if (n <= 14) return "text-2xl";
+    if (n <= 17) return "text-xl";
+    return "text-lg";
+  }
+  if (n <= 11) return "text-lg";
+  if (n <= 14) return "text-base";
+  if (n <= 17) return "text-sm";
+  return "text-xs";
+}
+
+/**
  * Format units with 4 decimal places (standard mutual fund precision).
  * e.g. 12345.6789 → "12,345.6789"
  */

@@ -39,6 +39,7 @@ import {
   formatUnits,
   formatStreak,
   formatNav,
+  amountSizeClass,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { EntryForm } from "@/components/entries/entry-form";
@@ -111,7 +112,7 @@ export function SummaryCards({
               <div className="h-8 w-8 sm:h-8 sm:w-8 rounded-xl sm:rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-600/30 shrink-0">
                 <Wallet className="h-4 w-4 sm:h-4 sm:w-4" />
               </div>
-              <span className="text-[10px] sm:text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+              <span className="text-[10px] sm:text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                 Portfolio Value
               </span>
             </div>
@@ -163,14 +164,14 @@ export function SummaryCards({
           </div>
 
           <div className="flex flex-col gap-1 z-10 pl-3.5 sm:pl-0">
-            <h2 className="text-2xl sm:text-2xl lg:text-[1.65rem] font-extrabold text-foreground tracking-tight">
+            <h2 className={cn("font-extrabold text-foreground tracking-tight", amountSizeClass(currentValueDisplay, true))}>
               {currentValueDisplay}
             </h2>
             {summary.gainLoss !== null && (
               <div className="flex items-center gap-1">
                 <span
                   className={cn(
-                    "inline-flex items-center gap-0.5 text-[11px] sm:text-[11px] font-extrabold px-2.5 sm:px-2 py-0.5 rounded-full border shadow-sm",
+                    "inline-flex items-center gap-0.5 text-[11px] sm:text-[11px] font-extrabold px-2.5 sm:px-2 py-0.5 rounded-full border shadow-sm whitespace-nowrap",
                     isPositive
                       ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
                       : "bg-rose-500/10 text-rose-500 border-rose-500/20"
@@ -214,15 +215,16 @@ export function SummaryCards({
           <div className="flex items-baseline justify-between gap-2">
             <div>
               <span className="text-[11px] text-muted-foreground block font-medium">Invested</span>
-              <span className="text-lg font-extrabold text-foreground tracking-tight">
+              <span className={cn("font-extrabold text-foreground tracking-tight", amountSizeClass(formatCurrencyWhole(summary.totalInvested)))}>
                 {formatCurrencyWhole(summary.totalInvested)}
               </span>
             </div>
-            <div className="text-right">
+            <div className="text-right min-w-0">
               <span className="text-[11px] text-muted-foreground block font-medium">Net Gain / Loss</span>
               <span
                 className={cn(
-                  "text-lg font-extrabold tracking-tight",
+                  "font-extrabold tracking-tight whitespace-nowrap",
+                  amountSizeClass(formatCurrencyWhole(summary.gainLoss ?? 0, true)),
                   summary.gainLoss !== null
                     ? isPositive
                       ? "text-emerald-500"
@@ -236,11 +238,14 @@ export function SummaryCards({
           </div>
 
           {summary.dividendsNet > 0 && (
-            <div className="flex items-baseline justify-between pt-2 border-t border-border/40">
-              <span className="text-[11px] text-muted-foreground font-medium">
-                Dividends Received (after 5% TDS)
+            <div className="flex items-baseline justify-between gap-2 pt-2 border-t border-border/40">
+              <span
+                className="text-[11px] text-muted-foreground font-medium whitespace-nowrap"
+                title="Cash dividends received, net of 5% TDS"
+              >
+                Dividends (after TDS)
               </span>
-              <span className="text-sm font-extrabold text-emerald-500 tracking-tight">
+              <span className={cn("font-extrabold text-emerald-500 tracking-tight whitespace-nowrap", amountSizeClass(formatCurrencyWhole(summary.dividendsNet, true)))}>
                 +{formatCurrencyWhole(summary.dividendsNet)}
               </span>
             </div>
@@ -259,16 +264,16 @@ export function SummaryCards({
           </div>
 
           <div className="flex items-baseline justify-between gap-2">
-            <div>
+            <div className="min-w-0">
               <span className="text-[11px] text-muted-foreground block font-medium">Unallotted Cash</span>
-              <span className="text-lg font-extrabold text-foreground tracking-tight">
+              <span className={cn("font-extrabold text-foreground tracking-tight whitespace-nowrap", amountSizeClass(formatCurrencyWhole(summary.unallottedCash)))}>
                 {formatCurrencyWhole(summary.unallottedCash)}
               </span>
             </div>
             {summary.latestNav && (
               <div className="text-right">
                 <span className="text-[11px] text-muted-foreground block font-medium" title="Net Asset Value (Price per unit)">NAV (Net Asset Value)</span>
-                <span className="text-lg font-extrabold text-emerald-500 tracking-tight">
+                <span className={cn("font-extrabold text-emerald-500 tracking-tight whitespace-nowrap", amountSizeClass(`NPR ${formatNav(summary.latestNav)}`))}>
                   NPR {formatNav(summary.latestNav)}
                 </span>
               </div>
@@ -294,17 +299,17 @@ export function SummaryCards({
           </div>
 
           <div className="flex items-baseline justify-between gap-2">
-            <div>
+            <div className="min-w-0">
               <span className="text-[11px] text-muted-foreground block font-medium">
                 XIRR Return <span className="text-[9px] text-muted-foreground/80 font-normal block sm:inline sm:ml-1">(Extended Internal Rate of Return)</span>
               </span>
-              <span className="text-lg font-extrabold text-foreground tracking-tight">
+              <span className={cn("font-extrabold text-foreground tracking-tight whitespace-nowrap", amountSizeClass(summary.xirr !== null ? formatPercentage(summary.xirr * 100) : "-"))}>
                 {summary.xirr !== null ? formatPercentage(summary.xirr * 100) : "-"}
               </span>
             </div>
             <div className="text-right">
               <span className="text-[11px] text-muted-foreground block font-medium">Total Units</span>
-              <span className="text-lg font-extrabold text-foreground tracking-tight">
+              <span className={cn("font-extrabold text-foreground tracking-tight whitespace-nowrap", amountSizeClass(formatUnits(summary.totalUnits)))}>
                 {formatUnits(summary.totalUnits)}
               </span>
             </div>
