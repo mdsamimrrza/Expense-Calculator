@@ -105,8 +105,12 @@ export async function getDashboardData(
 
   const entries = (entriesRaw ?? []) as Entry[];
 
+  // Dividends are supplementary: if the query fails (e.g. the dividends
+  // table does not exist yet because the migration has not been applied),
+  // the dashboard must still render - treat as zero, never block it.
+  // A hard failure here bounced every existing user to /onboarding.
   if (dividendsRes.error) {
-    return { success: false, error: dividendsRes.error.message };
+    console.error("[dashboard] dividends query failed:", dividendsRes.error.message);
   }
 
   // Shared market NAV series (nav_reference): ONE row per (fund, date)
