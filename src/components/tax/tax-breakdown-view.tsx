@@ -626,7 +626,7 @@ export function TaxBreakdownView({
           </Card>
 
           {/* SECTION 5: Dividend income (cash paid out by the AMC) */}
-          <DividendCard dividends={dividends} funds={funds} selectedFundId={selectedFundId} />
+          <DividendCard key={selectedFundId} dividends={dividends} funds={funds} selectedFundId={selectedFundId} />
 
         </TabsContent>
 
@@ -877,7 +877,7 @@ export function TaxBreakdownView({
 
         <TabsContent value="sec5">
           <div className="mt-4">
-            <DividendCard dividends={dividends} funds={funds} selectedFundId={selectedFundId} />
+            <DividendCard key={selectedFundId} dividends={dividends} funds={funds} selectedFundId={selectedFundId} />
           </div>
         </TabsContent>
       </Tabs>

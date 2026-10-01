@@ -42,7 +42,8 @@ export function DividendCard({ dividends, funds, selectedFundId }: DividendCardP
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [fundId, setFundId] = useState(selectedFundId !== "all" ? selectedFundId : "");
   const [recordDate, setRecordDate] = useState("");
   const [dividendPct, setDividendPct] = useState("");
@@ -86,16 +87,21 @@ export function DividendCard({ dividends, funds, selectedFundId }: DividendCardP
     setIsLoading(false);
   }
 
-  async function handleDelete(id: string) {
-    setDeletingId(id);
-    const result = await deleteDividend(id);
+  async function handleDeleteConfirm() {
+    if (!deleteId) return;
+    setIsDeleting(true);
+
+    const result = await deleteDividend(deleteId);
+
     if (result.success) {
       toast({ title: "Dividend removed" });
+      setDeleteId(null);
       router.refresh();
     } else {
       toast({ title: "Failed to remove dividend", description: result.error, variant: "destructive" });
     }
-    setDeletingId(null);
+
+    setIsDeleting(false);
   }
 
   const canSave = Boolean(fundId && recordDate && pctNum > 0);
@@ -249,14 +255,10 @@ export function DividendCard({ dividends, funds, selectedFundId }: DividendCardP
                         size="icon"
                         variant="ghost"
                         className="h-7 w-7 text-muted-foreground hover:text-rose-500"
-                        onClick={() => handleDelete(d.id)}
-                        disabled={deletingId !== null}
+                        onClick={() => setDeleteId(d.id)}
+                        disabled={isDeleting}
                       >
-                        {deletingId === d.id ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-3.5 w-3.5" />
-                        )}
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -282,14 +284,10 @@ export function DividendCard({ dividends, funds, selectedFundId }: DividendCardP
                     size="icon"
                     variant="ghost"
                     className="h-7 w-7 text-muted-foreground hover:text-rose-500"
-                    onClick={() => handleDelete(d.id)}
-                    disabled={deletingId !== null}
+                    onClick={() => setDeleteId(d.id)}
+                    disabled={isDeleting}
                   >
-                    {deletingId === d.id ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-3.5 w-3.5" />
-                    )}
+                    <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-muted-foreground">
@@ -309,6 +307,27 @@ export function DividendCard({ dividends, funds, selectedFundId }: DividendCardP
           </div>
         </>
       )}
+
+      {/* Delete confirmation - matches the entry-table destructive pattern */}
+      <Dialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Delete Dividend Record</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this dividend record? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteId(null)} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isDeleting}>
+              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
