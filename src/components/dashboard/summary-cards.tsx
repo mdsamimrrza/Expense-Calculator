@@ -68,6 +68,44 @@ function formatFundShortName(name: string): string {
   return FUND_NAME_ALIASES[name.trim().toUpperCase()] ?? name;
 }
 
+interface KpiCardProps {
+  icon: React.ReactNode;
+  label: string;
+  badge?: React.ReactNode;
+  className?: string;
+  children: React.ReactNode;
+}
+
+/**
+ * Shared scaffold for the four KPI cards. Every card has a FIXED-height
+ * header row and one body that centers its content in whatever space the
+ * grid stretch leaves. Adding or removing body rows on any card can
+ * therefore never change another card's layout or misalign the row -
+ * the four recurring card bugs all came from hand-rolled layouts.
+ * New content belongs in the body as rows; never override the structure.
+ */
+function KpiCard({ icon, label, badge, className, children }: KpiCardProps) {
+  return (
+    <div
+      className={cn(
+        "bg-card rounded-[2rem] p-5 border border-border/60 shadow-sm flex flex-col overflow-hidden",
+        className
+      )}
+    >
+      <div className="flex items-center justify-between gap-2 h-9 shrink-0 z-10">
+        <div className="flex items-center gap-2.5 min-w-0">
+          {icon}
+          <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap truncate">
+            {label}
+          </span>
+        </div>
+        {badge}
+      </div>
+      <div className="flex-1 flex flex-col justify-center gap-3 min-h-0">{children}</div>
+    </div>
+  );
+}
+
 export function SummaryCards({
   summary,
   funds = [],
@@ -105,65 +143,60 @@ export function SummaryCards({
     <div className="flex flex-col gap-4 w-full">
       {/* 4 KPI Summary Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-        {/* CARD 1: Portfolio Value & Actions (Redesigned for Mobile & Compact on Laptop) */}
-        <div className="bg-gradient-to-br from-card via-card/95 to-blue-950/20 sm:bg-card rounded-[2.25rem] sm:rounded-[2rem] p-4 sm:p-4 border border-blue-500/20 sm:border-border/60 shadow-lg shadow-blue-500/5 sm:shadow-sm flex flex-col gap-2 sm:gap-2.5 overflow-hidden relative group">
-          <div className="flex items-center justify-between gap-2 z-10">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 sm:h-8 sm:w-8 rounded-xl sm:rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-600/30 shrink-0">
-                <Wallet className="h-4 w-4 sm:h-4 sm:w-4" />
-              </div>
-              <span className="text-[10px] sm:text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-                Portfolio Value
-              </span>
+        {/* CARD 1: Portfolio Value & Actions */}
+        <KpiCard
+          className="bg-gradient-to-br from-card via-card/95 to-blue-950/20 sm:bg-card rounded-[2.25rem] sm:rounded-[2rem] p-4 sm:p-5 border-blue-500/20 sm:border-border/60 shadow-lg shadow-blue-500/5 sm:shadow-sm"
+          icon={
+            <div className="h-9 w-9 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-600/30 shrink-0">
+              <Wallet className="h-4.5 w-4.5" />
             </div>
-
-{/* Fund Selector & Add SIP Button */}
+          }
+          label="Portfolio Value"
+          badge={
+            funds.length > 0 && (
               <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
-                {funds.length > 0 && (
-                  <Select
-                    value={selectedFundId}
-                    onValueChange={(val) =>
-                      router.push(val === "all" ? "/dashboard?fund=all" : `/dashboard?fund=${val}`)
-                    }
-                  >
-                    <SelectTrigger className="bg-secondary/80 sm:bg-secondary/60 text-foreground border-border/60 h-8 sm:h-7.5 text-xs sm:text-[11px] font-extrabold rounded-full px-2.5 sm:px-2 min-w-0 max-w-[130px] focus:ring-0 shadow-sm truncate">
-                      <SelectValue>
-                        {selectedFundId === "all"
-                          ? "All Funds"
-                          : formatFundShortName(
-                              funds.find((f) => f.id === selectedFundId)?.fund_name || "All Funds"
-                          )}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent className="rounded-2xl max-w-[200px]">
-                      <SelectItem value="all" className="truncate">All Funds</SelectItem>
-                      {funds.map((f) => (
-                        <SelectItem key={f.id} value={f.id} className="truncate">
-                          {formatFundShortName(f.fund_name)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+                <Select
+                  value={selectedFundId}
+                  onValueChange={(val) =>
+                    router.push(val === "all" ? "/dashboard?fund=all" : `/dashboard?fund=${val}`)
+                  }
+                >
+                  <SelectTrigger className="bg-secondary/80 sm:bg-secondary/60 text-foreground border-border/60 h-8 sm:h-7.5 text-xs sm:text-[11px] font-extrabold rounded-full px-2.5 sm:px-2 min-w-0 max-w-[130px] focus:ring-0 shadow-sm truncate">
+                    <SelectValue>
+                      {selectedFundId === "all"
+                        ? "All Funds"
+                        : formatFundShortName(
+                            funds.find((f) => f.id === selectedFundId)?.fund_name || "All Funds"
+                        )}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl max-w-[200px]">
+                    <SelectItem value="all" className="truncate">All Funds</SelectItem>
+                    {funds.map((f) => (
+                      <SelectItem key={f.id} value={f.id} className="truncate">
+                        {formatFundShortName(f.fund_name)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-                {funds.length > 0 && (
-                  <EntryForm
-                    funds={funds}
-                    defaultFundId={activeFund?.id}
-                    trigger={
-                      <Button
-                        size="sm"
-                        className="h-8 w-8 sm:h-7 sm:w-7 p-0 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-md shadow-blue-600/30 border-0 shrink-0 flex items-center justify-center transition-transform active:scale-95"
-                      >
-                        <Plus className="h-4 w-4 sm:h-3.5 sm:w-3.5 stroke-[2.5]" />
-                      </Button>
-                    }
-                  />
-                )}
-            </div>
-          </div>
-
-          <div className="flex-1 flex flex-col justify-center gap-1 z-10 pl-3.5 sm:pl-0">
+                <EntryForm
+                  funds={funds}
+                  defaultFundId={activeFund?.id}
+                  trigger={
+                    <Button
+                      size="sm"
+                      className="h-8 w-8 sm:h-7 sm:w-7 p-0 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-md shadow-blue-600/30 border-0 shrink-0 flex items-center justify-center transition-transform active:scale-95"
+                    >
+                      <Plus className="h-4 w-4 sm:h-3.5 sm:w-3.5 stroke-[2.5]" />
+                    </Button>
+                  }
+                />
+              </div>
+            )
+          }
+        >
+          <div className="flex flex-col gap-1 z-10 pl-3.5 sm:pl-0">
             <h2 className={cn("font-extrabold text-foreground tracking-tight", amountSizeClass(currentValueDisplay, true))}>
               {currentValueDisplay}
             </h2>
@@ -196,22 +229,19 @@ export function SummaryCards({
               </div>
             )}
           </div>
-        </div>
+        </KpiCard>
 
         {mobileChartSlot}
 
         {/* CARD 2: Invested Amount & Net Gain/Loss */}
-        <div className="bg-card rounded-[2rem] p-5 border border-border/60 shadow-sm flex flex-col overflow-hidden">
-          <div className="flex items-center gap-2.5">
+        <KpiCard
+          icon={
             <div className="h-9 w-9 rounded-2xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0">
               <Coins className="h-4.5 w-4.5" />
             </div>
-            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-              Invested & Return
-            </span>
-          </div>
-
-          <div className="flex-1 flex flex-col justify-center gap-3">
+          }
+          label="Invested & Return"
+        >
           <div className="flex items-baseline justify-between gap-2">
             <div>
               <span className="text-[11px] text-muted-foreground block font-medium">Invested</span>
@@ -250,21 +280,17 @@ export function SummaryCards({
               </span>
             </div>
           )}
-          </div>
-        </div>
+        </KpiCard>
 
         {/* CARD 3: Unallotted Cash & Current NAV */}
-        <div className="bg-card rounded-[2rem] p-5 border border-border/60 shadow-sm flex flex-col overflow-hidden">
-          <div className="flex items-center gap-2.5">
+        <KpiCard
+          icon={
             <div className="h-9 w-9 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
               <BarChart3 className="h-4.5 w-4.5" />
             </div>
-            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-              Cash & NAV
-            </span>
-          </div>
-
-          <div className="flex-1 flex flex-col justify-center gap-3">
+          }
+          label="Cash & NAV"
+        >
           <div className="flex items-baseline justify-between gap-2">
             <div className="min-w-0">
               <span className="text-[11px] text-muted-foreground block font-medium">Unallotted Cash</span>
@@ -281,27 +307,23 @@ export function SummaryCards({
               </div>
             )}
           </div>
-          </div>
-        </div>
+        </KpiCard>
 
         {/* CARD 4: Annualized Return (XIRR) & SIP Streak */}
-        <div className="bg-card rounded-[2rem] p-5 border border-border/60 shadow-sm flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2.5">
-              <div className="h-9 w-9 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
-                <TrendingUp className="h-4.5 w-4.5" />
-              </div>
-              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                Performance
-              </span>
+        <KpiCard
+          icon={
+            <div className="h-9 w-9 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+              <TrendingUp className="h-4.5 w-4.5" />
             </div>
-            <div className="flex items-center gap-1 bg-orange-500/10 text-orange-500 px-2 py-0.5 rounded-full text-[11px] font-extrabold">
+          }
+          label="Performance"
+          badge={
+            <div className="flex items-center gap-1 bg-orange-500/10 text-orange-500 px-2 py-0.5 rounded-full text-[11px] font-extrabold whitespace-nowrap">
               <Flame className="h-3 w-3" />
               <span>{formatStreak(summary.sipStreak)}</span>
             </div>
-          </div>
-
-          <div className="flex-1 flex flex-col justify-center gap-3">
+          }
+        >
           <div className="flex items-baseline justify-between gap-2">
             <div className="min-w-0">
               <span className="text-[11px] text-muted-foreground block font-medium">
@@ -318,8 +340,7 @@ export function SummaryCards({
               </span>
             </div>
           </div>
-          </div>
-        </div>
+        </KpiCard>
       </div>
 
       {/* Personal Summary Banner Card (Interactive Dialog Trigger) */}
