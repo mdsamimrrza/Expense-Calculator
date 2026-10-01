@@ -109,8 +109,13 @@ export async function getDashboardData(
   // table does not exist yet because the migration has not been applied),
   // the dashboard must still render - treat as zero, never block it.
   // A hard failure here bounced every existing user to /onboarding.
+  // Warn (not error): expected pre-migration state, must not hit the
+  // Next.js dev overlay as a Console Error.
   if (dividendsRes.error) {
-    console.error("[dashboard] dividends query failed:", dividendsRes.error.message);
+    console.warn(
+      "[dashboard] dividends unavailable - run supabase/migrations/20261001_dividends.sql:",
+      dividendsRes.error.message
+    );
   }
 
   // Shared market NAV series (nav_reference): ONE row per (fund, date)
