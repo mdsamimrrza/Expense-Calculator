@@ -16,7 +16,7 @@
 
 CREATE TABLE dividends (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id         UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id         UUID NOT NULL REFERENCES next_auth.users(id) ON DELETE CASCADE,
   fund_id         UUID NOT NULL REFERENCES fund_config(id) ON DELETE CASCADE,
   record_date     DATE NOT NULL,
   dividend_pct    NUMERIC(8,4) NOT NULL CHECK (dividend_pct > 0),
