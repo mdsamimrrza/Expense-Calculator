@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { entrySchema, csvRowSchema } from "@/lib/schemas/entry";
 import { DP_CHARGE } from "@/lib/constants";
+import { roundUnits } from "@/lib/format";
 import type { ActionResult, Entry, CsvImportResult } from "@/lib/types";
 
 export async function createEntry(
@@ -67,7 +68,7 @@ export async function createEntry(
       purchase_date: purchaseDateStr,
       amount: parsed.data.amount,
       nav: parsed.data.nav,
-      units: Math.floor(parsed.data.units), // Guaranteed integer
+      units: roundUnits(parsed.data.units), // fractional allotment, 4 decimals
       notes: parsed.data.notes || null,
     })
     .select()
@@ -163,7 +164,7 @@ export async function updateEntry(
       purchase_date: purchaseDateStr,
       amount: parsed.data.amount,
       nav: parsed.data.nav,
-      units: Math.floor(parsed.data.units), // Guaranteed integer
+      units: roundUnits(parsed.data.units), // fractional allotment, 4 decimals
       notes: parsed.data.notes || null,
     })
     .eq("id", id)
@@ -340,7 +341,7 @@ export async function importEntriesFromCsv(
     }
 
     const effectiveCash = Math.max(0, parsed.data.amount - DP_CHARGE);
-    const units = parsed.data.units ?? Math.floor(effectiveCash / parsed.data.nav);
+    const units = parsed.data.units ?? roundUnits(effectiveCash / parsed.data.nav);
 
     const purchaseDate = new Date(parsed.data.date).toISOString().split("T")[0];
     if (purchaseDate < fund.start_date) {
@@ -358,7 +359,7 @@ export async function importEntriesFromCsv(
       purchase_date: purchaseDate,
       amount: parsed.data.amount,
       nav: parsed.data.nav,
-      units: Math.floor(units), // Always integer whole units
+      units: roundUnits(units), // fractional allotment, 4 decimals
       notes: parsed.data.notes || null,
     });
   }

@@ -62,7 +62,10 @@ export function EntryForm({
 
   const isEdit = !!entry;
 
-  const [useWholeUnits, setUseWholeUnits] = useState(true);
+  // Live market default: open-ended fund SIPs allot fractional units at
+  // the applicable NAV (NIMB Ace reports SIP units to 2 decimals), so
+  // nothing is left unallotted. Toggle only for NEPSE-bought whole units.
+  const [useWholeUnits, setUseWholeUnits] = useState(false);
   const [carriedRollover, setCarriedRollover] = useState(0);
 
 
@@ -277,7 +280,7 @@ export function EntryForm({
                         className="rounded border-gray-300 text-primary focus:ring-primary"
                       />
                       <Label htmlFor="whole-units" className="font-normal text-xs text-foreground cursor-pointer">
-                        Whole Units (Nepal SIP)
+                        Whole Units (NEPSE-bought funds only)
                       </Label>
                     </div>
                   </div>

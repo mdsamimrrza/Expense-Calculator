@@ -21,6 +21,7 @@ import { createClient } from "@supabase/supabase-js";
 import { resolveSchedule } from "@/lib/sip-schedule";
 import { installmentDueDate, nepalTodayAD } from "@/lib/calendar/bs";
 import { DP_CHARGE } from "@/lib/constants";
+import { roundUnits } from "@/lib/format";
 import { normalizeFundName } from "@/lib/dividend-declarations";
 
 const AUTO_FILL_EMAILS = ["mdsamimrrza1@gmail.com"];
@@ -140,7 +141,7 @@ export async function syncTestUserInstallments(admin: QueryClient): Promise<Sync
             continue;
           }
 
-          const units = Math.floor((amount - DP_CHARGE) / quote.nav);
+          const units = roundUnits((amount - DP_CHARGE) / quote.nav);
           const { error: insertErr } = await admin.from("entries").insert({
             user_id: user.id,
             fund_id: fund.id,
