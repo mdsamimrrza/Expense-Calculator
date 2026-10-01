@@ -23,6 +23,7 @@ import { resolveFundSource, type ResolvedFundSource } from "@/lib/nav-sources/so
 import type { NavQuote } from "@/lib/nav-sources/types";
 import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { nepalTodayAD } from "@/lib/calendar/bs";
+import { syncTestUserDividends } from "@/lib/cron/sync-test-user-dividends";
 
 interface FundRow {
   id: string;
@@ -218,6 +219,16 @@ async function handleCronFetchNav(req: Request) {
       }
     }
 
+    // 5. Test-user dividend auto-fill: record any verified declaration
+    //    not yet in the dividends table for the auto-fill accounts.
+    //    Never throws - a sync failure must not fail the NAV cron.
+    let dividendSync;
+    try {
+      dividendSync = await syncTestUserDividends(supabase);
+    } catch (err: any) {
+      dividendSync = { error: err?.message || String(err) };
+    }
+
     return NextResponse.json({
       success: true,
       backfill,
@@ -231,6 +242,7 @@ async function handleCronFetchNav(req: Request) {
       rejectedQuotes,
       upsertErrors,
       sourceErrors,
+      dividendSync,
       timestamp: new Date().toISOString(),
     });
   } catch (err: any) {
