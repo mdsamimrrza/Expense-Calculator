@@ -118,7 +118,7 @@ export function SummaryCards({
             </div>
 
 {/* Fund Selector & Add SIP Button */}
-              <div className="flex items-center gap-1.5 sm:gap-2 mr-2 sm:mr-0 min-w-0">
+              <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
                 {funds.length > 0 && (
                   <Select
                     value={selectedFundId}
@@ -126,7 +126,7 @@ export function SummaryCards({
                       router.push(val === "all" ? "/dashboard?fund=all" : `/dashboard?fund=${val}`)
                     }
                   >
-                    <SelectTrigger className="bg-secondary/80 sm:bg-secondary/60 text-foreground border-border/60 h-8 sm:h-7.5 text-xs sm:text-[11px] font-extrabold rounded-full px-2.5 sm:px-2 min-w-[90px] max-w-[130px] sm:max-w-[150px] focus:ring-0 shadow-sm truncate">
+                    <SelectTrigger className="bg-secondary/80 sm:bg-secondary/60 text-foreground border-border/60 h-8 sm:h-7.5 text-xs sm:text-[11px] font-extrabold rounded-full px-2.5 sm:px-2 min-w-0 max-w-[130px] focus:ring-0 shadow-sm truncate">
                       <SelectValue>
                         {selectedFundId === "all"
                           ? "All Funds"
@@ -183,7 +183,6 @@ export function SummaryCards({
                     <ArrowDownRight className="h-3 w-3 sm:h-3 sm:w-3 stroke-[2.5]" />
                   )}
                   <span>
-                    {isPositive ? "+" : ""}
                     {formatCurrencyWhole(summary.gainLoss, true)} ({formatPercentage(summary.gainLossPct ?? 0)})
                   </span>
                 </span>
@@ -301,7 +300,7 @@ export function SummaryCards({
           <div className="flex items-baseline justify-between gap-2">
             <div className="min-w-0">
               <span className="text-[11px] text-muted-foreground block font-medium">
-                XIRR Return <span className="text-[9px] text-muted-foreground/80 font-normal block sm:inline sm:ml-1">(Extended Internal Rate of Return)</span>
+                XIRR Return <span className="text-[9px] text-muted-foreground/80 font-normal" title="Extended Internal Rate of Return - your annualized return">(annualized)</span>
               </span>
               <span className={cn("font-extrabold text-foreground tracking-tight whitespace-nowrap", amountSizeClass(summary.xirr !== null ? formatPercentage(summary.xirr * 100) : "-"))}>
                 {summary.xirr !== null ? formatPercentage(summary.xirr * 100) : "-"}
