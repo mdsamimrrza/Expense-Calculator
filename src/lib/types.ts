@@ -51,6 +51,22 @@ export interface EntryBreakdown {
   remainingRollover: number;
 }
 
+export interface Dividend {
+  id: string;
+  user_id: string;
+  fund_id: string;
+  record_date: string; // ISO date string (book-closure date)
+  dividend_pct: number; // % of the Rs 10 face value, e.g. 7 = Rs 0.70/unit
+  per_unit: number;
+  units_at_record: number;
+  gross_amount: number;
+  tds_pct: number;
+  tds_amount: number;
+  net_amount: number;
+  notes: string | null;
+  created_at: string;
+}
+
 
 // ---------- Computed / dashboard types ----------
 
@@ -85,6 +101,8 @@ export interface DashboardSummary {
   sipStreak: number;
   latestNav: number | null;
   latestNavDate: string | null;
+  /** Net dividends received (after 5% TDS) for the funds in view. */
+  dividendsNet: number;
 }
 
 export interface ChartDataPoint {

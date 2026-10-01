@@ -23,8 +23,9 @@ import {
   Sparkles,
   Layers,
 } from "lucide-react";
-import type { DashboardSummary, FundConfig } from "@/lib/types";
+import type { DashboardSummary, FundConfig, Dividend } from "@/lib/types";
 import { HistoryFundSelector } from "@/components/entries/history-fund-selector";
+import { DividendCard } from "@/components/tax/dividend-card";
 import { getExitLoadSchedule, TAX_DISCLAIMER, CGT_OPEN_ENDED_INDIVIDUAL, CGT_NP_REDEMPTION, type ExitLoadSchedule } from "@/lib/tax";
 
 /** Compact human-readable form of a verified exit-load schedule. */
@@ -45,6 +46,7 @@ interface TaxBreakdownViewProps {
   selectedFundId: string;
   activeFund?: FundConfig;
   feeDragChart: Array<{ date: string; cumulativeDrag: number }>;
+  dividends: Dividend[];
 }
 
 export function TaxBreakdownView({
@@ -54,6 +56,7 @@ export function TaxBreakdownView({
   selectedFundId,
   activeFund,
   feeDragChart,
+  dividends,
 }: TaxBreakdownViewProps) {
   const [activeTab, setActiveTab] = useState("all");
 
@@ -194,7 +197,7 @@ export function TaxBreakdownView({
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
 
         {/* Desktop View: Full-width Responsive 5-Column Tab Bar */}
-        <TabsList className="hidden sm:grid grid-cols-5 w-full bg-secondary/60 p-1.5 rounded-2xl h-12 border border-border/50 shadow-sm">
+        <TabsList className="hidden sm:grid grid-cols-6 w-full bg-secondary/60 p-1.5 rounded-2xl h-12 border border-border/50 shadow-sm">
           <TabsTrigger
             value="all"
             className="rounded-xl text-xs font-extrabold transition-all data-[state=active]:bg-card data-[state=active]:text-emerald-400 data-[state=active]:shadow-sm"
@@ -225,6 +228,12 @@ export function TaxBreakdownView({
           >
             04. Bank Settlement
           </TabsTrigger>
+          <TabsTrigger
+            value="sec5"
+            className="rounded-xl text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+          >
+            05. Dividends
+          </TabsTrigger>
         </TabsList>
 
         {/* Mobile View: Dropdown matching Fund Selector style */}
@@ -251,6 +260,9 @@ export function TaxBreakdownView({
               </SelectItem>
               <SelectItem value="sec4" className="text-xs font-semibold">
                 04. Bank Settlement
+              </SelectItem>
+              <SelectItem value="sec5" className="text-xs font-semibold">
+                05. Dividends
               </SelectItem>
             </SelectContent>
           </Select>
@@ -613,6 +625,9 @@ export function TaxBreakdownView({
             </div>
           </Card>
 
+          {/* SECTION 5: Dividend income (cash paid out by the AMC) */}
+          <DividendCard dividends={dividends} funds={funds} selectedFundId={selectedFundId} />
+
         </TabsContent>
 
         {/* INDIVIDUAL TABS WITH RESPONSIVE VIEWS */}
@@ -858,6 +873,12 @@ export function TaxBreakdownView({
               </div>
             </div>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="sec5">
+          <div className="mt-4">
+            <DividendCard dividends={dividends} funds={funds} selectedFundId={selectedFundId} />
+          </div>
         </TabsContent>
       </Tabs>
 

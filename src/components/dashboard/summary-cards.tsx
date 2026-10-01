@@ -234,6 +234,17 @@ export function SummaryCards({
               </span>
             </div>
           </div>
+
+          {summary.dividendsNet > 0 && (
+            <div className="flex items-baseline justify-between pt-2 border-t border-border/40">
+              <span className="text-[11px] text-muted-foreground font-medium">
+                Dividends Received (after 5% TDS)
+              </span>
+              <span className="text-sm font-extrabold text-emerald-500 tracking-tight">
+                +{formatCurrencyWhole(summary.dividendsNet)}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* CARD 3: Unallotted Cash & Current NAV */}
@@ -472,6 +483,21 @@ export function SummaryCards({
                     <span className="text-[10px] ml-1">({summary.gainLossPct !== null ? formatPercentage(summary.gainLossPct) : "0%"})</span>
                   </span>
                 </div>
+
+                {summary.dividendsNet > 0 && (
+                  <>
+                    <div className="flex justify-between items-center text-muted-foreground">
+                      <span>(+) Dividends Received (net of 5% TDS)</span>
+                      <strong className="text-emerald-500 font-mono">+{formatCurrencyWhole(summary.dividendsNet)}</strong>
+                    </div>
+                    <div className="flex justify-between items-center font-bold pt-1 border-t border-border text-foreground">
+                      <span>Total Return (incl. dividends)</span>
+                      <span className={cn("font-mono", (summary.gainLoss ?? 0) + summary.dividendsNet >= 0 ? "text-emerald-500" : "text-rose-500")}>
+                        {formatCurrencyWhole((summary.gainLoss ?? 0) + summary.dividendsNet, true)}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 

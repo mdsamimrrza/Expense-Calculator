@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getDashboardData } from "@/lib/actions/dashboard";
+import { getDividends } from "@/lib/actions/dividends";
 import { redirect } from "next/navigation";
 import type { FundConfig } from "@/lib/types";
 import { TaxBreakdownView } from "@/components/tax/tax-breakdown-view";
@@ -30,6 +31,8 @@ export default async function TaxBreakdownPage({ searchParams }: TaxBreakdownPag
   const { summary, funds, entriesCount, feeDragChart } = result.data;
   const activeFund = funds.find((f: FundConfig) => f.id === selectedFundId) || funds[0];
 
+  const dividendsResult = await getDividends(selectedFundId !== "all" ? selectedFundId : undefined);
+
   return (
     <TaxBreakdownView
       summary={summary}
@@ -38,6 +41,7 @@ export default async function TaxBreakdownPage({ searchParams }: TaxBreakdownPag
       selectedFundId={selectedFundId}
       activeFund={activeFund}
       feeDragChart={feeDragChart}
+      dividends={dividendsResult.success ? (dividendsResult.data ?? []) : []}
     />
   );
 }

@@ -67,7 +67,19 @@ export async function getDashboardData(
     navHistoryQuery = navHistoryQuery.eq("fund_id", fundId);
   }
 
-  const [fundsRes, entriesRes, navRes] = await Promise.all([
+  // Net dividends received for the funds in view - the cash the AMC paid
+  // out and the NAV dropped in exchange for. Independent of the queries
+  // above, so it rides the same parallel round trip.
+  let dividendsQuery = supabase
+    .from("dividends")
+    .select("net_amount")
+    .eq("user_id", user.id);
+
+  if (fundId && fundId !== "all") {
+    dividendsQuery = dividendsQuery.eq("fund_id", fundId);
+  }
+
+  const [fundsRes, entriesRes, navRes, dividendsRes] = await Promise.all([
     supabase
       .from("fund_config")
       .select("*")
@@ -76,6 +88,7 @@ export async function getDashboardData(
       .order("created_at", { ascending: true }),
     entriesQuery,
     navHistoryQuery,
+    dividendsQuery,
   ]);
 
   if (fundsRes.error) {
@@ -91,6 +104,10 @@ export async function getDashboardData(
   }
 
   const entries = (entriesRaw ?? []) as Entry[];
+
+  if (dividendsRes.error) {
+    return { success: false, error: dividendsRes.error.message };
+  }
 
   // Shared market NAV series (nav_reference): ONE row per (fund, date)
   // for ALL users, written by the NAV cron. Each of the user's funds
@@ -225,6 +242,11 @@ export async function getDashboardData(
     entries.map((e) => e.purchase_date)
   );
 
+  const dividendsNet = (dividendsRes.data ?? []).reduce(
+    (sum, d) => sum + Number(d.net_amount),
+    0
+  );
+
   const summary: DashboardSummary = {
     totalInvested,
     totalUnits,
@@ -242,6 +264,7 @@ export async function getDashboardData(
     sipStreak,
     latestNav,
     latestNavDate,
+    dividendsNet,
   };
 
   // ---- Chart data ----
