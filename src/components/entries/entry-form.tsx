@@ -62,25 +62,10 @@ export function EntryForm({
 
   const isEdit = !!entry;
 
-  // Live market default: open-ended fund SIPs allot fractional units at
-  // the applicable NAV (NIMB Ace reports SIP units to 2 decimals), so
-  // nothing is left unallotted. Toggle only for NEPSE-bought whole units.
-  const [useWholeUnits, setUseWholeUnits] = useState(false);
-  const [carriedRollover, setCarriedRollover] = useState(0);
-
-
-  // Fetch carried forward rollover cash when modal opens or fund changes
-  useEffect(() => {
-    if (open && fundId && !isEdit) {
-      import("@/lib/actions/entries").then(({ getFundRolloverCash }) => {
-        getFundRolloverCash(fundId).then((res) => {
-          if (res.success && typeof res.data === "number") {
-            setCarriedRollover(res.data);
-          }
-        });
-      });
-    }
-  }, [open, fundId, isEdit]);
+  // Whole units, confirmed by real cooperative SIP statements (507 units
+  // @ 9.85 on a 5,000 deposit). Each deposit stands alone - leftover is
+  // refunded to the bank, never carried into the next purchase.
+  const [useWholeUnits] = useState(true);
 
   // Auto-calculate whole units (integer only)
   useEffect(() => {
@@ -88,13 +73,11 @@ export function EntryForm({
       const a = parseFloat(amount);
       const n = parseFloat(nav);
       if (a > 0 && n > 0) {
-        const totalAvail = a + (isEdit ? 0 : carriedRollover);
-        const effectiveAmount = deductDpCharge ? Math.max(0, totalAvail - 5) : totalAvail;
-        const computedUnits = useWholeUnits ? Math.floor(effectiveAmount / n) : effectiveAmount / n;
-        setUnits(useWholeUnits ? computedUnits.toString() : computedUnits.toFixed(4));
+        const effectiveAmount = deductDpCharge ? Math.max(0, a - 5) : a;
+        setUnits(Math.floor(effectiveAmount / n).toString());
       }
     }
-  }, [amount, nav, overrideUnits, deductDpCharge, useWholeUnits, carriedRollover, isEdit]);
+  }, [amount, nav, overrideUnits, deductDpCharge, isEdit]);
 
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -272,15 +255,8 @@ export function EntryForm({
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="whole-units"
-                        checked={useWholeUnits}
-                        onChange={(e) => setUseWholeUnits(e.target.checked)}
-                        className="rounded border-gray-300 text-primary focus:ring-primary"
-                      />
-                      <Label htmlFor="whole-units" className="font-normal text-xs text-foreground cursor-pointer">
-                        Whole Units (NEPSE-bought funds only)
+                      <Label className="font-normal text-xs text-muted-foreground">
+                        Whole units - leftover is refunded to your bank
                       </Label>
                     </div>
                   </div>
@@ -293,16 +269,9 @@ export function EntryForm({
                         <span className="font-semibold text-foreground">NPR {parseFloat(amount).toFixed(2)}</span>
                       </div>
                       
-                      {!isEdit && carriedRollover > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">+ Carried-Forward Cash:</span>
-                          <span className="font-semibold text-blue-500">NPR {carriedRollover.toFixed(2)}</span>
-                        </div>
-                      )}
-                      
                       <div className="flex justify-between border-t border-border/30 pt-1.5 mt-0.5">
                         <span className="text-muted-foreground font-medium">Total Available Cash:</span>
-                        <span className="font-bold text-foreground">NPR {(parseFloat(amount) + (isEdit ? 0 : carriedRollover)).toFixed(2)}</span>
+                        <span className="font-bold text-foreground">NPR {parseFloat(amount).toFixed(2)}</span>
                       </div>
 
                       <div className="flex justify-between">
@@ -312,7 +281,7 @@ export function EntryForm({
 
                       <div className="flex justify-between border-t border-border/30 pt-1.5 mt-0.5">
                         <span className="text-muted-foreground font-medium">Net Allotment Cash:</span>
-                        <span className="font-bold text-foreground">NPR {Math.max(0, parseFloat(amount) + (isEdit ? 0 : carriedRollover) - (deductDpCharge ? 5 : 0)).toFixed(2)}</span>
+                        <span className="font-bold text-foreground">NPR {Math.max(0, parseFloat(amount) - (deductDpCharge ? 5 : 0)).toFixed(2)}</span>
                       </div>
 
                       <div className="flex justify-between">
@@ -322,13 +291,12 @@ export function EntryForm({
 
                       <div className="flex justify-between items-center mt-2 bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">
                         <span className="text-emerald-700 dark:text-emerald-300 font-medium">
-                          New Leftover Rollover:
+                          Refunded to Bank:
                         </span>
                         <span className="text-emerald-600 dark:text-emerald-400 font-extrabold text-[12px]">
                           NPR {Math.max(
                             0,
-                            parseFloat(amount) +
-                              (isEdit ? 0 : carriedRollover) -
+                            parseFloat(amount) -
                               (deductDpCharge ? 5 : 0) -
                               (parseFloat(units) || 0) * parseFloat(nav)
                           ).toFixed(2)}

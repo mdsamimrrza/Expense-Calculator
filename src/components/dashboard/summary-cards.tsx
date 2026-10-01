@@ -282,7 +282,7 @@ export function SummaryCards({
           )}
         </KpiCard>
 
-        {/* CARD 3: Unallotted Cash & Current NAV */}
+        {/* CARD 3: Refunds Received & Current NAV */}
         <KpiCard
           icon={
             <div className="h-9 w-9 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
@@ -293,7 +293,7 @@ export function SummaryCards({
         >
           <div className="flex items-baseline justify-between gap-2">
             <div className="min-w-0">
-              <span className="text-[11px] text-muted-foreground block font-medium">Unallotted Cash</span>
+              <span className="text-[11px] text-muted-foreground block font-medium">Refunds Received</span>
               <span className={cn("font-extrabold text-foreground tracking-tight whitespace-nowrap", amountSizeClass(formatCurrencyWhole(summary.unallottedCash)))}>
                 {formatCurrencyWhole(summary.unallottedCash)}
               </span>
@@ -493,7 +493,7 @@ export function SummaryCards({
                 </div>
 
                 <div className="flex justify-between items-center text-muted-foreground">
-                  <span>(-) Rollover Wallet Cash</span>
+                  <span>(-) Refunds Received (in bank)</span>
                   <strong className="text-blue-500 font-mono">-{formatCurrencyWhole(summary.unallottedCash)}</strong>
                 </div>
 

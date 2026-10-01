@@ -187,7 +187,7 @@ export function TaxBreakdownView({
               {formatCurrencyWhole(cgtUnresolved ? netInHandSettlement : netPostTaxSettlement)}
             </h3>
             <span className="text-[11px] sm:text-xs text-blue-400 font-semibold mt-0.5 block">
-              (+) Rollover Wallet Cash: +{formatCurrencyWhole(summary.unallottedCash)}
+              (+) Refunds Received: +{formatCurrencyWhole(summary.unallottedCash)}
             </span>
           </div>
         </div>
@@ -394,8 +394,8 @@ export function TaxBreakdownView({
                     <TableCell className="text-right font-mono font-bold text-foreground">{formatCurrencyWhole(effectiveDeployedCapital)}</TableCell>
                   </TableRow>
                   <TableRow className="bg-blue-500/10 font-medium border-border/40">
-                    <TableCell className="text-blue-400 font-bold">(+) Rollover Wallet Cash (Unallotted)</TableCell>
-                    <TableCell className="text-muted-foreground">100% Cash retained & fully refundable upon exit</TableCell>
+                    <TableCell className="text-blue-400 font-bold">(+) Refunds Received</TableCell>
+                    <TableCell className="text-muted-foreground">Refunded to your bank after each purchase</TableCell>
                     <TableCell className="text-right font-mono text-blue-400 font-bold">+{formatCurrencyWhole(summary.unallottedCash)}</TableCell>
                   </TableRow>
                 </TableBody>
@@ -420,7 +420,7 @@ export function TaxBreakdownView({
               </div>
               <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] text-blue-400 font-semibold block uppercase">(+) Rollover Wallet Cash</span>
+                  <span className="text-[10px] text-blue-400 font-semibold block uppercase">(+) Refunds Received</span>
                   <span className="text-xs text-muted-foreground">Refundable cash balance</span>
                 </div>
                 <span className="font-mono font-bold text-blue-400 text-sm">+{formatCurrencyWhole(summary.unallottedCash)}</span>
@@ -583,8 +583,8 @@ export function TaxBreakdownView({
                     <TableCell className="text-right font-mono font-bold text-foreground">{formatCurrencyWhole(summary.currentValue ?? summary.totalInvested)}</TableCell>
                   </TableRow>
                   <TableRow className="border-border/30">
-                    <TableCell className="font-medium text-blue-400">2. (+) Rollover Wallet Balance</TableCell>
-                    <TableCell className="text-muted-foreground">Unused deposit cash balance</TableCell>
+                    <TableCell className="font-medium text-blue-400">2. (+) Refunds Received</TableCell>
+                    <TableCell className="text-muted-foreground">Refunded to your bank after each purchase</TableCell>
                     <TableCell className="text-right font-mono text-blue-400 font-bold">+{formatCurrencyWhole(summary.unallottedCash)}</TableCell>
                   </TableRow>
                   <TableRow className="border-border/30">
@@ -611,7 +611,7 @@ export function TaxBreakdownView({
                 <span className="font-mono font-bold text-foreground text-xs">{formatCurrencyWhole(summary.currentValue ?? summary.totalInvested)}</span>
               </div>
               <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20 flex items-center justify-between">
-                <span className="text-xs text-blue-400 font-bold">2. (+) Rollover Cash</span>
+                <span className="text-xs text-blue-400 font-bold">2. (+) Refunds Received</span>
                 <span className="font-mono font-bold text-blue-400 text-xs">+{formatCurrencyWhole(summary.unallottedCash)}</span>
               </div>
               <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20 flex items-center justify-between">
@@ -723,8 +723,8 @@ export function TaxBreakdownView({
                     <TableCell className="text-right font-mono font-bold text-foreground">{formatCurrencyWhole(effectiveDeployedCapital)}</TableCell>
                   </TableRow>
                   <TableRow className="bg-blue-500/10 font-medium border-border/40">
-                    <TableCell className="text-blue-400 font-bold">(+) Rollover Wallet Cash (Unallotted)</TableCell>
-                    <TableCell className="text-muted-foreground">100% Cash retained & fully refundable upon exit</TableCell>
+                    <TableCell className="text-blue-400 font-bold">(+) Refunds Received</TableCell>
+                    <TableCell className="text-muted-foreground">Refunded to your bank after each purchase</TableCell>
                     <TableCell className="text-right font-mono text-blue-400 font-bold">+{formatCurrencyWhole(summary.unallottedCash)}</TableCell>
                   </TableRow>
                 </TableBody>
@@ -740,7 +740,7 @@ export function TaxBreakdownView({
                 <span className="font-mono font-bold text-purple-400 text-xs">~{formatCurrencyWhole(latestFeeDrag)} *</span>
               </div>
               <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20 flex items-center justify-between">
-                <span className="text-xs text-blue-400 font-bold">(+) Rollover Cash</span>
+                <span className="text-xs text-blue-400 font-bold">(+) Refunds Received</span>
                 <span className="font-mono font-bold text-blue-400 text-xs">+{formatCurrencyWhole(summary.unallottedCash)}</span>
               </div>
             </div>
@@ -834,8 +834,8 @@ export function TaxBreakdownView({
                     <TableCell className="text-right font-mono font-bold text-foreground">{formatCurrencyWhole(summary.currentValue ?? summary.totalInvested)}</TableCell>
                   </TableRow>
                   <TableRow className="border-border/30">
-                    <TableCell className="font-medium text-blue-400">2. (+) Rollover Wallet Balance</TableCell>
-                    <TableCell className="text-muted-foreground">Unused deposit cash balance</TableCell>
+                    <TableCell className="font-medium text-blue-400">2. (+) Refunds Received</TableCell>
+                    <TableCell className="text-muted-foreground">Refunded to your bank after each purchase</TableCell>
                     <TableCell className="text-right font-mono text-blue-400 font-bold">+{formatCurrencyWhole(summary.unallottedCash)}</TableCell>
                   </TableRow>
                   <TableRow className="border-border/30">
@@ -860,7 +860,7 @@ export function TaxBreakdownView({
                 <span className="font-mono font-bold text-foreground text-xs">{formatCurrencyWhole(summary.currentValue ?? summary.totalInvested)}</span>
               </div>
               <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20 flex items-center justify-between">
-                <span className="text-xs text-blue-400 font-bold">2. (+) Rollover Cash</span>
+                <span className="text-xs text-blue-400 font-bold">2. (+) Refunds Received</span>
                 <span className="font-mono font-bold text-blue-400 text-xs">+{formatCurrencyWhole(summary.unallottedCash)}</span>
               </div>
               <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20 flex items-center justify-between">

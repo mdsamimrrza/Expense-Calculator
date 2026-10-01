@@ -74,15 +74,6 @@ export function formatUnits(value: number): string {
 }
 
 /**
- * Live-market unit allotment: open-ended fund SIPs allot fractional units
- * at the applicable NAV, so purchases leave no unallotted cash behind.
- * Units are stored to 4 decimals (the app's standard unit precision).
- */
-export function roundUnits(value: number): number {
-  return Math.round(value * 10000) / 10000;
-}
-
-/**
  * Format NAV with 2 decimal places.
  * e.g. 13.25 → "13.25"
  */

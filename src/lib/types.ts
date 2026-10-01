@@ -39,18 +39,6 @@ export interface Entry {
   updated_at: string;
 }
 
-export interface EntryBreakdown {
-  freshAmount: number;
-  carriedRollover: number;
-  totalAvailable: number;
-  dpFee: number;
-  netCash: number;
-  units: number;
-  nav: number;
-  unitCost: number;
-  remainingRollover: number;
-}
-
 export interface Dividend {
   id: string;
   user_id: string;
@@ -85,7 +73,9 @@ export interface DashboardSummary {
   totalInvested: number;
   totalUnits: number;
   currentValue: number | null; // null if latest_nav not set
-  unallottedCash: number; // Leftover cash from whole unit allotments + DP fee
+  /** Per-entry purchase refunds (amount - DP - units*nav), returned to
+   *  the investor's bank after each purchase. Nothing carries forward. */
+  unallottedCash: number;
   gainLoss: number | null;
   gainLossPct: number | null;
   /** CGT verification status (see src/lib/tax.ts). */

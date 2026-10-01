@@ -172,7 +172,10 @@ export async function getDashboardData(
     }
   }
 
-  // Calculate unallotted leftover cash across all entries (Chronological Rollover Wallet Balance)
+  // Refunds from SIP purchases - per the real statement model, each
+  // deposit stands alone: units = floor((amount - DP) / nav) and the
+  // leftover (amount - DP - units*nav) is REFUNDED to the investor's
+  // bank. Nothing carries forward between deposits.
   const fundRolloverMap = new Map<string, number>();
   const sortedEntries = [...entries].sort(
     (a, b) =>
@@ -181,15 +184,10 @@ export async function getDashboardData(
   );
 
   for (const e of sortedEntries) {
-    const carried = fundRolloverMap.get(e.fund_id) || 0;
     const amt = Number(e.amount);
-    const u = Number(e.units);
-    const n = Number(e.nav);
     const dpFee = amt >= DP_CHARGE ? DP_CHARGE : 0;
-    const net = Math.max(0, amt + carried - dpFee);
-    const unitCost = u * n;
-    const leftover = Math.max(0, net - unitCost);
-    fundRolloverMap.set(e.fund_id, leftover);
+    const refund = Math.max(0, amt - dpFee - Number(e.units) * Number(e.nav));
+    fundRolloverMap.set(e.fund_id, (fundRolloverMap.get(e.fund_id) || 0) + refund);
   }
 
   const unallottedCash =

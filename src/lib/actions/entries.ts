@@ -5,7 +5,6 @@ import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { entrySchema, csvRowSchema } from "@/lib/schemas/entry";
 import { DP_CHARGE } from "@/lib/constants";
-import { roundUnits } from "@/lib/format";
 import type { ActionResult, Entry, CsvImportResult } from "@/lib/types";
 
 export async function createEntry(
@@ -68,7 +67,9 @@ export async function createEntry(
       purchase_date: purchaseDateStr,
       amount: parsed.data.amount,
       nav: parsed.data.nav,
-      units: roundUnits(parsed.data.units), // fractional allotment, 4 decimals
+      // Whole units - confirmed by real cooperative SIP statements
+      // (507 units @ 9.85 on a 5,000 deposit). Leftover is refunded.
+      units: Math.floor(parsed.data.units),
       notes: parsed.data.notes || null,
     })
     .select()
@@ -164,7 +165,9 @@ export async function updateEntry(
       purchase_date: purchaseDateStr,
       amount: parsed.data.amount,
       nav: parsed.data.nav,
-      units: roundUnits(parsed.data.units), // fractional allotment, 4 decimals
+      // Whole units - confirmed by real cooperative SIP statements
+      // (507 units @ 9.85 on a 5,000 deposit). Leftover is refunded.
+      units: Math.floor(parsed.data.units),
       notes: parsed.data.notes || null,
     })
     .eq("id", id)
@@ -341,7 +344,7 @@ export async function importEntriesFromCsv(
     }
 
     const effectiveCash = Math.max(0, parsed.data.amount - DP_CHARGE);
-    const units = parsed.data.units ?? roundUnits(effectiveCash / parsed.data.nav);
+    const units = parsed.data.units ?? Math.floor(effectiveCash / parsed.data.nav);
 
     const purchaseDate = new Date(parsed.data.date).toISOString().split("T")[0];
     if (purchaseDate < fund.start_date) {
@@ -359,7 +362,7 @@ export async function importEntriesFromCsv(
       purchase_date: purchaseDate,
       amount: parsed.data.amount,
       nav: parsed.data.nav,
-      units: roundUnits(units), // fractional allotment, 4 decimals
+      units: Math.floor(units), // whole units
       notes: parsed.data.notes || null,
     });
   }
@@ -410,39 +413,9 @@ export async function importEntriesFromCsv(
   };
 }
 
-export async function getFundRolloverCash(
-  fundId: string
-): Promise<ActionResult<number>> {
-  const supabase = await createClient();
-  const session = await auth();
-  const user = session?.user;
-
-  if (!user?.id) {
-    return { success: false, error: "Not authenticated" };
-  }
-
-  const { data: entries, error } = await supabase
-    .from("entries")
-    .select("amount, nav, units, purchase_date, created_at")
-    .eq("user_id", user.id)
-    .eq("fund_id", fundId)
-    .order("purchase_date", { ascending: true })
-    .order("created_at", { ascending: true });
-
-  if (error) {
-    return { success: false, error: error.message };
-  }
-
-  let runningRollover = 0;
-  for (const entry of entries || []) {
-    const freshAmount = Number(entry.amount);
-    const dpFee = freshAmount >= 5 ? 5 : 0;
-    const totalAvailable = freshAmount + runningRollover;
-    const netCash = Math.max(0, totalAvailable - dpFee);
-    const unitCost = Number(entry.units) * Number(entry.nav);
-    runningRollover = Math.max(0, netCash - unitCost);
-  }
-
-  return { success: true, data: runningRollover };
-}
+// NOTE: no rollover-wallet action exists here anymore. Real SIP
+// statements (cooperative/AMC) show the per-deposit leftover is
+// REFUNDED to the investor, not carried into the next purchase -
+// each deposit stands alone: units = floor((amount - DP) / nav),
+// refund = amount - DP - units*nav.
 

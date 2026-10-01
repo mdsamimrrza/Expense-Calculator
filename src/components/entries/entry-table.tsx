@@ -54,41 +54,26 @@ export function EntryTable({ entries, funds, selectedFundId }: EntryTableProps) 
 
   const fundMap = useMemo(() => new Map(funds.map((f) => [f.id, f.fund_name])), [funds]);
 
-  // Compute chronological rollover breakdown for each entry
+  // Per-entry refund breakdown - each deposit stands alone: leftover is
+  // refunded to the investor, never carried into the next purchase.
   const breakdownMap = useMemo(() => {
-    const sortedAsc = [...entries].sort(
-      (a, b) =>
-        new Date(a.purchase_date).getTime() - new Date(b.purchase_date).getTime() ||
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
-
     const map = new Map<string, {
       freshAmount: number;
-      carriedRollover: number;
-      totalAvailable: number;
       dpFee: number;
       netCash: number;
       unitCost: number;
       remainingRollover: number;
     }>();
 
-    const fundRollovers = new Map<string, number>();
-
-    for (const entry of sortedAsc) {
-      const carriedRollover = fundRollovers.get(entry.fund_id) || 0;
+    for (const entry of [...entries]) {
       const freshAmount = Number(entry.amount);
       const dpFee = freshAmount >= 5 ? 5 : 0;
-      const totalAvailable = freshAmount + carriedRollover;
-      const netCash = Math.max(0, totalAvailable - dpFee);
+      const netCash = Math.max(0, freshAmount - dpFee);
       const unitCost = Number(entry.units) * Number(entry.nav);
       const remainingRollover = Math.max(0, netCash - unitCost);
 
-      fundRollovers.set(entry.fund_id, remainingRollover);
-
       map.set(entry.id, {
         freshAmount,
-        carriedRollover,
-        totalAvailable,
         dpFee,
         netCash,
         unitCost,
@@ -247,7 +232,7 @@ export function EntryTable({ entries, funds, selectedFundId }: EntryTableProps) 
               <SortableHead label="Deposit Amount" sortKey="amount" align="right" />
               <SortableHead label="NAV" sortKey="nav" align="right" />
               <SortableHead label="Units" sortKey="units" align="right" />
-              <SortableHead label="Rollover Leftover" sortKey="rollover" align="right" />
+              <SortableHead label="Refund" sortKey="rollover" align="right" />
               <SortableHead label="Notes" sortKey="notes" />
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -380,19 +365,19 @@ export function EntryTable({ entries, funds, selectedFundId }: EntryTableProps) 
                     {b && (
                       <div className="grid grid-cols-2 gap-2 text-[11px] pt-2 border-t border-border/40 bg-secondary/20 p-2 rounded-lg">
                         <div>
-                          <span className="text-muted-foreground block">Carried Rollover:</span>
-                          <span className="font-mono text-blue-500 font-medium">+ {formatCurrency(b.carriedRollover)}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground block">Total Available:</span>
-                          <span className="font-mono font-medium">{formatCurrency(b.totalAvailable)}</span>
+                          <span className="text-muted-foreground block">Deposit:</span>
+                          <span className="font-mono font-medium">{formatCurrency(b.freshAmount)}</span>
                         </div>
                         <div>
                           <span className="text-muted-foreground block">Net Cash for Units:</span>
                           <span className="font-mono font-medium">{formatCurrency(b.netCash)}</span>
                         </div>
                         <div>
-                          <span className="text-muted-foreground block">Ending Rollover:</span>
+                          <span className="text-muted-foreground block">Unit Cost:</span>
+                          <span className="font-mono font-medium">{formatCurrency(b.unitCost)}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground block">Refunded to Bank:</span>
                           <span className="font-mono text-emerald-500 font-bold">{formatCurrency(b.remainingRollover)}</span>
                         </div>
                       </div>

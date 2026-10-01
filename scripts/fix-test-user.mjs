@@ -63,15 +63,15 @@ for (const fund of funds) {
       official = prior.length > 0 ? navMap.get(prior[prior.length - 1]) : undefined;
     }
     if (official === undefined) continue;
-    const expectedUnits = Math.round(((Number(e.amount) - DP) / official) * 10000) / 10000;
-    if (Math.abs(official - Number(e.nav)) < 0.005 && Math.abs(expectedUnits - Number(e.units)) < 0.00005) continue;
+    const expectedUnits = Math.floor((Number(e.amount) - DP) / official);
+    if (Math.abs(official - Number(e.nav)) < 0.005 && expectedUnits === Number(e.units)) continue;
 
     const patch = {};
     if (Math.abs(official - Number(e.nav)) >= 0.005) {
       patch.nav = official;
       fixedNav++;
     }
-    if (Math.abs(expectedUnits - Number(e.units)) >= 0.00005) {
+    if (expectedUnits !== Number(e.units)) {
       patch.units = expectedUnits;
       fixedUnits++;
     }
