@@ -24,6 +24,7 @@ import type { NavQuote } from "@/lib/nav-sources/types";
 import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { nepalTodayAD } from "@/lib/calendar/bs";
 import { syncTestUserDividends } from "@/lib/cron/sync-test-user-dividends";
+import { syncTestUserInstallments } from "@/lib/cron/sync-test-user-installments";
 
 interface FundRow {
   id: string;
@@ -219,14 +220,21 @@ async function handleCronFetchNav(req: Request) {
       }
     }
 
-    // 5. Test-user dividend auto-fill: record any verified declaration
-    //    not yet in the dividends table for the auto-fill accounts.
-    //    Never throws - a sync failure must not fail the NAV cron.
+    // 5. Test-user auto-fill: record verified dividends and due SIP
+    //    installments for the auto-fill accounts. Never throws - a
+    //    sync failure must not fail the NAV cron.
     let dividendSync;
     try {
       dividendSync = await syncTestUserDividends(supabase);
     } catch (err: any) {
       dividendSync = { error: err?.message || String(err) };
+    }
+
+    let installmentSync;
+    try {
+      installmentSync = await syncTestUserInstallments(supabase);
+    } catch (err: any) {
+      installmentSync = { error: err?.message || String(err) };
     }
 
     return NextResponse.json({
@@ -243,6 +251,7 @@ async function handleCronFetchNav(req: Request) {
       upsertErrors,
       sourceErrors,
       dividendSync,
+      installmentSync,
       timestamp: new Date().toISOString(),
     });
   } catch (err: any) {
