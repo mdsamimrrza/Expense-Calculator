@@ -17,6 +17,7 @@ import {
   formatCurrencyWhole,
   formatPercentage,
   formatDateShort,
+  formatDateFull,
   formatNav,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -39,7 +40,7 @@ function CustomTooltip({ active, payload, label }: any) {
     return (
       <div className="bg-slate-900 text-white px-3.5 py-2.5 rounded-xl shadow-xl border border-slate-800 text-xs font-semibold space-y-1.5 min-w-[160px]">
         <span className="text-[11px] text-slate-400 block border-b border-slate-800 pb-1">
-          {formatDateShort(String(label || ""))}
+          {formatDateFull(String(label || ""))}
         </span>
         <div className="flex items-center justify-between gap-3">
           <span className="flex items-center gap-1.5 text-slate-300">

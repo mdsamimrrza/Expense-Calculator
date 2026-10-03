@@ -98,6 +98,14 @@ export function formatDateShort(dateStr: string): string {
 }
 
 /**
+ * Format a date in full for chart tooltips.
+ * e.g. "2024-03-15" → "15 Mar 2024"
+ */
+export function formatDateFull(dateStr: string): string {
+  return format(new Date(dateStr), "dd MMM yyyy");
+}
+
+/**
  * Format a date as relative time.
  * e.g. "2 days ago"
  */

@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ChartDataPoint } from "@/lib/types";
-import { formatNav, formatDateShort } from "@/lib/format";
+import { formatNav, formatDateShort, formatDateFull } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type TimeRange = "1M" | "3M" | "6M" | "1Y" | "3Y" | "5Y" | "ALL";
@@ -28,7 +28,7 @@ function CustomNavTooltip({ active, payload, label }: any) {
   if (active && payload && payload.length) {
     return (
       <div className="bg-slate-900 text-white px-3 py-1.5 rounded-xl shadow-xl border border-slate-800 flex items-center gap-2 text-xs font-semibold">
-        <span className="text-[11px] text-slate-400">{formatDateShort(String(label || ""))}:</span>
+        <span className="text-[11px] text-slate-400">{formatDateFull(String(label || ""))}:</span>
         <span className="font-extrabold text-emerald-400">
           NPR {formatNav(Number(payload[0].value || 0))}
         </span>
