@@ -44,7 +44,19 @@ self.addEventListener("push", (event) => {
     ],
   };
 
-  event.waitUntil(self.registration.showNotification(data.title, options));
+  event.waitUntil(
+    self.registration
+      .showNotification(data.title, options)
+      .then(() =>
+        // Ping any open tabs so the notification bell can refresh its
+        // badge immediately - the page no longer polls on a timer.
+        self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+          for (const client of clientList) {
+            client.postMessage({ type: "PUSH_RECEIVED" });
+          }
+        })
+      )
+  );
 });
 
 // Notification click event handler

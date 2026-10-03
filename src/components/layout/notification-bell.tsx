@@ -65,14 +65,17 @@ export function NotificationBell() {
   useEffect(() => {
     setDismissed(getDismissed());
     fetchNotifications();
-    // Poll every 5 minutes, skipped while the tab is hidden. The badge
-    // doesn't need to be fresher than that, and each tick costs 3-4
-    // DB queries (notifications + unread count + funds + session check).
-    const tick = () => {
-      if (document.visibilityState === "visible") fetchNotifications();
-    };
-    const interval = setInterval(tick, 5 * 60 * 1000);
-    return () => clearInterval(interval);
+    // No polling: web push is the realtime channel. The service worker
+    // pings open tabs when a push lands (PUSH_RECEIVED), the bell
+    // refetches when opened, and that is the full refresh surface.
+    if ("serviceWorker" in navigator) {
+      const onSwMessage = (event: MessageEvent) => {
+        if (event.data?.type === "PUSH_RECEIVED") fetchNotifications();
+      };
+      navigator.serviceWorker.addEventListener("message", onSwMessage);
+      return () =>
+        navigator.serviceWorker.removeEventListener("message", onSwMessage);
+    }
   }, []);
 
   const handleOpenChange = (open: boolean) => {
