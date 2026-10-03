@@ -124,6 +124,16 @@ export function formatMonth(monthKey: string): string {
 }
 
 /**
+ * Format a month key in full for chart tooltips.
+ * e.g. "2024-03" → "March 2024"
+ */
+export function formatMonthFull(monthKey: string): string {
+  const [year, month] = monthKey.split("-");
+  const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+  return format(date, "MMMM yyyy");
+}
+
+/**
  * Format SIP streak for display.
  * e.g. 14 → "14 months 🔥", 0 → "0 months"
  */

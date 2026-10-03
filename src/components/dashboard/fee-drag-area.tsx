@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import type { FeeDragPoint } from "@/lib/types";
-import { formatCurrencyWhole, formatDateShort } from "@/lib/format";
+import { formatCurrencyWhole, formatDateShort, formatDateFull } from "@/lib/format";
 import { FUND_PRESETS } from "@/lib/constants";
 
 interface FeeDragAreaProps {
@@ -234,7 +234,7 @@ export function FeeDragArea({ data, feeRatePct = 1.8, fundName }: FeeDragAreaPro
                     ? "Cumulative Fee Drag"
                     : "Monthly Fee Drag",
                 ]}
-                labelFormatter={(dateStr) => formatDateShort(String(dateStr || ""))}
+                labelFormatter={(dateStr) => formatDateFull(String(dateStr || ""))}
                 contentStyle={{
                   backgroundColor: "var(--card)",
                   borderColor: "var(--border)",

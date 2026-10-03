@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { MonthlyContribution } from "@/lib/types";
-import { formatCurrencyWhole, formatMonth } from "@/lib/format";
+import { formatCurrencyWhole, formatMonth, formatMonthFull } from "@/lib/format";
 import { CHART_COLORS } from "@/lib/constants";
 
 interface MonthlyContributionsBarProps {
@@ -25,7 +25,7 @@ function CustomTooltip({ active, payload, label }: any) {
     return (
       <div className="bg-slate-900 text-white px-3.5 py-3 rounded-xl shadow-xl border border-slate-800 flex flex-col gap-1.5 min-w-[160px]">
         <div className="flex items-center justify-between gap-4 text-[11px] font-semibold border-b border-slate-800 pb-1.5">
-          <span className="text-slate-400">{formatMonth(String(label || ""))}</span>
+          <span className="text-slate-400">{formatMonthFull(String(label || ""))}</span>
           <span className="font-extrabold text-blue-400">
             {formatCurrencyWhole(data.amount)}
           </span>

@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import type { ProjectionChartPoint } from "@/lib/types";
-import { formatCurrencyWhole, formatDateShort } from "@/lib/format";
+import { formatCurrencyWhole, formatDateShort, formatDateFull } from "@/lib/format";
 import { CHART_COLORS } from "@/lib/constants";
 
 interface ProjectionChartProps {
@@ -87,7 +87,7 @@ export function ProjectionChart({ data }: ProjectionChartProps) {
                 formatCurrencyWhole(Number(value || 0)),
                 name === "actualValue" ? "Historical Actual" : "Projected Growth",
               ]}
-              labelFormatter={(dateStr) => formatDateShort(String(dateStr || ""))}
+              labelFormatter={(dateStr) => formatDateFull(String(dateStr || ""))}
               contentStyle={{
                 backgroundColor: "hsl(var(--card))",
                 border: "1px solid hsl(var(--border))",
