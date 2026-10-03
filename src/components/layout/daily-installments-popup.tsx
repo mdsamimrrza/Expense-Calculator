@@ -37,6 +37,13 @@ function shouldShowToday(): boolean {
   return getLastShown() !== today;
 }
 
+/**
+ * The popup only auto-fires on reminder milestones: exactly 10, 7, 3, 1
+ * or 0 days before the nearest installment - and at most once per day.
+ * Ordinary days (like 29d away) never open it.
+ */
+const REMINDER_MILESTONE_DAYS = [10, 7, 3, 1, 0];
+
 function groupInstallments(items: UpcomingInstallment[]) {
   const today: UpcomingInstallment[] = [];
   const tomorrow: UpcomingInstallment[] = [];
@@ -196,23 +203,35 @@ export function DailyInstallmentsPopup() {
   const [dontShowAgain, setDontShowAgain] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
+  // Fetch the schedule once on mount, then decide whether today is a
+  // reminder milestone. The popup marks itself shown for the day, so it
+  // auto-fires at most once per day even across page reloads.
   useEffect(() => {
-    if (shouldShowToday()) {
-      const timer = setTimeout(() => setOpen(true), 300);
-      return () => clearTimeout(timer);
-    }
+    let cancelled = false;
+    (async () => {
+      const res = await getNotificationData();
+      if (cancelled) return;
+      setItems(res.upcoming);
+      setLoading(false);
+      const nearest = res.upcoming.length
+        ? Math.min(...res.upcoming.map((u) => u.daysRemaining))
+        : null;
+      if (
+        nearest !== null &&
+        REMINDER_MILESTONE_DAYS.includes(nearest) &&
+        shouldShowToday()
+      ) {
+        setLastShown(new Date().toISOString().split("T")[0]);
+        setOpen(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  async function loadItems() {
-    setLoading(true);
-    const res = await getNotificationData();
-    setItems(res.upcoming);
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    if (open) loadItems();
-  }, [open]);
+  // Items are already loaded by the milestone check above - no refetch
+  // needed when the dialog opens.
 
   function handleClose() {
     if (dontShowAgain) {
@@ -220,8 +239,6 @@ export function DailyInstallmentsPopup() {
     }
     setOpen(false);
   }
-
-  if (!open) return null;
 
   const { today, tomorrow, thisWeek, later } = groupInstallments(items);
   const hasItems = items.length > 0;
