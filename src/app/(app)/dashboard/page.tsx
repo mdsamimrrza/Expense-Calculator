@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { getDashboardData } from "@/lib/actions/dashboard";
+import { getProfile } from "@/lib/actions/profile";
+import { auth } from "@/auth";
+import { displayNameFor } from "@/lib/utils";
 import { SummaryCards } from "@/components/dashboard/summary-cards";
 import { PortfolioChart } from "@/components/dashboard/portfolio-chart";
 import { InvestedVsGainPie } from "@/components/dashboard/invested-vs-gain-pie";
@@ -25,7 +28,11 @@ interface DashboardPageProps {
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const params = await searchParams;
   const selectedFundId = params.fund || "all";
-  const result = await getDashboardData(selectedFundId);
+  const [result, session, profile] = await Promise.all([
+    getDashboardData(selectedFundId),
+    auth(),
+    getProfile(),
+  ]);
 
   if ("redirect" in result && typeof result.redirect === "string") {
     redirect(result.redirect);
@@ -52,12 +59,17 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   const activeFund = funds.find((f: FundConfig) => f.id === selectedFundId) || funds[0];
 
+  const userName = displayNameFor(
+    profile.name ?? session?.user?.name,
+    profile.email ?? session?.user?.email
+  );
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header & Controls Row */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">SIP Dashboard</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{userName}</h1>
           <p className="text-sm text-muted-foreground">
             Track your mutual fund performance, returns, and fee impact.
           </p>
