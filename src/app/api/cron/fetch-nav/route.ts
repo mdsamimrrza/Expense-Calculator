@@ -11,9 +11,10 @@
 //   GET/POST /api/cron/fetch-nav?backfill=1 → + full history
 //
 // Auth: Authorization: Bearer <CRON_SECRET> (same as reminders).
-// Schedule: vercel.json → 15:00 UTC (20:45 NPT), Sun-Thu.
-// Fund managers publish the day's NAV in the Nepal evening; 20:45
-// clears the late publishers, and the 7-day fetch window catches
+// Schedule: vercel.json → 17:30 UTC (23:15 NPT), daily. Fund
+// managers publish the day's NAV in the late Nepal evening (often
+// after 20:45 - see the Oct 2026 gap), so 23:15 catches the same
+// day's NAV the same night, and the 7-day fetch window catches
 // anything still missing on the next run.
 // ============================================================
 
@@ -152,8 +153,8 @@ async function handleCronFetchNav(req: Request) {
     }
 
     // Recent-window fetch (7 days): every run upserts the last week of
-    // the series, so a fund that publishes its NAV after the 13:00 UTC
-    // cron window (e.g. NMB on Sep 28) is caught on the next run instead
+    // the series, so a fund that publishes its NAV after the cron window
+    // (e.g. NMB on Sep 28) is caught on the next run instead
     // of being skipped until a newer quote appears.
     const recentQuotes = new Map<string, NavQuote[]>();
     const historyQuotes = new Map<string, NavQuote[]>();
