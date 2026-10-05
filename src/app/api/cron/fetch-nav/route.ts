@@ -40,6 +40,50 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
+async function sendNavFetchReport(
+  userId: string,
+  lines: string[],
+  failures: number
+) {
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+    const { data: tokens } = await supabase
+      .from("mobile_push_tokens")
+      .select("expo_push_token")
+      .eq("user_id", userId);
+    const unique = [
+      ...new Set((tokens ?? []).map((t: any) => String(t.expo_push_token))),
+    ].filter(Boolean);
+    if (unique.length === 0) return;
+
+    const title =
+      failures > 0 ? `Daily NAV Update: ${failures} failed` : "Daily NAV Update";
+    const body = lines.join("\n");
+
+    for (const batch of chunk(
+      unique.map((to) => ({
+        to,
+        title,
+        body,
+        sound: "default",
+        channelId: "announcements",
+      })),
+      100
+    )) {
+      await fetch("https://exp.host/--/api/v2/push/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(batch),
+      });
+    }
+  } catch {
+    // The report is best-effort - never fail the NAV cron over it.
+  }
+}
+
 export async function GET(req: Request) {
   return handleCronFetchNav(req);
 }
@@ -63,6 +107,18 @@ async function handleCronFetchNav(req: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
+    const userReportLines = new Map<string, string[]>();
+    const userReportFailures = new Map<string, number>();
+
+    const reportLine = (userId: string, line: string) => {
+      const arr = userReportLines.get(userId) ?? [];
+      arr.push(line);
+      userReportLines.set(userId, arr);
+    };
+    const reportFail = (userId: string) => {
+      userReportFailures.set(userId, (userReportFailures.get(userId) ?? 0) + 1);
+    };
+
     // 2. All active funds, resolved to their NAV source
     const { data: funds, error: fundsErr } = await supabase
       .from("fund_config")
@@ -82,6 +138,7 @@ async function handleCronFetchNav(req: Request) {
         matched.push({ fund, source });
       } else {
         unmatchedNames.push(fund.fund_name);
+        reportLine(fund.user_id, `• ${fund.fund_name}: no NAV source configured`);
       }
     }
 
@@ -151,21 +208,34 @@ async function handleCronFetchNav(req: Request) {
 
     for (const { fund, source } of matched) {
       const key = codeKey(source.source, source.code);
-      if (sourceErrors.some((e) => codeKey(e.source, e.code) === key)) continue;
+      if (sourceErrors.some((e) => codeKey(e.source, e.code) === key)) {
+        const err = sourceErrors.find((e) => codeKey(e.source, e.code) === key);
+        reportLine(fund.user_id, `✖ ${fund.fund_name}: fetch failed (${err?.code})`);
+        reportFail(fund.user_id);
+        continue;
+      }
 
       const quotes: NavQuote[] = [];
       if (backfill && historyQuotes.has(key)) {
         quotes.push(...(historyQuotes.get(key) ?? []));
       }
       quotes.push(...(recentQuotes.get(key) ?? []));
-      if (quotes.length === 0) continue;
+      if (quotes.length === 0) {
+        reportLine(fund.user_id, `✖ ${fund.fund_name}: no quotes returned`);
+        reportFail(fund.user_id);
+        continue;
+      }
 
       const plausibleQuotes = quotes.filter((q) => {
         if (isPlausible(q)) return true;
         rejectedQuotes++;
         return false;
       });
-      if (plausibleQuotes.length === 0) continue;
+      if (plausibleQuotes.length === 0) {
+        reportLine(fund.user_id, `✖ ${fund.fund_name}: all quotes rejected as implausible`);
+        reportFail(fund.user_id);
+        continue;
+      }
 
       // nav_reference: ONE shared series per fund - upserted once per
       // (fund_key, nav_date) and read by every user. The cron no longer
@@ -214,9 +284,14 @@ async function handleCronFetchNav(req: Request) {
           if (upsertErrors.length < 20) {
             upsertErrors.push(`${fund.fund_name} (latest_nav): ${error.message}`);
           }
+          reportLine(fund.user_id, `✖ ${fund.fund_name}: ${newest.nav} (${newest.date}) - save failed`);
+          reportFail(fund.user_id);
         } else {
           latestUpdated++;
+          reportLine(fund.user_id, `✔ ${fund.fund_name}: ${newest.nav} (${newest.date}) - updated`);
         }
+      } else {
+        reportLine(fund.user_id, `✔ ${fund.fund_name}: ${newest.nav} (${newest.date})`);
       }
     }
 
@@ -235,6 +310,10 @@ async function handleCronFetchNav(req: Request) {
       installmentSync = await syncTestUserInstallments(supabase);
     } catch (err: any) {
       installmentSync = { error: err?.message || String(err) };
+    }
+
+    for (const [uid, lines] of userReportLines) {
+      await sendNavFetchReport(uid, lines, userReportFailures.get(uid) ?? 0);
     }
 
     return NextResponse.json({
