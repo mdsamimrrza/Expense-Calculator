@@ -42,7 +42,7 @@ export async function getNotificationData(): Promise<NotificationData> {
 
     const supabase = await createClient();
 
-    const [notifRes, countRes, fundsRes] = await Promise.all([
+    const [notifRes, countRes, fundsRes, entriesRes] = await Promise.all([
       supabase
         .from("notifications_log")
         .select("*")
@@ -59,6 +59,10 @@ export async function getNotificationData(): Promise<NotificationData> {
         .select("*")
         .eq("user_id", session.user.id)
         .eq("is_active", true),
+      supabase
+        .from("entries")
+        .select("fund_id, purchase_date")
+        .eq("user_id", session.user.id),
     ]);
 
     if (notifRes.error) {
@@ -73,10 +77,19 @@ export async function getNotificationData(): Promise<NotificationData> {
     }
 
     const todayStr = nepalTodayAD();
+    // Payment history per fund - a cycle with any entry after its previous
+    // due date is already paid. Same rule as the reminder cron.
+    const paidDates = new Map<string, string[]>();
+    for (const e of ((entriesRes.data ?? []) as { fund_id: string; purchase_date: string }[])) {
+      const list = paidDates.get(e.fund_id) || [];
+      list.push(e.purchase_date);
+      paidDates.set(e.fund_id, list);
+    }
     const upcoming: UpcomingInstallment[] = [];
     for (const f of ((fundsRes.data ?? []) as FundConfig[])) {
       const { sip } = resolveSchedule(f);
-      const { nextDue, daysRemaining } = computeSchedule(sip, todayStr);
+      const { nextDue, prevDue, daysRemaining } = computeSchedule(sip, todayStr);
+      if ((paidDates.get(f.id) || []).some((d) => d > prevDue)) continue;
       upcoming.push({
         fundId: f.id,
         fundName: f.fund_name,
