@@ -8,6 +8,7 @@ import type { ActionResult } from "@/lib/types";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
 const supabaseSecret = process.env.SUPABASE_SERVICE_ROLE_KEY || "placeholder-key";
 
+import { unstable_noStore as noStore } from "next/cache";
 const AVATAR_BUCKET = "avatars";
 const MAX_BYTES = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;

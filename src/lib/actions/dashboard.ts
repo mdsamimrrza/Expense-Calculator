@@ -1,5 +1,6 @@
 "use server";
 
+import { unstable_noStore as noStore } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { auth } from "@/auth";
 import type {
@@ -37,6 +38,7 @@ interface DashboardData {
 export async function getDashboardData(
   fundId?: string
 ): Promise<ActionResult<DashboardData>> {
+  noStore();
   const supabase = await createClient();
   const session = await auth();
   const user = session?.user;
