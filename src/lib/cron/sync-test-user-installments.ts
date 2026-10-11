@@ -14,7 +14,9 @@
 // Derived (unverified) schedules are skipped on purpose: the popup
 // may preview them, but auto-recording from a guess would fabricate
 // history. Re-running is safe - a due date with an existing entry is
-// skipped.
+// skipped, and so is a period that already has an auto-recorded entry
+// (a schedule edit, e.g. AD -> BS, shifts the due dates and the
+// exact-date check alone would then record the same installment twice).
 // ============================================================
 
 import { createClient } from "@supabase/supabase-js";
@@ -112,6 +114,17 @@ export async function syncTestUserInstallments(admin: QueryClient): Promise<Sync
 
         const fundKey = normalizeFundName(fund.fund_name);
 
+        // Auto-recorded entries so far - used by the period guard below,
+        // so a schedule edit that shifts due dates cannot record the
+        // same installment twice (the exact-date check alone misses it).
+        const { data: autoEntries } = await admin
+          .from("entries")
+          .select("purchase_date")
+          .eq("user_id", user.id)
+          .eq("fund_id", fund.id)
+          .like("notes", "Auto-recorded SIP installment%");
+        const autoDates = (autoEntries ?? []).map((e: any) => String(e.purchase_date));
+
         // k = 0 is the anchor itself; walk forward until the due date
         // passes today. The anchor is typically recent, so this loop is short.
         for (let k = 0, guard = 0; guard < 500; k++, guard++) {
@@ -127,6 +140,25 @@ export async function syncTestUserInstallments(admin: QueryClient): Promise<Sync
             .limit(1);
           if (existing && existing.length > 0) {
             result.alreadyRecorded.push({ fund: fund.fund_name, dueDate: due });
+            continue;
+          }
+
+          // One auto-recorded entry per installment period: the window
+          // (previous due, next due) on the CURRENT schedule. A leftover
+          // entry recorded under an older schedule (e.g. Oct 1 when the
+          // BS schedule now says Oct 2) falls inside it and blocks the
+          // second write.
+          const lo = k > 0 ? installmentDueDate(schedule.sip, k - 1) : due;
+          const hi = installmentDueDate(schedule.sip, k + 1);
+          const dupe = autoDates.find(
+            (d: string) => d < hi && (k > 0 ? d > lo : d >= lo)
+          );
+          if (dupe) {
+            result.skipped.push({
+              fund: fund.fund_name,
+              dueDate: due,
+              reason: `already auto-recorded this period on ${dupe} (schedule changed?)`,
+            });
             continue;
           }
 
