@@ -11,11 +11,16 @@
 //   GET/POST /api/cron/fetch-nav?backfill=1 → + full history
 //
 // Auth: Authorization: Bearer <CRON_SECRET> (same as reminders).
-// Schedule: vercel.json → 17:30 UTC (23:15 NPT), daily. Fund
-// managers publish the day's NAV in the late Nepal evening (often
-// after 20:45 - see the Oct 2026 gap), so 23:15 catches the same
-// day's NAV the same night, and the 7-day fetch window catches
-// anything still missing on the next run.
+// Schedule: three runs a day, all hitting this same endpoint.
+//   - GitHub Actions 03:35 UTC (09:20 NPT), early morning
+//   - GitHub Actions 05:45 UTC (11:30 NPT), market open - fund
+//     managers publish the previous day's NAV around 11:05 NPT,
+//     so this is normally the run that catches it fresh
+//   - vercel.json 17:30 UTC (23:15 NPT), night safety net
+// DB writes are gated on newer dates, so duplicate runs are
+// harmless, and the 7-day fetch window catches anything still
+// missing on the next run. Push reports are change-only (see the
+// notify param below).
 // ============================================================
 
 import { NextResponse } from "next/server";
@@ -103,6 +108,14 @@ async function handleCronFetchNav(req: Request) {
 
     const backfill = new URL(req.url).searchParams.get("backfill") === "1";
 
+    // notify=change (the GitHub morning/market runs): push reports go
+    // out only to users whose funds actually got a newer quote this
+    // run. Default (the night Vercel run): a run that found nothing
+    // new but had fetch failures still reports once, so a persistently
+    // broken source surfaces once a day instead of three times.
+    const notifyChangeOnly =
+      new URL(req.url).searchParams.get("notify") === "change";
+
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -110,6 +123,9 @@ async function handleCronFetchNav(req: Request) {
 
     const userReportLines = new Map<string, string[]>();
     const userReportFailures = new Map<string, number>();
+    // Funds whose latest_nav actually advanced this run, per user -
+    // the gate for change-only push reports.
+    const userUpdated = new Map<string, number>();
 
     const reportLine = (userId: string, line: string) => {
       const arr = userReportLines.get(userId) ?? [];
@@ -289,6 +305,7 @@ async function handleCronFetchNav(req: Request) {
           reportFail(fund.user_id);
         } else {
           latestUpdated++;
+          userUpdated.set(fund.user_id, (userUpdated.get(fund.user_id) ?? 0) + 1);
           reportLine(fund.user_id, `✔ ${fund.fund_name}: ${newest.nav} (${newest.date}) - updated`);
         }
       } else {
@@ -314,7 +331,12 @@ async function handleCronFetchNav(req: Request) {
     }
 
     for (const [uid, lines] of userReportLines) {
-      await sendNavFetchReport(uid, lines, userReportFailures.get(uid) ?? 0);
+      const updated = userUpdated.get(uid) ?? 0;
+      const failed = userReportFailures.get(uid) ?? 0;
+      // Change-only runs stay silent unless this user's data moved;
+      // the night run additionally reports failure-only runs.
+      if (updated === 0 && (notifyChangeOnly || failed === 0)) continue;
+      await sendNavFetchReport(uid, lines, failed);
     }
 
     return NextResponse.json({

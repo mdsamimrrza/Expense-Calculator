@@ -1,0 +1,46 @@
+# Extra NAV fetch runs alongside the nightly Vercel cron.
+#
+# The Vercel cron (vercel.json) runs once a day at 17:30 UTC
+# (23:15 NPT). Fund managers publish the previous day's NAV around
+# 11:05 NPT, so waiting for the night run left the app ~12 hours
+# behind the fund websites. GitHub Actions on a public repo is
+# free with no minute limit, so two more runs a day cost nothing:
+#
+#   03:35 UTC (09:20 NPT)  early morning - catches anything that
+#                          appeared overnight
+#   05:45 UTC (11:30 NPT)  market open   - normally the run that
+#                          catches the fresh ~11:05 NPT publication
+#   17:30 UTC (23:15 NPT)  night         - existing Vercel cron,
+#                          safety net for late publications
+#
+# All three poke the same /api/cron/fetch-nav endpoint, which only
+# writes to the DB when a quote is newer than what is already
+# stored, so duplicate runs are harmless. The GitHub runs pass
+# notify=change so a push goes out only when new data was actually
+# found; the night run (no param) is the only one that also reports
+# failures, so a broken source surfaces once a day instead of three.
+#
+# Requires the repo secret CRON_SECRET (same value as the Vercel
+# env var). Times are UTC - GitHub cron has no timezone support.
+
+name: NAV fetch
+
+on:
+  schedule:
+    - cron: "35 3 * * *"  # 09:20 NPT - early morning
+    - cron: "45 5 * * *"  # 11:30 NPT - market open
+  workflow_dispatch: {}
+
+jobs:
+  fetch-nav:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger NAV fetch
+        run: |
+          code=$(curl -sS -o response.json -w "%{http_code}" --max-time 120 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://sahakari-sip.vercel.app/api/cron/fetch-nav?notify=change")
+          cat response.json
+          echo ""
+          test "$code" = 200
