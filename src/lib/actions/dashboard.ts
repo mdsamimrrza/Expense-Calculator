@@ -131,12 +131,24 @@ export async function getDashboardData(
   }
   let navRefRows: Array<{ fund_key: string; nav_date: string; nav_value: number }> = [];
   if (fundKeyToIds.size > 0) {
-    const { data: refData } = await supabase
-      .from("nav_reference")
-      .select("fund_key, nav_date, nav_value")
-      .in("fund_key", [...fundKeyToIds.keys()])
-      .order("nav_date", { ascending: true });
-    navRefRows = (refData ?? []) as typeof navRefRows;
+    // PostgREST caps a single select at 1000 rows and the full daily
+    // series per fund is larger. Page through it - a plain select
+    // silently returns only the OLDEST 1000 rows (ascending order), so
+    // the chart's NAV detail stopped around Nov 2023 and the mobile
+    // chart squeezed three years of growth into a few pixels.
+    let offset = 0;
+    while (true) {
+      const { data: refPage } = await supabase
+        .from("nav_reference")
+        .select("fund_key, nav_date, nav_value")
+        .in("fund_key", [...fundKeyToIds.keys()])
+        .order("nav_date", { ascending: true })
+        .range(offset, offset + 999);
+      const page = (refPage ?? []) as typeof navRefRows;
+      navRefRows.push(...page);
+      if (page.length < 1000) break;
+      offset += 1000;
+    }
   }
 
   // ---- Calculate summary ----
